@@ -1,3 +1,76 @@
+// WebSocket para atualizações em tempo real
+let ws = null;
+let wsReconnectAttempts = 0;
+const wsMaxReconnectAttempts = 5;
+const wsReconnectDelay = 3000; // 3 segundos
+
+function conectarWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}`;
+
+  ws = new WebSocket(wsUrl);
+
+  ws.addEventListener('open', () => {
+    console.log('[WS] Conectado ao servidor');
+    wsReconnectAttempts = 0;
+
+    // Autentica no WebSocket
+    const sessionId = Math.random().toString(36).substring(7);
+    ws.send(JSON.stringify({ tipo: 'auth', sessionId }));
+  });
+
+  ws.addEventListener('message', (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      handleWebSocketMessage(msg);
+    } catch (err) {
+      console.error('[WS] Erro ao processar mensagem:', err);
+    }
+  });
+
+  ws.addEventListener('close', () => {
+    console.log('[WS] Desconectado do servidor');
+    if (wsReconnectAttempts < wsMaxReconnectAttempts) {
+      wsReconnectAttempts++;
+      console.log(`[WS] Reconectando em ${wsReconnectDelay / 1000}s... (tentativa ${wsReconnectAttempts}/${wsMaxReconnectAttempts})`);
+      setTimeout(conectarWebSocket, wsReconnectDelay);
+    }
+  });
+
+  ws.addEventListener('error', (err) => {
+    console.error('[WS] Erro:', err);
+  });
+}
+
+function handleWebSocketMessage(msg) {
+  const { tipo, dados } = msg;
+
+  switch (tipo) {
+    case 'tarefa-criada':
+    case 'tarefa-atualizada':
+    case 'tarefa-deletada':
+      console.log('[WS] Tarefa atualizada:', dados);
+      carregarTarefas();
+      break;
+
+    case 'financeiro-adicionada':
+    case 'financeiro-deletada':
+      console.log('[WS] Transação atualizada:', dados);
+      carregarTransacoes();
+      break;
+
+    case 'alarme-criado':
+    case 'alarme-atualizado':
+    case 'alarme-deletado':
+      console.log('[WS] Alarme atualizado:', dados);
+      carregarAlarmes();
+      break;
+
+    default:
+      console.log('[WS] Mensagem desconhecida:', tipo);
+  }
+}
+
 // Exibe data de hoje
 function atualizarData() {
   const hoje = new Date();
@@ -236,6 +309,10 @@ async function verificarAutenticacao() {
 // Logout
 async function fazerLogout() {
   if (confirm('Deslogar do app?')) {
+    // Fecha WebSocket
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
     await fetch('/api/auth/logout');
     window.location.href = '/login.html';
   }
@@ -249,7 +326,10 @@ window.addEventListener('load', () => {
   carregarTransacoes();
   carregarAlarmes();
 
-  // Recarrega a cada 30s
+  // Conecta ao WebSocket para atualizações em tempo real
+  conectarWebSocket();
+
+  // Recarrega a cada 30s como fallback
   setInterval(() => {
     carregarTarefas();
     carregarTransacoes();

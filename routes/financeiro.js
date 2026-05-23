@@ -2,7 +2,19 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 
+let wsServer; // Será setado pelo server.js
+
 const router = express.Router();
+
+// Função pra emitir eventos WebSocket
+function emitFinanceiroUpdate(tipo, dados) {
+  if (wsServer) {
+    wsServer.broadcast({
+      tipo: 'financeiro-' + tipo,
+      dados
+    });
+  }
+}
 
 // GET todas transacoes + saldo
 router.get('/', async (req, res) => {
@@ -65,11 +77,12 @@ router.post('/', async (req, res) => {
 
     await run(
       `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)`,
       [id, tipo, valor, descricao || '', dataUso, categoria || '']
     );
 
-    const transacao = await get(`SELECT * FROM financeiro WHERE id = ?`, [id]);
+    const transacao = await get(`SELECT * FROM financeiro WHERE id = $1`, [id]);
+    emitFinanceiroUpdate('adicionada', transacao);
     res.status(201).json(transacao);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -79,11 +92,16 @@ router.post('/', async (req, res) => {
 // DELETE transacao
 router.delete('/:id', async (req, res) => {
   try {
-    await run(`DELETE FROM financeiro WHERE id = ?`, [req.params.id]);
+    await run(`DELETE FROM financeiro WHERE id = $1`, [req.params.id]);
+    emitFinanceiroUpdate('deletada', { id: req.params.id });
     res.json({ msg: 'Transacao deletada' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
 });
+
+router.setWsServer = function(ws) {
+  wsServer = ws;
+};
 
 module.exports = router;

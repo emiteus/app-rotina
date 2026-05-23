@@ -2,13 +2,19 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const session = require('express-session');
 const { initDB } = require('./lib/db');
 const { router: authRouter, requireAuth } = require('./routes/auth');
+const WebSocketServer = require('./lib/websocket');
 const schedule = require('node-schedule');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const httpServer = http.createServer(app);
+
+// Inicializa WebSocket
+const wsServer = new WebSocketServer(httpServer);
 
 // Middleware
 app.use(express.json());
@@ -31,6 +37,11 @@ const tasksRouter = require('./routes/tasks');
 const financeiroRouter = require('./routes/financeiro');
 const alarmesRouter = require('./routes/alarmes');
 
+// Passar wsServer para as rotas
+tasksRouter.setWsServer(wsServer);
+financeiroRouter.setWsServer(wsServer);
+alarmesRouter.setWsServer(wsServer);
+
 app.use('/api/tasks', requireAuth, tasksRouter);
 app.use('/api/financeiro', requireAuth, financeiroRouter);
 app.use('/api/alarmes', requireAuth, alarmesRouter);
@@ -44,11 +55,6 @@ if (!fs.existsSync('./data')) fs.mkdirSync('./data');
 // Inicializa BD
 initDB();
 
-// Rotas
-app.use('/api/tasks', require('./routes/tasks'));
-app.use('/api/financeiro', require('./routes/financeiro'));
-app.use('/api/alarmes', require('./routes/alarmes'));
-
 // HTML principal
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/index.html'));
@@ -60,7 +66,7 @@ schedule.scheduleJob('*/1 * * * *', async () => {
   const now = new Date();
   const horaAtual = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  const alarmes = await all(`SELECT * FROM alarmes WHERE ativo = 1 AND hora = ?`, [horaAtual]);
+  const alarmes = await all(`SELECT * FROM alarmes WHERE ativo = true AND hora = $1`, [horaAtual]);
 
   alarmes.forEach(alarme => {
     enviarTelegram(alarme.mensagem);
@@ -72,7 +78,7 @@ schedule.scheduleJob('1 0 * * *', async () => {
   const { run } = require('./lib/db');
   const hoje = new Date().toISOString().split('T')[0];
   await run(
-    `UPDATE tasks SET concluida = 0, data_reset = ? WHERE data_reset IS NULL OR DATE(data_reset) < DATE('now')`,
+    `UPDATE tasks SET concluida = false, data_reset = $1 WHERE data_reset IS NULL OR DATE(data_reset) < DATE('now')`,
     [`${hoje} 00:00:00`]
   );
   console.log('Tarefas resetadas para novo dia');
@@ -97,9 +103,10 @@ function enviarTelegram(mensagem) {
   }).catch(err => console.error('Erro Telegram:', err.message));
 }
 
-// Inicia servidor
-app.listen(PORT, '0.0.0.0', () => {
+// Inicia servidor HTTP + WebSocket
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
+  console.log(`WebSocket disponível em ws://0.0.0.0:${PORT}`);
 });
 
-module.exports = { app, enviarTelegram };
+module.exports = { app, httpServer, wsServer, enviarTelegram };
