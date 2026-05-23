@@ -2,7 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const session = require('express-session');
 const { initDB } = require('./lib/db');
+const { router: authRouter, requireAuth } = require('./routes/auth');
 const schedule = require('node-schedule');
 
 const app = express();
@@ -10,6 +12,30 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'seu-secret-aqui-mudar-em-producao',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dias
+  }
+}));
+
+// Rotas publicas
+app.use('/api/auth', authRouter);
+
+// Rotas privadas (requerem autenticacao)
+const tasksRouter = require('./routes/tasks');
+const financeiroRouter = require('./routes/financeiro');
+const alarmesRouter = require('./routes/alarmes');
+
+app.use('/api/tasks', requireAuth, tasksRouter);
+app.use('/api/financeiro', requireAuth, financeiroRouter);
+app.use('/api/alarmes', requireAuth, alarmesRouter);
+
+// Arquivos estaticos (index.html nao requer auth, auth.js vai verificar)
 app.use(express.static('public'));
 
 // Cria pasta data se nao existir

@@ -219,8 +219,31 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+// Verifica autenticacao
+async function verificarAutenticacao() {
+  try {
+    const res = await fetch('/api/auth/check');
+    const data = await res.json();
+    if (!data.authenticated) {
+      window.location.href = '/login.html';
+    }
+  } catch (err) {
+    console.error('Erro ao verificar autenticacao:', err);
+    window.location.href = '/login.html';
+  }
+}
+
+// Logout
+async function fazerLogout() {
+  if (confirm('Deslogar do app?')) {
+    await fetch('/api/auth/logout');
+    window.location.href = '/login.html';
+  }
+}
+
 // Inicialização
 window.addEventListener('load', () => {
+  verificarAutenticacao();
   atualizarData();
   carregarTarefas();
   carregarTransacoes();
