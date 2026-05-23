@@ -57,8 +57,8 @@ function enviarTelegram(mensagem) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
-  if (!token || !chatId) {
-    console.log('Telegram nao configurado. Mensagem:', mensagem);
+  if (!token || !chatId || token === 'dummy' || chatId === 'dummy') {
+    console.log('[INFO] Telegram nao configurado. Mensagem nao enviada:', mensagem);
     return;
   }
 
