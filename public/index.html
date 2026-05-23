@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Rotina</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <h1>📅 App Rotina</h1>
+      <p id="data-hoje"></p>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="rotina">Rotina</button>
+      <button class="tab-btn" data-tab="financeiro">Financeiro</button>
+      <button class="tab-btn" data-tab="alarmes">Alarmes</button>
+    </nav>
+
+    <!-- TAB: Rotina -->
+    <section id="rotina" class="tab-content active">
+      <h2>Tarefas de Hoje</h2>
+      <div class="input-group">
+        <input type="text" id="nova-tarefa" placeholder="Adicionar nova tarefa..." />
+        <button onclick="adicionarTarefa()">+</button>
+      </div>
+      <ul id="lista-tarefas" class="task-list"></ul>
+      <div class="stats">
+        <p><strong id="concluidas">0</strong>/<strong id="total">0</strong> concluídas</p>
+      </div>
+    </section>
+
+    <!-- TAB: Financeiro -->
+    <section id="financeiro" class="tab-content">
+      <h2>Financeiro</h2>
+      <div class="saldo-box">
+        <p>Saldo Total</p>
+        <h3 id="saldo-total">R$ 0.00</h3>
+      </div>
+
+      <div class="input-group">
+        <select id="tipo-transacao">
+          <option value="entrada">Entrada</option>
+          <option value="saida">Saída</option>
+        </select>
+        <input type="number" id="valor-transacao" placeholder="Valor" step="0.01" />
+        <input type="text" id="desc-transacao" placeholder="Descrição" />
+        <button onclick="adicionarTransacao()">+</button>
+      </div>
+
+      <ul id="lista-transacoes" class="transaction-list"></ul>
+    </section>
+
+    <!-- TAB: Alarmes -->
+    <section id="alarmes" class="tab-content">
+      <h2>Alarmes</h2>
+      <div class="input-group">
+        <input type="time" id="hora-alarme" />
+        <input type="text" id="msg-alarme" placeholder="Mensagem do alarme" />
+        <button onclick="adicionarAlarme()">+</button>
+      </div>
+      <ul id="lista-alarmes" class="alarm-list"></ul>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
