@@ -5,71 +5,743 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>App Rotina</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <!-- Header -->
-    <header class="header">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h1>📅 App Rotina</h1>
-        <button onclick="fazerLogout()" style="padding: 8px 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">Sair</button>
-      </div>
-      <p id="data-hoje"></p>
-    </header>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">Rotina</span>
+    </div>
 
-    <!-- Tabs -->
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="rotina">Rotina</button>
-      <button class="tab-btn" data-tab="financeiro">Financeiro</button>
-      <button class="tab-btn" data-tab="alarmes">Alarmes</button>
+    <nav class="nav">
+      <button class="nav-btn active" data-tab="dashboard">
+        <span class="nav-icon">🏠</span>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-btn" data-tab="tarefas">
+        <span class="nav-icon">✅</span>
+        <span>Tarefas</span>
+      </button>
+      <button class="nav-btn" data-tab="calendario">
+        <span class="nav-icon">📅</span>
+        <span>Calendário</span>
+      </button>
+      <button class="nav-btn" data-tab="financeiro">
+        <span class="nav-icon">💰</span>
+        <span>Financeiro</span>
+      </button>
+      <button class="nav-btn" data-tab="alarmes">
+        <span class="nav-icon">⏰</span>
+        <span>Alarmes</span>
+      </button>
+      <button class="nav-btn" data-tab="historico-page">
+        <span class="nav-icon">📊</span>
+        <span>Histórico</span>
+      </button>
     </nav>
 
+    <div class="sidebar-footer">
+      <div class="data-hoje" id="data-hoje"></div>
+      <div class="hora-agora" id="hora-agora"></div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- TAB: Dashboard -->
+    <section id="dashboard" class="tab-content active">
+      <div class="page-header">
+        <div>
+          <h1>Boa, <span id="saudacao">Mateus</span> 👋</h1>
+          <p class="page-subtitle">Seu desempenho nos últimos 30 dias</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+          <button class="quick-btn quick-btn-task" onclick="abrirAchievements()" style="background: rgba(91, 124, 250, 0.15); border: 2px solid rgba(91, 124, 250, 0.3); min-width: 50px; padding: 8px;">
+            <span>🏆</span>
+          </button>
+          <button class="quick-btn" onclick="abrirResumoDiario()" style="background: rgba(245, 166, 35, 0.15); border: 2px solid rgba(245, 166, 35, 0.3); min-width: 50px; padding: 8px;">
+            <span>📊</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- XP Display -->
+      <div id="player-xp" style="margin-bottom: 20px;"></div>
+
+      <!-- Quick Add Section -->
+      <div class="quick-add-section">
+        <div class="quick-add-header">Ação Rápida</div>
+        <div class="quick-add-buttons">
+          <button class="quick-btn quick-btn-task" onclick="abrirQuickAddModal('tarefa')">
+            <span>Tarefa</span>
+          </button>
+          <button class="quick-btn quick-btn-money" onclick="abrirQuickAddModal('transacao')">
+            <span>Transação</span>
+          </button>
+          <button class="quick-btn quick-btn-event" onclick="abrirQuickAddModal('evento')">
+            <span>Evento</span>
+          </button>
+          <button class="quick-btn" onclick="abrirPomodoro()">
+            <span>Pomodoro</span>
+          </button>
+          <button class="quick-btn" onclick="abrirConfigOrcamentos()">
+            <span>Orçamento</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="cards-grid">
+        <div class="card card-gradient-blue">
+          <div class="card-icon">📋</div>
+          <div class="card-label">Tarefas Hoje</div>
+          <div class="card-value">
+            <span id="dash-tarefas-concluidas">0</span>/<span id="dash-tarefas-total">0</span>
+          </div>
+          <div class="card-bar">
+            <div class="card-bar-fill" id="dash-tarefas-bar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <div class="card card-gradient-green">
+          <div class="card-icon">💵</div>
+          <div class="card-label">Saldo Total</div>
+          <div class="card-value" id="dash-saldo">R$ 0,00</div>
+          <div class="card-mini">
+            <span class="mini-up">↑ R$ <span id="dash-entradas">0,00</span></span>
+            <span class="mini-down">↓ R$ <span id="dash-saidas">0,00</span></span>
+          </div>
+        </div>
+
+        <div class="card card-gradient-orange">
+          <div class="card-icon">⏰</div>
+          <div class="card-label">Alarmes Ativos</div>
+          <div class="card-value" id="dash-alarmes">0</div>
+          <div class="card-mini">
+            <span id="dash-proximo-alarme">Nenhum agendado</span>
+          </div>
+        </div>
+
+        <div class="card card-gradient-purple">
+          <div class="card-icon">🔥</div>
+          <div class="card-label">Streak Atual</div>
+          <div class="card-value"><span id="dash-streak">0</span> dias</div>
+          <div class="card-mini">
+            <span>Seguidos completando tarefas</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats 30 dias -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 class="section-title">Desempenho — Últimos 30 dias</h2>
+        <div class="chart-toggle">
+          <button class="chart-btn active" data-type="line" onclick="alternarTipoGrafico('line')">
+            <span>Linha</span>
+          </button>
+          <button class="chart-btn" data-type="bar" onclick="alternarTipoGrafico('bar')">
+            <span>Barra</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-box-icon">✅</div>
+          <div class="stat-box-num" id="stats-concluidas">0</div>
+          <div class="stat-box-label">Tarefas Concluídas</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon">📈</div>
+          <div class="stat-box-num"><span id="stats-taxa">0</span>%</div>
+          <div class="stat-box-label">Taxa de Conclusão</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon">📅</div>
+          <div class="stat-box-num" id="stats-media">0</div>
+          <div class="stat-box-label">Média / dia</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-icon">🏆</div>
+          <div class="stat-box-num" id="stats-melhor-taxa">0%</div>
+          <div class="stat-box-label" id="stats-melhor-dia">Melhor dia</div>
+        </div>
+      </div>
+
+      <!-- Gráfico de barras -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Atividade Diária (30 dias)</h3>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-dot legend-dot-completed"></span>Concluídas</span>
+            <span class="legend-item"><span class="legend-dot legend-dot-total"></span>Total</span>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-bars"></canvas>
+        </div>
+      </div>
+
+      <div class="dashboard-row">
+        <!-- Distribuição por categoria -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Por Categoria</h3>
+          </div>
+          <div id="chart-categorias"></div>
+        </div>
+
+        <!-- Distribuição por prioridade -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Por Prioridade</h3>
+          </div>
+          <div id="chart-prioridades"></div>
+        </div>
+      </div>
+
+      <div class="dashboard-row">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Top Tarefas Pendentes</h3>
+            <button class="link-btn" onclick="trocarAba('rotina')">Ver todas →</button>
+          </div>
+          <div id="dash-tarefas-list" class="mini-list"></div>
+        </div>
+
+        <!-- Timeline do Dia -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3>📍 Timeline do Dia</h3>
+            <button class="link-btn" onclick="trocarAba('rotina')">Gerenciar →</button>
+          </div>
+          <div class="timeline-container">
+            <div class="timeline-period" id="timeline-manha">
+              <div class="timeline-label">☀️ Manhã</div>
+              <div class="timeline-tasks" id="timeline-tasks-manha"></div>
+            </div>
+            <div class="timeline-period" id="timeline-tarde">
+              <div class="timeline-label">🌤️ Tarde</div>
+              <div class="timeline-tasks" id="timeline-tasks-tarde"></div>
+            </div>
+            <div class="timeline-period" id="timeline-noite">
+              <div class="timeline-label">🌙 Noite</div>
+              <div class="timeline-tasks" id="timeline-tasks-noite"></div>
+            </div>
+            <div class="timeline-period" id="timeline-sem-hora">
+              <div class="timeline-label">❓ Sem Hora</div>
+              <div class="timeline-tasks" id="timeline-tasks-sem-hora"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Últimas Transações</h3>
+            <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas →</button>
+          </div>
+          <div id="dash-transacoes-list" class="mini-list"></div>
+        </div>
+      </div>
+    </section>
+
     <!-- TAB: Rotina -->
-    <section id="rotina" class="tab-content active">
-      <h2>Tarefas de Hoje</h2>
-      <div class="input-group">
-        <input type="text" id="nova-tarefa" placeholder="Adicionar nova tarefa..." />
-        <button onclick="adicionarTarefa()">+</button>
+    <section id="tarefas" class="tab-content active">
+      <div class="page-header">
+        <div>
+          <h1>Tarefas</h1>
+          <p class="page-subtitle">Foco no que importa</p>
+        </div>
+        <div class="stats-mini">
+          <div class="stat-card">
+            <span class="stat-num" id="concluidas">0</span>
+            <span class="stat-label">Concluídas</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="total">0</span>
+            <span class="stat-label">Total</span>
+          </div>
+        </div>
       </div>
-      <ul id="lista-tarefas" class="task-list"></ul>
-      <div class="stats">
-        <p><strong id="concluidas">0</strong>/<strong id="total">0</strong> concluídas</p>
+
+      <!-- TAB: Hoje e Amanhã Combinadas -->
+      <div id="tab-hoje" class="tarefas-tab-content active">
+        <div class="form-card task-form-card">
+          <div class="form-header">
+            <h3>Nova Tarefa</h3>
+          </div>
+          <div class="form-row form-main">
+            <input type="text" id="nova-tarefa" placeholder="O que você precisa fazer?" class="form-input-main" />
+            <button class="btn-primary btn-add-task" onclick="adicionarTarefa()">+ Adicionar</button>
+          </div>
+          <div class="form-row form-secondary">
+            <div class="form-group">
+              <label for="data-tarefa" class="form-label">Data</label>
+              <input type="date" id="data-tarefa" class="form-input-date" />
+            </div>
+            <div class="form-group">
+              <label for="hora-tarefa" class="form-label">Hora</label>
+              <input type="time" id="hora-tarefa" class="form-input-date" />
+            </div>
+            <div class="form-group">
+              <label for="prioridade-tarefa" class="form-label">Prioridade</label>
+              <select id="prioridade-tarefa" class="form-select">
+                <option value="alta">Alta</option>
+                <option value="media" selected>Média</option>
+                <option value="baixa">Baixa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="categoria-tarefa" class="form-label">Categoria</label>
+              <select id="categoria-tarefa" class="form-select">
+                <option value="geral">Geral</option>
+                <option value="trabalho">Trabalho</option>
+                <option value="estudos">Estudos</option>
+                <option value="saude">Saúde</option>
+                <option value="pessoal">Pessoal</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <button class="filter-btn active" data-filter="todas">Todas</button>
+          <button class="filter-btn" data-filter="pendentes">Pendentes</button>
+          <button class="filter-btn" data-filter="concluidas">Concluídas</button>
+          <button class="filter-btn" data-filter="alta">Alta</button>
+        </div>
+
+        <!-- SEÇÃO ONTEM -->
+        <div class="tarefas-section section-ontem">
+          <div class="section-header">
+            
+            <h2>Ontem</h2>
+            <span class="section-badge" id="badge-ontem">0</span>
+          </div>
+          <ul id="lista-tarefas-ontem" class="task-list"></ul>
+          <div id="empty-tarefas-ontem" class="empty-state" style="display: none;">
+            <div class="empty-icon">📋</div>
+            <h3>Sem tarefas de ontem</h3>
+            <p>Já foi!</p>
+          </div>
+        </div>
+
+        <!-- SEÇÃO HOJE -->
+        <div class="tarefas-section section-hoje">
+          <div class="section-header">
+            
+            <h2>Hoje</h2>
+            <span class="section-badge" id="badge-hoje">0</span>
+          </div>
+          <ul id="lista-tarefas" class="task-list"></ul>
+          <div id="empty-tarefas" class="empty-state" style="display: none;">
+            <div class="empty-icon">🎉</div>
+            <h3>Dia livre</h3>
+            <p>Parabéns! Tarefas todas concluídas</p>
+          </div>
+        </div>
+
+        <!-- SEÇÃO AMANHÃ -->
+        <div class="tarefas-section section-amanha">
+          <div class="section-header">
+            
+            <h2>Amanhã</h2>
+            <span class="section-badge" id="badge-amanha">0</span>
+          </div>
+          <ul id="lista-tarefas-amanha" class="task-list"></ul>
+          <div id="empty-tarefas-amanha" class="empty-state" style="display: none;">
+            <div class="empty-icon">✨</div>
+            <h3>Sem tarefas agendadas</h3>
+            <p>Curta esse dia tranquilo!</p>
+          </div>
+        </div>
+
+        <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 14px; color: #888;">🔁 RECORRENTES</h3>
+
+        <div class="form-card">
+          <div class="form-row">
+            <input type="text" id="rec-titulo" placeholder="Nome da tarefa recorrente" />
+            <select id="rec-prioridade">
+              <option value="alta">Alta</option>
+              <option value="media" selected>Média</option>
+              <option value="baixa">Baixa</option>
+            </select>
+            <select id="rec-categoria">
+              <option value="geral">Geral</option>
+              <option value="trabalho" selected>Trabalho</option>
+              <option value="estudos">Estudos</option>
+              <option value="saude">Saúde</option>
+              <option value="pessoal">Pessoal</option>
+            </select>
+            <button class="btn-primary" onclick="adicionarRecorrente()">+ Adicionar</button>
+          </div>
+
+          <div class="dias-semana-picker">
+            <label class="dias-label">Repetir nos dias:</label>
+            <div class="dias-btns">
+              <button class="dia-btn active" data-dia="0">D</button>
+              <button class="dia-btn active" data-dia="1">S</button>
+              <button class="dia-btn active" data-dia="2">T</button>
+              <button class="dia-btn active" data-dia="3">Q</button>
+              <button class="dia-btn active" data-dia="4">Q</button>
+              <button class="dia-btn active" data-dia="5">S</button>
+              <button class="dia-btn active" data-dia="6">S</button>
+            </div>
+          </div>
+        </div>
+
+        <ul id="lista-recorrentes" class="task-list"></ul>
+
+        <div id="empty-recorrentes" class="empty-state" style="display: none;">
+          <div class="empty-icon">🔁</div>
+          <h3>Sem tarefas recorrentes</h3>
+          <p>Crie tarefas que aparecem automaticamente todo dia</p>
+        </div>
       </div>
+
     </section>
 
     <!-- TAB: Financeiro -->
     <section id="financeiro" class="tab-content">
-      <h2>Financeiro</h2>
-      <div class="saldo-box">
-        <p>Saldo Total</p>
-        <h3 id="saldo-total">R$ 0.00</h3>
+      <div class="page-header">
+        <div>
+          <h1>Financeiro</h1>
+          <p class="page-subtitle">Controle do seu dinheiro</p>
+        </div>
       </div>
 
-      <div class="input-group">
-        <select id="tipo-transacao">
-          <option value="entrada">Entrada</option>
-          <option value="saida">Saída</option>
-        </select>
-        <input type="number" id="valor-transacao" placeholder="Valor" step="0.01" />
-        <input type="text" id="desc-transacao" placeholder="Descrição" />
-        <button onclick="adicionarTransacao()">+</button>
+      <!-- Sub-abas do Financeiro -->
+      <div class="fin-subtabs" style="display:flex; gap:8px; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:2px;">
+        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')" style="background:none; border:none; color:var(--text); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid #5b7cfa;">Visão Geral</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-contas" onclick="trocarSubAbaFin('fin-contas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Contas</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-categorizar" onclick="trocarSubAbaFin('fin-categorizar')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Categorizar <span id="badge-pendentes" style="display:none; background:#e8950c; color:#fff; font-size:10px; padding:1px 6px; border-radius:8px; margin-left:2px;">0</span></button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-apostas" onclick="trocarSubAbaFin('fin-apostas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Apostas</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-metas" onclick="trocarSubAbaFin('fin-metas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Metas</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">PJ / MEI</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-relatorios" onclick="trocarSubAbaFin('fin-relatorios')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Relatórios</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-ir" onclick="trocarSubAbaFin('fin-ir')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Imposto de Renda</button>
       </div>
 
-      <ul id="lista-transacoes" class="transaction-list"></ul>
+      <!-- SUB-ABA: Apostas (eu vs amigos) -->
+      <div id="fin-apostas" class="fin-subtab" style="display:none;">
+        <div id="painel-apostas"></div>
+      </div>
+
+      <!-- SUB-ABA: Metas financeiras -->
+      <div id="fin-metas" class="fin-subtab" style="display:none;">
+        <div id="painel-metas"></div>
+      </div>
+
+      <!-- SUB-ABA: PJ / MEI -->
+      <div id="fin-pj" class="fin-subtab" style="display:none;">
+        <div id="painel-pj"></div>
+      </div>
+
+      <!-- SUB-ABA: Relatórios mensais -->
+      <div id="fin-relatorios" class="fin-subtab" style="display:none;">
+        <div id="painel-relatorios"></div>
+      </div>
+
+      <!-- SUB-ABA: Contas (multi-conta PF/PJ) -->
+      <div id="fin-contas" class="fin-subtab" style="display:none;">
+        <div id="painel-contas"></div>
+      </div>
+
+      <!-- SUB-ABA: Categorizar (aprendizado) -->
+      <div id="fin-categorizar" class="fin-subtab" style="display:none;">
+        <div id="painel-categorizar"></div>
+      </div>
+
+      <!-- SUB-ABA: Visão Geral -->
+      <div id="fin-visao" class="fin-subtab">
+        <!-- Saldos no topo (o que importa de cara) -->
+        <div class="finance-grid">
+          <div class="finance-box saldo-box">
+            <p class="box-label">EM CONTA</p>
+            <h2 id="saldo-total">R$ 0,00</h2>
+          </div>
+          <div class="finance-box entrada-box">
+            <p class="box-label">↑ ENTRADAS (30d)</p>
+            <h3 id="total-entradas">R$ 0,00</h3>
+          </div>
+          <div class="finance-box saida-box">
+            <p class="box-label">↓ SAÍDAS (30d)</p>
+            <h3 id="total-saidas">R$ 0,00</h3>
+          </div>
+        </div>
+
+        <!-- Adicionar transação -->
+        <div class="form-card">
+          <div class="form-row">
+            <select id="tipo-transacao">
+              <option value="entrada">↑ Entrada</option>
+              <option value="saida">↓ Saída</option>
+            </select>
+            <input type="number" id="valor-transacao" placeholder="R$ 0,00" step="0.01" />
+            <input type="text" id="desc-transacao" placeholder="Descrição" />
+            <select id="categoria-transacao">
+              <option value="alimentacao">🍔 Alimentação</option>
+              <option value="transporte">🚗 Transporte</option>
+              <option value="moradia">🏠 Moradia</option>
+              <option value="lazer">🎮 Lazer</option>
+              <option value="saude">💊 Saúde</option>
+              <option value="salario">💼 Salário</option>
+              <option value="freelance">💻 Freelance</option>
+              <option value="outros" selected>📦 Outros</option>
+            </select>
+            <button class="btn-primary" onclick="adicionarTransacao()">+ Adicionar</button>
+          </div>
+        </div>
+
+        <!-- Transações (conteúdo principal) -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div class="filter-bar" style="margin:0;">
+            <button class="filter-btn active" data-fin-filter="todas">Todas</button>
+            <button class="filter-btn" data-fin-filter="entrada">Entradas</button>
+            <button class="filter-btn" data-fin-filter="saida">Saídas</button>
+          </div>
+          <button class="btn-secondary" onclick="abrirRelatorioMensal()" style="font-size:13px;">Relatório do mês</button>
+        </div>
+
+        <ul id="lista-transacoes" class="transaction-list"></ul>
+
+        <div id="empty-financeiro" class="empty-state" style="display: none;">
+          <div class="empty-icon">💰</div>
+          <h3>Sem transações</h3>
+          <p>Comece registrando suas movimentações</p>
+        </div>
+
+        <!-- Seções recolhíveis (expanda só o que quiser) -->
+        <div style="margin-top:24px;">
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">Orçamentos por categoria</summary>
+            <div id="painel-orcamentos-cat" style="margin-top:8px;"></div>
+          </details>
+
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🏦 Bancos &amp; saldos detalhados</summary>
+            <div id="painel-bancos" style="margin-top:8px;"></div>
+          </details>
+
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">✅ Contas fixas &amp; empréstimo</summary>
+            <div id="painel-organizacao" style="margin-top:8px;"></div>
+          </details>
+
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🧠 Análise do dia</summary>
+            <div id="painel-analise-fin" style="margin-top:8px;"></div>
+          </details>
+        </div>
+      </div>
+
+      <!-- SUB-ABA: Imposto de Renda -->
+      <div id="fin-ir" class="fin-subtab" style="display:none;">
+        <div id="painel-ir"></div>
+      </div>
     </section>
 
     <!-- TAB: Alarmes -->
     <section id="alarmes" class="tab-content">
-      <h2>Alarmes</h2>
-      <div class="input-group">
-        <input type="time" id="hora-alarme" />
-        <input type="text" id="msg-alarme" placeholder="Mensagem do alarme" />
-        <button onclick="adicionarAlarme()">+</button>
+      <div class="page-header">
+        <div>
+          <h1>Alarmes</h1>
+          <p class="page-subtitle">Lembretes nunca esquecidos</p>
+        </div>
       </div>
+
+      <div class="form-card">
+        <div class="form-row">
+          <input type="time" id="hora-alarme" />
+          <input type="text" id="msg-alarme" placeholder="Mensagem do alarme" />
+          <select id="repeticao-alarme">
+            <option value="uma_vez">Uma vez</option>
+            <option value="diario" selected>Todo dia</option>
+            <option value="semanal">Semanal</option>
+            <option value="mensal">Mensal</option>
+          </select>
+          <button class="btn-primary" onclick="adicionarAlarme()">+ Adicionar</button>
+        </div>
+      </div>
+
       <ul id="lista-alarmes" class="alarm-list"></ul>
+
+      <div id="empty-alarmes" class="empty-state" style="display: none;">
+        <div class="empty-icon">⏰</div>
+        <h3>Sem alarmes</h3>
+        <p>Crie um alarme pra não esquecer das coisas importantes</p>
+      </div>
     </section>
+
+    <!-- TAB: Calendário -->
+    <section id="calendario" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1>Calendário</h1>
+          <p class="page-subtitle">Seus eventos e compromissos</p>
+        </div>
+        <div class="cal-controls">
+          <button class="cal-nav-btn" onclick="navegarMes(-1)">‹</button>
+          <span id="cal-titulo" class="cal-titulo">Maio 2026</span>
+          <button class="cal-nav-btn" onclick="navegarMes(1)">›</button>
+          <button class="btn-primary" onclick="abrirEventoModal()">+ Evento</button>
+        </div>
+      </div>
+
+      <div class="calendario-com-detalhes">
+        <!-- Calendário -->
+        <div class="calendario-wrapper">
+          <div class="cal-weekdays">
+            <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+          </div>
+          <div id="cal-grid" class="cal-grid"></div>
+        </div>
+
+        <!-- Painel de Detalhes do Dia -->
+        <div class="cal-detalhes-dia" id="cal-detalhes-dia" style="display: none;">
+          <div class="detalhes-header">
+            <h3 id="detalhes-titulo">24 de Maio</h3>
+            <button onclick="fecharDetalhes()" class="close-btn">✕</button>
+          </div>
+
+          <div class="detalhes-section">
+            <div class="detalhes-subtitle">Eventos (<span id="eventos-count">0</span>)</div>
+            <div id="detalhes-eventos" class="detalhes-list"></div>
+          </div>
+
+          <div class="detalhes-section">
+            <div class="detalhes-subtitle">✅ Tarefas (<span id="tarefas-count">0</span>)</div>
+            <div id="detalhes-tarefas" class="detalhes-list"></div>
+          </div>
+
+          <div class="detalhes-section">
+            <div class="detalhes-subtitle">🎉 Feriados (<span id="feriados-count">0</span>)</div>
+            <div id="detalhes-feriados" class="detalhes-list"></div>
+          </div>
+
+          <div class="detalhes-section">
+            <div class="detalhes-subtitle">🎂 Aniversários (<span id="aniversarios-count">0</span>)</div>
+            <div id="detalhes-aniversarios" class="detalhes-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Página de Histórico -->
+    <section id="historico-page" class="tab-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Histórico & Análise</h1>
+          <p class="page-subtitle">Veja seu progresso ao longo do tempo</p>
+        </div>
+      </div>
+
+      <!-- Estatísticas Gerais -->
+      <div class="stats-grid" style="margin-bottom: 30px;">
+        <div class="stat-box">
+          <div class="stat-box-icon">📝</div>
+          <div class="stat-box-num" id="hist-total-tarefas">0</div>
+          <div class="stat-box-label">Tarefas Totais</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-num" id="hist-taxa-conclusao">0%</div>
+          <div class="stat-box-label">Taxa de Conclusão</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-num" id="hist-melhor-dia">0</div>
+          <div class="stat-box-label">Melhor Dia</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-num" id="hist-media-diaria">0</div>
+          <div class="stat-box-label">Média Diária</div>
+        </div>
+      </div>
+
+      <!-- Heatmap -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Heatmap de Atividade (últimos 12 meses)</h3>
+        </div>
+        <div id="heatmap-container" class="heatmap-container"></div>
+      </div>
+
+      <!-- Tendências -->
+      <div class="panel" style="margin-top: 20px;">
+        <div class="panel-header">
+          <h3>📈 Tendências</h3>
+        </div>
+        <div id="tendencias-container" class="tendencias-list"></div>
+      </div>
+
+      <!-- Tarefas Concluídas Recentemente -->
+      <div class="panel" style="margin-top: 20px;">
+        <div class="panel-header">
+          <h3>✅ Concluídas Recentemente</h3>
+        </div>
+        <div id="historico-concluidas" class="mini-list"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal de Evento -->
+  <div id="evento-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card modal-form">
+      <div class="modal-icon" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)); border-color: rgba(99,102,241,0.3);">📅</div>
+      <h3 class="modal-title" id="evento-modal-titulo">Novo Evento</h3>
+      <div class="modal-form-fields">
+        <input type="text" id="evento-titulo" placeholder="Título do evento" class="modal-input" />
+        <textarea id="evento-descricao" placeholder="Descrição (opcional)" class="modal-input" rows="2"></textarea>
+        <div class="modal-form-row">
+          <input type="date" id="evento-data" class="modal-input" />
+          <input type="time" id="evento-hora" class="modal-input" />
+        </div>
+        <div class="modal-form-row">
+          <select id="evento-tipo" class="modal-input">
+            <option value="evento">Evento</option>
+            <option value="reuniao">👥 Reunião</option>
+            <option value="compromisso">⏰ Compromisso</option>
+            <option value="lembrete">🔔 Lembrete</option>
+          </select>
+          <select id="evento-cor" class="modal-input">
+            <option value="blue">🔵 Azul</option>
+            <option value="green">🟢 Verde</option>
+            <option value="orange">🟠 Laranja</option>
+            <option value="red">🔴 Vermelho</option>
+            <option value="purple">🟣 Roxo</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" onclick="fecharEventoModal()">Cancelar</button>
+        <button class="modal-btn modal-btn-confirm" id="evento-salvar" onclick="salvarEvento()" style="background: var(--grad-blue);">Salvar</button>
+      </div>
+    </div>
   </div>
 
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Custom Modal -->
+  <div id="custom-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-icon" id="modal-icon">❓</div>
+      <h3 class="modal-title" id="modal-title">Confirmar</h3>
+      <p class="modal-message" id="modal-message">Tem certeza?</p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="modal-cancel">Cancelar</button>
+        <button class="modal-btn modal-btn-confirm" id="modal-confirm">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

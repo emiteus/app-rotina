@@ -3,7 +3,7 @@ const { contextBridge } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
   // Versão do app
-  appVersion: require('./package.json').version,
+  appVersion: '1.0.0',
   // Plataforma
   platform: process.platform
 });

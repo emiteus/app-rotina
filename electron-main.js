@@ -4,6 +4,21 @@ const isDev = require('electron-is-dev');
 
 let mainWindow;
 
+// Protege contra múltiplas instâncias
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    // Alguém tentou abrir uma segunda instância
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -15,7 +30,8 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'electron-preload.js')
     },
-    icon: path.join(__dirname, 'public/icon.png')
+    icon: path.join(__dirname, 'public/icon.png'),
+    show: false // Não mostrar até estar pronto
   });
 
   // Em desenvolvimento, abre localhost:3000
@@ -26,10 +42,18 @@ function createWindow() {
 
   mainWindow.loadURL(startUrl);
 
-  // Abre DevTools em desenvolvimento
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
+  // Escala global menor (deixa as informações mais compactas)
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.setZoomFactor(0.95);
+  });
+
+  // Abrir maximizado (janela grande por padrão)
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
+    mainWindow.show();
+  });
+
+  // DevTools desativado (pode abrir com Ctrl+Shift+I se precisar)
 
   mainWindow.on('closed', () => {
     mainWindow = null;

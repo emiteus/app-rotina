@@ -2,28 +2,33 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 
-let wsServer; // Será setado pelo server.js
+let wsServer;
 
 const router = express.Router();
 
-// Função pra emitir eventos WebSocket
 function emitTaskUpdate(tipo, dados) {
   if (wsServer) {
-    wsServer.broadcast({
-      tipo: 'tarefa-' + tipo,
-      dados
-    });
+    wsServer.broadcast({ tipo: 'tarefa-' + tipo, dados });
   }
 }
 
-// GET todas as tarefas do dia
+// GET todas as tarefas (hoje + próximos dias)
 router.get('/', async (req, res) => {
   try {
     const tasks = await all(`
       SELECT * FROM tasks
-      WHERE DATE(data_reset) = DATE('now')
+      WHERE DATE(data_reset) >= CURRENT_DATE - INTERVAL '1 day'
       OR data_reset IS NULL
-      ORDER BY ordem, data_criacao
+      ORDER BY
+        DATE(data_reset) ASC,
+        CASE prioridade
+          WHEN 'alta' THEN 1
+          WHEN 'media' THEN 2
+          WHEN 'baixa' THEN 3
+          ELSE 4
+        END,
+        concluida,
+        data_criacao
     `);
     res.json(tasks);
   } catch (err) {
@@ -31,17 +36,144 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST nova tarefa
+// GET histórico de tarefas (últimos 30 dias)
+router.get('/historico', async (req, res) => {
+  try {
+    const historico = await all(`
+      SELECT data, total, concluidas, por_categoria, por_prioridade
+      FROM task_historico
+      WHERE data >= CURRENT_DATE - INTERVAL '30 days'
+      ORDER BY data ASC
+    `);
+    res.json(historico);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// GET stats detalhadas (últimos 30 dias)
+router.get('/stats', async (req, res) => {
+  try {
+    const historico = await all(`
+      SELECT data, total, concluidas, por_categoria, por_prioridade
+      FROM task_historico
+      WHERE data >= CURRENT_DATE - INTERVAL '30 days'
+      ORDER BY data ASC
+    `);
+
+    // Hoje - tarefas atuais
+    const hoje = await all(`
+      SELECT * FROM tasks
+      WHERE DATE(data_reset) = DATE('now')
+      OR data_reset IS NULL
+    `);
+
+    // Cálculos
+    let totalCriadas = 0;
+    let totalConcluidas = 0;
+    let melhorDia = { data: null, taxa: 0, total: 0 };
+    let piorDia = { data: null, taxa: 100, total: 0 };
+    const categorias = {};
+    const prioridades = { alta: 0, media: 0, baixa: 0 };
+    const diasComTarefas = historico.length;
+
+    historico.forEach(h => {
+      const total = parseInt(h.total) || 0;
+      const concluidas = parseInt(h.concluidas) || 0;
+      totalCriadas += total;
+      totalConcluidas += concluidas;
+      const taxa = total > 0 ? (concluidas / total) * 100 : 0;
+      if (total >= 3 && taxa > melhorDia.taxa) melhorDia = { data: h.data, taxa, total };
+      if (total >= 3 && taxa < piorDia.taxa) piorDia = { data: h.data, taxa, total };
+
+      const cats = h.por_categoria || {};
+      Object.keys(cats).forEach(k => {
+        categorias[k] = (categorias[k] || 0) + cats[k];
+      });
+      const pris = h.por_prioridade || {};
+      Object.keys(pris).forEach(k => {
+        prioridades[k] = (prioridades[k] || 0) + (pris[k] || 0);
+      });
+    });
+
+    // Streak: dias seguidos com ao menos 1 tarefa concluída
+    let streak = 0;
+    const historicoDesc = [...historico].reverse();
+    for (const h of historicoDesc) {
+      if (parseInt(h.concluidas) > 0) streak++;
+      else break;
+    }
+
+    // Hoje tem tarefas concluídas? Adiciona ao streak
+    const concluidasHoje = hoje.filter(t => t.concluida).length;
+    if (concluidasHoje > 0 && streak === 0) streak = 1;
+
+    const taxaMedia = totalCriadas > 0 ? Math.round((totalConcluidas / totalCriadas) * 100) : 0;
+    const mediaPorDia = diasComTarefas > 0 ? (totalConcluidas / diasComTarefas).toFixed(1) : 0;
+
+    res.json({
+      historico,
+      resumo: {
+        totalCriadas,
+        totalConcluidas,
+        taxaMedia,
+        mediaPorDia,
+        diasAtivos: diasComTarefas,
+        streak,
+        melhorDia,
+        piorDia
+      },
+      categorias,
+      prioridades
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST seed historico (uso interno)
+router.post('/seed-historico', async (req, res) => {
+  const { dados } = req.body;
+  try {
+    for (const d of dados) {
+      await run(
+        `INSERT INTO task_historico (data, total, concluidas, por_categoria, por_prioridade)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (data) DO UPDATE SET
+           total = $2, concluidas = $3, por_categoria = $4, por_prioridade = $5`,
+        [d.data, d.total, d.concluidas, JSON.stringify(d.categorias || {}), JSON.stringify(d.prioridades || {})]
+      );
+    }
+    res.json({ msg: 'Histórico salvo', count: dados.length });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST nova tarefa (com suporte a data_reset e hora)
 router.post('/', async (req, res) => {
-  const { titulo } = req.body;
+  const { titulo, descricao, prioridade, categoria, data_reset, hora } = req.body;
   if (!titulo) return res.status(400).json({ erro: 'Titulo obrigatorio' });
 
   try {
     const id = uuid();
-    const hoje = new Date().toISOString().split('T')[0];
+    // Se data_reset não for fornecida, usa hoje
+    let dataReset;
+    if (data_reset) {
+      // Se receber YYYY-MM-DD, converte para timestamp válido do PostgreSQL
+      if (data_reset.length === 10) {
+        dataReset = new Date(data_reset + 'T00:00:00Z').toISOString();
+      } else {
+        dataReset = data_reset;
+      }
+    } else {
+      dataReset = new Date().toISOString();
+    }
+
     await run(
-      `INSERT INTO tasks (id, titulo, data_reset) VALUES ($1, $2, $3)`,
-      [id, titulo, `${hoje} 00:00:00`]
+      `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, hora)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [id, titulo, descricao || '', prioridade || 'media', categoria || 'geral', dataReset, hora || null]
     );
     const task = await get(`SELECT * FROM tasks WHERE id = $1`, [id]);
     emitTaskUpdate('criada', task);
@@ -51,14 +183,25 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PATCH marcar como concluida
+// PATCH atualizar tarefa (concluida ou outros campos)
 router.patch('/:id', async (req, res) => {
-  const { concluida } = req.body;
+  const { concluida, titulo, descricao, prioridade, categoria } = req.body;
   try {
-    await run(
-      `UPDATE tasks SET concluida = $1 WHERE id = $2`,
-      [concluida ? true : false, req.params.id]
-    );
+    if (concluida !== undefined) {
+      await run(`UPDATE tasks SET concluida = $1 WHERE id = $2`, [!!concluida, req.params.id]);
+    }
+    if (titulo !== undefined) {
+      await run(`UPDATE tasks SET titulo = $1 WHERE id = $2`, [titulo, req.params.id]);
+    }
+    if (descricao !== undefined) {
+      await run(`UPDATE tasks SET descricao = $1 WHERE id = $2`, [descricao, req.params.id]);
+    }
+    if (prioridade !== undefined) {
+      await run(`UPDATE tasks SET prioridade = $1 WHERE id = $2`, [prioridade, req.params.id]);
+    }
+    if (categoria !== undefined) {
+      await run(`UPDATE tasks SET categoria = $1 WHERE id = $2`, [categoria, req.params.id]);
+    }
     const task = await get(`SELECT * FROM tasks WHERE id = $1`, [req.params.id]);
     emitTaskUpdate('atualizada', task);
     res.json(task);
@@ -78,8 +221,6 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-router.setWsServer = function(ws) {
-  wsServer = ws;
-};
+router.setWsServer = function(ws) { wsServer = ws; };
 
 module.exports = router;

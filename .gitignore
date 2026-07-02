@@ -1,8 +1,18 @@
 node_modules/
 .env
 .env.local
+.env.backup
 *.db
 *.db-journal
 dist/
 build/
 .DS_Store
+
+# Logs
+*.log
+
+# Arquivos de trabalho (não vão pro repo)
+.claude/
+MELHORIAS_APLICADAS.md
+TEST_REPORT.md
+VERIFICATION_SUMMARY.md
