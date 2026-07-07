@@ -30,7 +30,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'electron-preload.js')
     },
-    icon: path.join(__dirname, 'public/icon.png'),
+    icon: path.join(__dirname, 'public/icon.ico'),
     show: false // Não mostrar até estar pronto
   });
 

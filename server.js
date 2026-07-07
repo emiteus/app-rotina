@@ -110,16 +110,9 @@ schedule.scheduleJob('*/1 * * * *', async () => {
   });
 });
 
-// Resetar tarefas todos os dias a 00:01
-schedule.scheduleJob('1 0 * * *', async () => {
-  const { run } = require('./lib/db');
-  const hoje = new Date().toISOString().split('T')[0];
-  await run(
-    `UPDATE tasks SET concluida = false, data_reset = $1 WHERE data_reset IS NULL OR DATE(data_reset) < DATE('now')`,
-    [`${hoje} 00:00:00`]
-  );
-  console.log('Tarefas resetadas para novo dia');
-});
+// Nota: removido o job que arrastava tarefas antigas pra "hoje" (bug).
+// Cada tarefa fica na data em que foi criada; não concluídas ficam registradas
+// como não concluídas naquele dia — não migram pro próximo.
 
 // Gerar tarefas recorrentes do dia (00:05 e na inicializacao)
 async function gerarRecorrentesHoje() {

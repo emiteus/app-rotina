@@ -327,25 +327,9 @@
           <button class="filter-btn" data-filter="alta">Alta</button>
         </div>
 
-        <!-- SEÇÃO ONTEM -->
-        <div class="tarefas-section section-ontem">
-          <div class="section-header">
-            
-            <h2>Ontem</h2>
-            <span class="section-badge" id="badge-ontem">0</span>
-          </div>
-          <ul id="lista-tarefas-ontem" class="task-list"></ul>
-          <div id="empty-tarefas-ontem" class="empty-state" style="display: none;">
-            <div class="empty-icon">📋</div>
-            <h3>Sem tarefas de ontem</h3>
-            <p>Já foi!</p>
-          </div>
-        </div>
-
-        <!-- SEÇÃO HOJE -->
+        <!-- SEÇÃO HOJE (aberta por padrão) -->
         <div class="tarefas-section section-hoje">
           <div class="section-header">
-            
             <h2>Hoje</h2>
             <span class="section-badge" id="badge-hoje">0</span>
           </div>
@@ -357,20 +341,52 @@
           </div>
         </div>
 
-        <!-- SEÇÃO AMANHÃ -->
-        <div class="tarefas-section section-amanha">
-          <div class="section-header">
-            
-            <h2>Amanhã</h2>
+        <!-- SEÇÃO AMANHÃ (colapsada) -->
+        <details class="tarefas-section-collapsible" style="margin-top:20px;">
+          <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
+            <span>Amanhã</span>
             <span class="section-badge" id="badge-amanha">0</span>
+          </summary>
+          <div style="margin-top:8px;">
+            <ul id="lista-tarefas-amanha" class="task-list"></ul>
+            <div id="empty-tarefas-amanha" class="empty-state" style="display: none;">
+              <div class="empty-icon">✨</div>
+              <h3>Sem tarefas agendadas</h3>
+              <p>Curta esse dia tranquilo!</p>
+            </div>
           </div>
-          <ul id="lista-tarefas-amanha" class="task-list"></ul>
-          <div id="empty-tarefas-amanha" class="empty-state" style="display: none;">
-            <div class="empty-icon">✨</div>
-            <h3>Sem tarefas agendadas</h3>
-            <p>Curta esse dia tranquilo!</p>
+        </details>
+
+        <!-- SEÇÃO ONTEM (colapsada) -->
+        <details class="tarefas-section-collapsible" style="margin-top:6px;">
+          <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
+            <span>Ontem</span>
+            <span class="section-badge" id="badge-ontem">0</span>
+          </summary>
+          <div style="margin-top:8px;">
+            <ul id="lista-tarefas-ontem" class="task-list"></ul>
+            <div id="empty-tarefas-ontem" class="empty-state" style="display: none;">
+              <div class="empty-icon">📋</div>
+              <h3>Sem tarefas de ontem</h3>
+              <p>Já foi!</p>
+            </div>
           </div>
-        </div>
+        </details>
+
+        <!-- SEÇÃO ANTEONTEM (colapsada) -->
+        <details class="tarefas-section-collapsible" style="margin-top:6px;">
+          <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
+            <span>Anteontem</span>
+            <span class="section-badge" id="badge-anteontem">0</span>
+          </summary>
+          <div style="margin-top:8px;">
+            <ul id="lista-tarefas-anteontem" class="task-list"></ul>
+            <div id="empty-tarefas-anteontem" class="empty-state" style="display: none;">
+              <div class="empty-icon">📋</div>
+              <h3>Sem tarefas neste dia</h3>
+            </div>
+          </div>
+        </details>
 
         <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 14px; color: #888;">🔁 RECORRENTES</h3>
 

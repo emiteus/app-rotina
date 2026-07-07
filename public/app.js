@@ -91,6 +91,15 @@ function amanhaLocal() {
   return `${y}-${m}-${day}`;
 }
 
+function anteontemLocal() {
+  const d = new Date();
+  d.setDate(d.getDate() - 2);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Frases motivacionais
 const FRASES_MOTIVACIONAIS = {
   manha: [
@@ -3120,6 +3129,10 @@ function trocarAba(tab) {
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.querySelector(`.nav-btn[data-tab="${tab}"]`)?.classList.add('active');
   document.getElementById(tab)?.classList.add('active');
+  if (tab === 'historico-page') {
+    carregarStats();
+    if (typeof renderHistorico === 'function') renderHistorico();
+  }
 }
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -3133,9 +3146,10 @@ async function carregarTarefas() {
   try {
     const res = await fetch('/api/tasks');
     allTasks = await res.json();
-    renderTarefasOntem();   // Renderizar ontem
-    renderTarefas();
-    renderTarefasAmanha();  // Sempre renderizar ambas
+    renderTarefas();        // Hoje primeiro
+    renderTarefasAmanha();
+    renderTarefasOntem();
+    renderTarefasAnteontem();
     renderTarefasAmanhaPage();
     renderRecorrentes();    // Renderizar recorrentes
     renderTimeline();
@@ -3149,21 +3163,71 @@ async function carregarTarefas() {
 
 function atualizarBadgesTarefas() {
   // Atualizar badges das seções (usando data local)
+  const anteontemStr = anteontemLocal();
   const ontemStr = ontemLocal();
   const hojeStr = hojeLocal();
   const amanhaStr = amanhaLocal();
 
+  const tarefasAnteontem = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === anteontemStr).length;
   const tarefasOntem = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === ontemStr).length;
   const tarefasHoje = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === hojeStr).length;
   const tarefasAmanha = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === amanhaStr).length;
 
+  const badgeAnteontem = document.getElementById('badge-anteontem');
   const badgeOntem = document.getElementById('badge-ontem');
   const badgeHoje = document.getElementById('badge-hoje');
   const badgeAmanha = document.getElementById('badge-amanha');
 
+  if (badgeAnteontem) badgeAnteontem.textContent = tarefasAnteontem;
   if (badgeOntem) badgeOntem.textContent = tarefasOntem;
   if (badgeHoje) badgeHoje.textContent = tarefasHoje;
   if (badgeAmanha) badgeAmanha.textContent = tarefasAmanha;
+}
+
+function renderTarefasDia(dataStr, listaId, emptyId) {
+  const lista = document.getElementById(listaId);
+  const empty = document.getElementById(emptyId);
+  if (!lista) return;
+
+  let filtered = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === dataStr);
+  const totalDoDia = filtered.length;
+
+  if (currentTaskFilter === 'pendentes') filtered = filtered.filter(t => !t.concluida);
+  else if (currentTaskFilter === 'concluidas') filtered = filtered.filter(t => t.concluida);
+  else if (currentTaskFilter === 'alta') filtered = filtered.filter(t => t.prioridade === 'alta');
+
+  filtered.sort((a, b) => (a.hora || '99:99').localeCompare(b.hora || '99:99'));
+
+  if (filtered.length === 0) {
+    lista.innerHTML = totalDoDia > 0 ? `<div class="mini-item-empty">Nenhuma tarefa nesse filtro</div>` : '';
+    if (empty) empty.style.display = totalDoDia === 0 ? 'block' : 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  lista.innerHTML = filtered.map(task => {
+    const prioridade = task.prioridade || 'media';
+    const categoria = task.categoria || 'geral';
+    const catIcons = { geral: '📌', trabalho: '💼', estudos: '📚', saude: '💪', pessoal: '🏠' };
+    const horaHtml = task.hora ? `<span class="task-hora">⏰ ${task.hora}</span>` : '';
+    return `
+      <li class="task-item ${task.concluida ? 'completed' : ''}">
+        <input type="checkbox" class="task-check" ${task.concluida ? 'checked' : ''}
+               onchange="marcarTarefa('${task.id}', this.checked)">
+        <div class="task-content">
+          <div class="task-text">${escapeHtml(task.titulo)}</div>
+          <div class="task-meta">
+            ${horaHtml}
+            <span class="task-badge badge-${prioridade}">${prioridade}</span>
+            <span class="task-cat">${catIcons[categoria] || '📌'} ${categoria}</span>
+          </div>
+        </div>
+        <button class="btn-delete" onclick="deletarTarefa('${task.id}')" title="Deletar">✕</button>
+      </li>`;
+  }).join('');
+}
+
+function renderTarefasAnteontem() {
+  renderTarefasDia(anteontemLocal(), 'lista-tarefas-anteontem', 'empty-tarefas-anteontem');
 }
 
 function renderTarefasOntem() {
@@ -3378,9 +3442,10 @@ document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
     document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentTaskFilter = btn.getAttribute('data-filter');
-    renderTarefasOntem();
     renderTarefas();
     renderTarefasAmanha();
+    renderTarefasOntem();
+    renderTarefasAnteontem();
   });
 });
 

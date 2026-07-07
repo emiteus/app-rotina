@@ -2,18 +2,17 @@
 ' Inicia o servidor Node e o Electron sem mostrar NENHUMA janela de terminal
 
 Set WshShell = CreateObject("WScript.Shell")
-Dim fso, objHTTP, tentativas, sucesso
-Set fso = CreateObject("Scripting.FileSystemObject")
+Dim objHTTP, tentativas, sucesso
 
 ' Define diretório de trabalho
 appDir = "C:\Users\mateu\app-rotina"
 WshShell.CurrentDirectory = appDir
 
-' Verifica se o servidor já está rodando
+' Verifica se o servidor já está rodando (usa /health — resposta imediata)
 Function verificarServidor()
   On Error Resume Next
   Set objHTTP = CreateObject("MSXML2.XMLHTTP")
-  objHTTP.Open "GET", "http://localhost:3000/", False
+  objHTTP.Open "GET", "http://localhost:3000/health", False
   objHTTP.Send
   verificarServidor = (objHTTP.Status = 200)
   On Error GoTo 0
@@ -21,26 +20,22 @@ End Function
 
 ' Se servidor não estiver rodando, inicia
 If Not verificarServidor() Then
-  ' Inicia servidor Node em background COMPLETAMENTE INVISÍVEL
-  WshShell.Run "cmd /c npm start > nul 2>&1", 0, False
+  ' Chama node direto (sem overhead do npm start, ~2s mais rápido)
+  WshShell.Run "cmd /c node server.js > nul 2>&1", 0, False
 
-  ' Aguarda servidor ficar pronto (máximo 10 segundos)
+  ' Poll agressivo (300ms) — até 10s
   tentativas = 0
   sucesso = False
-  Do While tentativas < 10 And Not sucesso
-    WScript.Sleep 1000
+  Do While tentativas < 34 And Not sucesso
+    WScript.Sleep 300
     sucesso = verificarServidor()
     tentativas = tentativas + 1
   Loop
 End If
 
-' Aguarda um pouco mais por segurança
-WScript.Sleep 500
-
-' Inicia ou foca Electron
-WshShell.Run "cmd /c npm run electron-dev > nul 2>&1", 0, False
+' Inicia Electron via npx (resolve o binário do node_modules)
+WshShell.Run "cmd /c npx electron . > nul 2>&1", 0, False
 
 ' Limpa objetos
 Set WshShell = Nothing
-Set fso = Nothing
 Set objHTTP = Nothing

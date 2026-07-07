@@ -54,60 +54,61 @@ router.get('/historico', async (req, res) => {
 // GET stats detalhadas (últimos 30 dias)
 router.get('/stats', async (req, res) => {
   try {
+    // Agregação DIRETA da tabela tasks (últimos 30 dias) — task_historico não é populada mais
     const historico = await all(`
-      SELECT data, total, concluidas, por_categoria, por_prioridade
-      FROM task_historico
-      WHERE data >= CURRENT_DATE - INTERVAL '30 days'
-      ORDER BY data ASC
+      SELECT
+        DATE(data_reset) AS data,
+        COUNT(*)::int AS total,
+        SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
+      FROM tasks
+      WHERE data_reset IS NOT NULL
+        AND DATE(data_reset) >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY DATE(data_reset)
+      ORDER BY DATE(data_reset) ASC
     `);
 
-    // Hoje - tarefas atuais
-    const hoje = await all(`
-      SELECT * FROM tasks
-      WHERE DATE(data_reset) = DATE('now')
-      OR data_reset IS NULL
+    // Categorias/prioridades (últimos 30 dias)
+    const catRows = await all(`
+      SELECT COALESCE(categoria,'geral') AS c, COUNT(*)::int AS n
+      FROM tasks
+      WHERE data_reset IS NOT NULL AND DATE(data_reset) >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY COALESCE(categoria,'geral')
     `);
+    const priRows = await all(`
+      SELECT COALESCE(prioridade,'media') AS p, COUNT(*)::int AS n
+      FROM tasks
+      WHERE data_reset IS NOT NULL AND DATE(data_reset) >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY COALESCE(prioridade,'media')
+    `);
+    const categorias = {};
+    catRows.forEach(r => { categorias[r.c] = r.n; });
+    const prioridades = { alta: 0, media: 0, baixa: 0 };
+    priRows.forEach(r => { prioridades[r.p] = r.n; });
 
-    // Cálculos
     let totalCriadas = 0;
     let totalConcluidas = 0;
     let melhorDia = { data: null, taxa: 0, total: 0 };
     let piorDia = { data: null, taxa: 100, total: 0 };
-    const categorias = {};
-    const prioridades = { alta: 0, media: 0, baixa: 0 };
-    const diasComTarefas = historico.length;
 
     historico.forEach(h => {
-      const total = parseInt(h.total) || 0;
-      const concluidas = parseInt(h.concluidas) || 0;
+      const total = h.total;
+      const concluidas = h.concluidas;
       totalCriadas += total;
       totalConcluidas += concluidas;
       const taxa = total > 0 ? (concluidas / total) * 100 : 0;
       if (total >= 3 && taxa > melhorDia.taxa) melhorDia = { data: h.data, taxa, total };
       if (total >= 3 && taxa < piorDia.taxa) piorDia = { data: h.data, taxa, total };
-
-      const cats = h.por_categoria || {};
-      Object.keys(cats).forEach(k => {
-        categorias[k] = (categorias[k] || 0) + cats[k];
-      });
-      const pris = h.por_prioridade || {};
-      Object.keys(pris).forEach(k => {
-        prioridades[k] = (prioridades[k] || 0) + (pris[k] || 0);
-      });
     });
 
-    // Streak: dias seguidos com ao menos 1 tarefa concluída
+    // Streak: dias seguidos (do mais recente pra trás) com ao menos 1 tarefa concluída
     let streak = 0;
     const historicoDesc = [...historico].reverse();
     for (const h of historicoDesc) {
-      if (parseInt(h.concluidas) > 0) streak++;
+      if (h.concluidas > 0) streak++;
       else break;
     }
 
-    // Hoje tem tarefas concluídas? Adiciona ao streak
-    const concluidasHoje = hoje.filter(t => t.concluida).length;
-    if (concluidasHoje > 0 && streak === 0) streak = 1;
-
+    const diasComTarefas = historico.length;
     const taxaMedia = totalCriadas > 0 ? Math.round((totalConcluidas / totalCriadas) * 100) : 0;
     const mediaPorDia = diasComTarefas > 0 ? (totalConcluidas / diasComTarefas).toFixed(1) : 0;
 
