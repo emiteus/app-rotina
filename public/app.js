@@ -3018,7 +3018,6 @@ function conectarWebSocket() {
   ws = new WebSocket(wsUrl);
 
   ws.addEventListener('open', () => {
-    console.log('[WS] Conectado');
     wsReconnectAttempts = 0;
     const sessionId = Math.random().toString(36).substring(7);
     ws.send(JSON.stringify({ tipo: 'auth', sessionId }));
@@ -4212,12 +4211,10 @@ async function alternarTarefa(id) {
 // =====================
 function enviarNotificacao(titulo, opcoes = {}) {
   if (!('Notification' in window)) {
-    console.log('[Notificações] Navegador não suporta notificações');
     return;
   }
 
   if (Notification.permission !== 'granted') {
-    console.log('[Notificações] Permissão não concedida');
     return;
   }
 

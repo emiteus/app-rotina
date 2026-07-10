@@ -25,13 +25,6 @@ app.use(express.json());
 // Health check (Railway usa pra saber se o container tá vivo)
 app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
-// Log todas as requisições
-app.use((req, res, next) => {
-  if (req.method === 'POST' && req.path.includes('/api/tasks')) {
-    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.path}`, req.body);
-  }
-  next();
-});
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'seu-secret-aqui-mudar-em-producao',
@@ -70,18 +63,19 @@ recorrentesRouter.setWsServer(wsServer);
 eventosRouter.setWsServer(wsServer);
 openfinanceRouter.setWsServer(wsServer);
 
-app.use('/api/tasks', tasksRouter);
-app.use('/api/financeiro', financeiroRouter);
-app.use('/api/alarmes', alarmesRouter);
-app.use('/api/recorrentes', recorrentesRouter);
-app.use('/api/eventos', eventosRouter);
-app.use('/api/openfinance', openfinanceRouter);
-app.use('/api/categorias', categoriasRouter);
-app.use('/api/estado', estadoRouter);
-app.use('/api/apostas', apostasRouter);
-app.use('/api/metas', metasRouter);
-app.use('/api/pj', pjRouter);
-app.use('/api/relatorios', relatoriosRouter);
+// Todas as APIs abaixo exigem login (/api/auth é público pra permitir fazer o próprio login)
+app.use('/api/tasks', requireAuth, tasksRouter);
+app.use('/api/financeiro', requireAuth, financeiroRouter);
+app.use('/api/alarmes', requireAuth, alarmesRouter);
+app.use('/api/recorrentes', requireAuth, recorrentesRouter);
+app.use('/api/eventos', requireAuth, eventosRouter);
+app.use('/api/openfinance', requireAuth, openfinanceRouter);
+app.use('/api/categorias', requireAuth, categoriasRouter);
+app.use('/api/estado', requireAuth, estadoRouter);
+app.use('/api/apostas', requireAuth, apostasRouter);
+app.use('/api/metas', requireAuth, metasRouter);
+app.use('/api/pj', requireAuth, pjRouter);
+app.use('/api/relatorios', requireAuth, relatoriosRouter);
 
 // Arquivos estaticos (index.html nao requer auth, auth.js vai verificar)
 app.use(express.static('public'));
@@ -167,7 +161,6 @@ function enviarTelegram(mensagem) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
   if (!token || !chatId || token === 'dummy' || chatId === 'dummy') {
-    console.log('[INFO] Telegram nao configurado. Mensagem nao enviada:', mensagem);
     return;
   }
 
