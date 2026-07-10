@@ -1,6 +1,13 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, nativeImage } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
+
+// Forçar Windows a agrupar/exibir o app com o nosso ID e ícone (não o do electron.exe)
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.approtina.app');
+}
+
+const APP_ICON = nativeImage.createFromPath(path.join(__dirname, 'public', 'icon.ico'));
 
 let mainWindow;
 
@@ -30,7 +37,7 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'electron-preload.js')
     },
-    icon: path.join(__dirname, 'public/icon.ico'),
+    icon: APP_ICON,
     show: false // Não mostrar até estar pronto
   });
 
@@ -49,6 +56,8 @@ function createWindow() {
 
   // Abrir maximizado (janela grande por padrão)
   mainWindow.once('ready-to-show', () => {
+    // Reforça o ícone (em dev, Windows tende a usar o do electron.exe se não fizer isso)
+    try { mainWindow.setIcon(APP_ICON); } catch (e) {}
     mainWindow.maximize();
     mainWindow.show();
   });
