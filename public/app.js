@@ -14,8 +14,6 @@ let currentFinFilter = 'todas';
 let performanceChart = null;
 let currentChartType = 'line';
 let notificacaoPermitida = false;
-let modoFocoAtivo = false;
-let modoZenAtivo = false;
 let modoNoturnoAtivo = false;
 let usarFrasesMotivacionais = true;
 
@@ -153,20 +151,6 @@ let pomodoroContador = 0;
 let orcamentos = {}; // Armazena limite por categoria
 let userXP = 0;
 let userLevel = 1;
-let achievements = {};
-
-const ACHIEVEMENTS = {
-  'first_blood': { nome: '🩸 First Blood', desc: 'Complete sua primeira tarefa', xp: 10 },
-  'cinco_tarefas': { nome: '🎯 5 Tarefas', desc: 'Complete 5 tarefas em um dia', xp: 50 },
-  'dez_tarefas': { nome: '🔥 10 Tarefas', desc: 'Complete 10 tarefas em um dia', xp: 100 },
-  'semana_perfeita': { nome: '⭐ Semana Perfeita', desc: 'Atinja 100% por uma semana', xp: 200 },
-  'no_lifer': { nome: '🌙 No-Lifer', desc: 'Complete 50 tarefas', xp: 150 },
-  'economista': { nome: '💰 Economista', desc: 'Economize R$ 1.000', xp: 150 },
-  'viciado_pomodoro': { nome: '🍅 Viciado', desc: 'Complete 50 Pomodoros', xp: 100 },
-  'streaker': { nome: '🔥 Streaker', desc: 'Mantenha 7 dias de streak', xp: 150 },
-  'time_master': { nome: '⏱️ Time Master', desc: 'Complete 100 Pomodoros', xp: 200 },
-  'saldo_positivo': { nome: '📈 Ganhos', desc: 'Tenha saldo positivo', xp: 50 }
-};
 
 const XP_POR_LEVEL = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250];
 
@@ -177,17 +161,12 @@ function carregarDadosJogador() {
     const data = JSON.parse(salvo);
     userXP = data.xp || 0;
     userLevel = data.level || 1;
-    achievements = data.achievements || {};
   }
   carregarOrcamentos();
 }
 
 function salvarDadosJogador() {
-  estadoSet('playerData', JSON.stringify({
-    xp: userXP,
-    level: userLevel,
-    achievements
-  }));
+  estadoSet('playerData', JSON.stringify({ xp: userXP, level: userLevel }));
 }
 
 // Ganhar XP
@@ -227,20 +206,6 @@ function atualizarDisplayXP() {
   }
 }
 
-// Desbloquear achievement
-function desbloquearAchievement(id) {
-  if (achievements[id]) return; // Já desbloqueado
-
-  const ach = ACHIEVEMENTS[id];
-  if (!ach) return;
-
-  achievements[id] = { desbloqueado_em: new Date().toISOString() };
-  ganharXP(ach.xp);
-
-  toast(`🏆 Desbloqueado: ${ach.nome}! +${ach.xp} XP`, 'success');
-  salvarDadosJogador();
-}
-
 // Carregar orçamentos do localStorage
 function carregarOrcamentos() {
   const salvo = estadoGet('orcamentos');
@@ -270,7 +235,6 @@ const ATALHOS = {
   'Ctrl+Shift+M': () => abrirQuickAddModal('transacao'),
   'Ctrl+Shift+E': () => abrirQuickAddModal('evento'),
   'Ctrl+K': () => abrirSearchGlobal(),
-  'Ctrl+Shift+F': () => alternarModoFoco(),
   '?': () => abrirAtalhos()
 };
 
@@ -415,35 +379,14 @@ function fecharSearch(e) {
 }
 
 // =====================
-//  MODO FOCO
-// =====================
-// =====================
-//  MODO ZEN
-// =====================
-function alternarModoZen() {
-  modoZenAtivo = !modoZenAtivo;
-  document.body.classList.toggle('modo-zen', modoZenAtivo);
-
-  const estado = modoZenAtivo ? 'ativado' : 'desativado';
-  toast(`Modo Zen ${estado} 🧘`, 'success');
-
-  estadoSet('modoZen', modoZenAtivo);
-}
-
-// =====================
 //  MODO NOTURNO AUTOMÁTICO
 // =====================
 function verificarModoNoturno() {
   const agora = new Date();
   const hora = agora.getHours();
-
   const deveSerNoturno = hora >= 19 || hora < 7; // 19h até 7h
-
-  if (deveSerNoturno && !modoNoturnoAtivo) {
-    ativarModoNoturno();
-  } else if (!deveSerNoturno && modoNoturnoAtivo) {
-    desativarModoNoturno();
-  }
+  if (deveSerNoturno && !modoNoturnoAtivo) ativarModoNoturno();
+  else if (!deveSerNoturno && modoNoturnoAtivo) desativarModoNoturno();
 }
 
 function ativarModoNoturno() {
@@ -461,43 +404,10 @@ function desativarModoNoturno() {
 // Verificar modo noturno a cada 5 minutos
 setInterval(verificarModoNoturno, 5 * 60 * 1000);
 
-// Restaurar modo noturno ao carregar
+// Restaurar modo noturno + carregar player ao carregar
 window.addEventListener('load', () => {
-  if (estadoGet('modoNoturno') === 'true') {
-    ativarModoNoturno();
-  }
-  if (estadoGet('modoZen') === 'true') {
-    alternarModoZen();
-  }
+  if (estadoGet('modoNoturno') === 'true') ativarModoNoturno();
   verificarModoNoturno();
-});
-
-function alternarModoFoco() {
-  modoFocoAtivo = !modoFocoAtivo;
-  document.body.classList.toggle('modo-foco', modoFocoAtivo);
-
-  const estado = modoFocoAtivo ? 'ativado' : 'desativado';
-  toast(`Modo Foco ${estado} 🎯`, 'success');
-
-  // Ocultar/mostrar seções
-  const secoes = ['desempenho-page', 'financeiro-page', 'alarmes-page', 'eventos-page'];
-  secoes.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.style.display = modoFocoAtivo ? 'none' : 'block';
-    }
-  });
-
-  // Guardar preferência
-  estadoSet('modoFoco', modoFocoAtivo);
-}
-
-// Restaurar modo foco ao carregar
-window.addEventListener('load', () => {
-  const modoFocoSalvo = estadoGet('modoFoco') === 'true';
-  if (modoFocoSalvo) {
-    alternarModoFoco();
-  }
   carregarDadosJogador();
   atualizarDisplayXP();
 });
@@ -1355,10 +1265,10 @@ async function marcarDas(ym, pago) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ym, valor, pago })
     });
-    if (!res.ok) { toast('Erro', 'error'); return; }
+    if (!res.ok) { await toastErro(res, 'Erro'); return; }
     toast(pago ? 'DAS marcado como pago' : 'DAS desmarcado', 'success');
     carregarPJ();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 // =====================
@@ -1382,7 +1292,7 @@ async function selecionarMesRelatorio(ym) {
   try {
     _relAtual = await fetch(`/api/relatorios/${ym}`).then(x => x.json());
     renderRelatorios();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 function _labelMes(ym) {
@@ -1588,7 +1498,7 @@ async function novaMeta() {
     if (!res.ok) { const e = await res.json(); toast(e.erro || 'Erro', 'error'); return; }
     toast('Meta criada', 'success');
     carregarMetas();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function depositarMeta(id, nome) {
@@ -1601,11 +1511,11 @@ async function depositarMeta(id, nome) {
   if (isNaN(valor) || valor <= 0) { toast('Valor inválido', 'error'); return; }
   try {
     const res = await fetch(`/api/metas/${id}/depositos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor }) });
-    if (!res.ok) { toast('Erro', 'error'); return; }
+    if (!res.ok) { await toastErro(res, 'Erro'); return; }
     toast(`+${formatBRL(valor)} guardado`, 'success');
     try { ganharXP(15); } catch (e) {}
     carregarMetas();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function editarMeta(id) {
@@ -1627,10 +1537,10 @@ async function editarMeta(id) {
   body.prazo = r.prazo || null;
   try {
     const res = await fetch(`/api/metas/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (!res.ok) { toast('Erro', 'error'); return; }
+    if (!res.ok) { await toastErro(res, 'Erro'); return; }
     toast('Meta atualizada', 'success');
     carregarMetas();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function removerMeta(id, nome) {
@@ -1639,7 +1549,7 @@ async function removerMeta(id, nome) {
     await fetch(`/api/metas/${id}`, { method: 'DELETE' });
     toast('Meta removida', 'success');
     carregarMetas();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 // =====================
@@ -1742,7 +1652,7 @@ async function apostaClassificar(id, modo, extra) {
     });
     if (!res.ok) { const d = await res.json(); toast(d.erro || 'Erro', 'error'); return; }
     carregarApostas();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function apostaClassificarAmigo(id) {
@@ -1852,7 +1762,7 @@ async function salvarNaoEhAposta(id) {
     fecharNaoEhAposta();
     toast(d.regraRemovida ? 'Recategorizado (regra errada removida)' : 'Recategorizado', 'success');
     carregarApostas();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 function fecharNaoEhAposta(e) {
@@ -1876,7 +1786,7 @@ async function registrarPagamentoAmigo(amigo) {
     });
     toast('Pagamento registrado', 'success');
     carregarApostas();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 // =====================
@@ -2149,7 +2059,7 @@ async function aplicarCategoria(chave, exemplo) {
     if (!res.ok) { toast(d.erro || 'Erro', 'error'); return; }
     toast(`Categorizado (${d.aplicadas} transações)`, 'success');
     carregarCategorizar();
-  } catch (e) { toast('Erro ao categorizar', 'error'); }
+  } catch (e) { toast('Erro ao categorizar: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function salvarEdicaoRegra(chave) {
@@ -2166,7 +2076,7 @@ async function salvarEdicaoRegra(chave) {
     if (!res.ok) { toast(d.erro || 'Erro', 'error'); return; }
     toast('Regra atualizada', 'success');
     carregarCategorizar();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function removerRegra(chave) {
@@ -2175,7 +2085,7 @@ async function removerRegra(chave) {
     await fetch(`/api/categorias/regras/${chave}`, { method: 'DELETE' });
     toast('Regra removida', 'success');
     carregarCategorizar();
-  } catch (e) { toast('Erro', 'error'); }
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 // =====================
@@ -2383,7 +2293,7 @@ async function definirPessoaConta(itemId, pessoa) {
     });
     toast(`Marcado como ${pessoa}`, 'success');
     carregarContas();
-  } catch (e) { toast('Erro ao salvar', 'error'); }
+  } catch (e) { toast('Erro ao salvar: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function renomearConta(itemId) {
@@ -2401,7 +2311,7 @@ async function renomearConta(itemId) {
     });
     toast('Renomeado', 'success');
     carregarContas();
-  } catch (e) { toast('Erro ao renomear', 'error'); }
+  } catch (e) { toast('Erro ao renomear: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 // =====================
@@ -3096,6 +3006,24 @@ function toast(msg, tipo = 'success') {
   setTimeout(() => t.remove(), 3000);
 }
 
+// Extrai a mensagem de erro real da resposta (do campo "erro" do backend),
+// com fallback pra código HTTP (401 = "Sessão expirou", etc.)
+async function toastErro(res, fallback) {
+  let msg = fallback || 'Erro na operação';
+  try {
+    const d = await res.json();
+    if (d && d.erro) msg = d.erro;
+  } catch (e) { /* body vazio ou não é JSON */ }
+  if (!msg || msg === 'Erro na operação') {
+    if (res.status === 401) msg = 'Sessão expirou. Recarrega a página.';
+    else if (res.status === 403) msg = 'Sem permissão pra isso.';
+    else if (res.status === 404) msg = 'Não encontrado.';
+    else if (res.status === 429) msg = 'Muitas requisições. Espera um pouco.';
+    else if (res.status >= 500) msg = 'Erro no servidor. Tenta de novo em alguns segundos.';
+  }
+  toast(msg, 'error');
+}
+
 // =====================
 //  DATE & TIME
 // =====================
@@ -3504,7 +3432,7 @@ function renderTransacoes() {
           <div class="transaction-info">
             <div class="transaction-desc">${escapeHtml(t.descricao || '(sem descrição)')}</div>
             <div class="transaction-meta">
-              <span class="transaction-cat">${catIcons[cat] || '📦'} ${cat}</span>
+              <span class="transaction-cat" onclick="editarCategoriaTx('${t.id}','${cat}')" title="Alterar categoria só desta transação" style="cursor:pointer; text-decoration:underline dotted; text-decoration-color:var(--text-muted);">${catIcons[cat] || '📦'} ${cat}</span>
               <span>${data}</span>
             </div>
           </div>
@@ -3540,6 +3468,28 @@ async function adicionarTransacao() {
   } catch (err) {
     toast('Erro ao adicionar', 'error');
   }
+}
+
+// Edita SÓ a categoria desta transação (não vira regra pras futuras)
+async function editarCategoriaTx(id, atual) {
+  await carregarCatLista();
+  const r = await promptModal({
+    titulo: 'Alterar categoria desta transação',
+    campos: [{ name: 'cat', label: 'Nova categoria (só nesta transação, não vira regra)', valor: atual }]
+  });
+  if (!r) return;
+  const nova = await _catResolver(r.cat);
+  if (!nova) return;
+  if (nova === atual) return;
+  try {
+    const res = await fetch(`/api/financeiro/${id}/categoria`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categoria: nova })
+    });
+    if (!res.ok) { await toastErro(res, 'Erro ao alterar categoria'); return; }
+    toast('Categoria alterada', 'success');
+    carregarFinanceiro();
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function deletarTransacao(id) {
@@ -4327,8 +4277,6 @@ function atualizarDashboard() {
   // Saldo real das contas conectadas tem prioridade sobre o fluxo de transações
   if (typeof aplicarSaldosReais === 'function') aplicarSaldosReais();
 
-  // Verificar achievements
-  verificarAchievements();
 }
 
 function encontrarProximoAlarme() {
@@ -4965,122 +4913,6 @@ function filtrarAmanhaFilter(filtro) {
 // =====================
 //  HISTÓRICO & HEATMAP
 // =====================
-// =====================
-//  ACHIEVEMENTS PAGE
-// =====================
-function abrirAchievements() {
-  const modal = document.createElement('div');
-  modal.id = 'achievements-modal';
-  modal.innerHTML = `
-    <div id="achievements-overlay" class="custom-modal" onclick="fecharAchievements(event)">
-      <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
-        <div class="modal-header">
-          <h2>🏆 Achievements</h2>
-          <button class="modal-close" onclick="fecharAchievements()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div style="margin-bottom: 24px; padding: 16px; background: var(--bg-tertiary); border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">NÍVEL</div>
-                <div style="font-size: 36px; font-weight: 700; color: var(--accent);">${userLevel}</div>
-              </div>
-              <div style="flex: 1; margin: 0 20px;">
-                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">PROGRESSO</div>
-                <div style="height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden;">
-                  <div style="height: 100%; background: var(--accent); width: ${((userXP - (XP_POR_LEVEL[userLevel - 1] || 0)) / ((XP_POR_LEVEL[userLevel] || 10000) - (XP_POR_LEVEL[userLevel - 1] || 0))) * 100}%;"></div>
-                </div>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">${userXP} XP</div>
-              </div>
-              <div style="text-align: right;">
-                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">DESBLOQUEADOS</div>
-                <div style="font-size: 28px; font-weight: 700; color: var(--success);">${Object.keys(achievements).length}/${Object.keys(ACHIEVEMENTS).length}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="achievements-grid">
-            ${Object.entries(ACHIEVEMENTS).map(([id, ach]) => {
-              const desbloqueado = achievements[id];
-              return `
-                <div class="achievement-card ${desbloqueado ? 'unlocked' : 'locked'}">
-                  <div class="achievement-icon">${desbloqueado ? ach.nome.split(' ')[0] : '🔒'}</div>
-                  <div class="achievement-name">${ach.nome}</div>
-                  <div class="achievement-desc">${ach.desc}</div>
-                  <div class="achievement-xp">+${ach.xp} XP</div>
-                  ${desbloqueado ? `<div class="achievement-date">${new Date(desbloqueado.desbloqueado_em).toLocaleDateString('pt-BR')}</div>` : ''}
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-}
-
-function fecharAchievements(e) {
-  if (e && e.target.id !== 'achievements-overlay') return;
-  const modal = document.getElementById('achievements-modal');
-  if (modal) modal.remove();
-}
-
-// Verificar achievements automaticamente
-function verificarAchievements() {
-  const hoje = hojeLocal();
-  const tarefasHoje = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === hoje);
-  const concluidasHoje = tarefasHoje.filter(t => t.concluida).length;
-  const concluidasTotal = allTasks.filter(t => t.concluida).length;
-
-  // First Blood — primeira conclusão
-  if (concluidasTotal >= 1 && !achievements['first_blood']) {
-    desbloquearAchievement('first_blood');
-  }
-
-  // 5 tarefas num dia
-  if (concluidasHoje >= 5 && !achievements['cinco_tarefas']) {
-    desbloquearAchievement('cinco_tarefas');
-  }
-
-  // 10 tarefas num dia
-  if (concluidasHoje >= 10 && !achievements['dez_tarefas']) {
-    desbloquearAchievement('dez_tarefas');
-  }
-
-  // No-Lifer — 50 tarefas totais concluídas
-  if (concluidasTotal >= 50 && !achievements['no_lifer']) {
-    desbloquearAchievement('no_lifer');
-  }
-
-  // Economista
-  const saldo = allTransactions.reduce((acc, t) => {
-    return t.tipo === 'entrada' ? acc + parseFloat(t.valor) : acc - parseFloat(t.valor);
-  }, 0);
-
-  if (saldo >= 1000 && !achievements['saldo_positivo']) {
-    desbloquearAchievement('saldo_positivo');
-  }
-
-  // Viciado em Pomodoro
-  let totalPomodoros = 0;
-  for (let i = 0; i < 365; i++) {
-    const data = new Date();
-    data.setDate(data.getDate() - i);
-    const y = data.getFullYear(), mo = String(data.getMonth()+1).padStart(2,'0'), dy = String(data.getDate()).padStart(2,'0');
-    const dataStr = `${y}-${mo}-${dy}`;
-    const count = parseInt(estadoGet(`pomodoroHoje_${dataStr}`) || 0);
-    totalPomodoros += count;
-  }
-
-  if (totalPomodoros >= 50 && !achievements['viciado_pomodoro']) {
-    desbloquearAchievement('viciado_pomodoro');
-  }
-
-  if (totalPomodoros >= 100 && !achievements['time_master']) {
-    desbloquearAchievement('time_master');
-  }
-}
 
 function renderHistorico() {
   // Calcular estatísticas
@@ -5324,10 +5156,6 @@ async function inicializarApp() {
   
   // Atualizar hora a cada segundo
   setInterval(atualizarHora, 1000);
-  
-  // Verificar achievements periodicamente
-  setInterval(verificarAchievements, 5000);
-  
   // Detector de procrastinação a cada 1 minuto
   setInterval(detectarProcrastinacao, 60000);
 }

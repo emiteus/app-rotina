@@ -117,6 +117,25 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PATCH — edita SÓ a categoria desta transação (não vira regra pras futuras)
+router.patch('/:id/categoria', async (req, res) => {
+  const cat = String((req.body && req.body.categoria) || '').trim();
+  if (!cat) return res.status(400).json({ erro: 'categoria obrigatória' });
+  try {
+    const existe = await get(`SELECT chave FROM categorias WHERE chave = $1`, [cat]);
+    if (!existe) return res.status(400).json({ erro: 'categoria inválida' });
+    const r = await run(
+      `UPDATE financeiro SET categoria = $1, categoria_confirmada = true WHERE id = $2`,
+      [cat, req.params.id]
+    );
+    if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
+    emitFinanceiroUpdate('atualizada', { id: req.params.id, categoria: cat });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // DELETE transacao
 router.delete('/:id', async (req, res) => {
   try {

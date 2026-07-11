@@ -1761,34 +1761,12 @@ select optgroup {
 }
 
 /* ===== MODO FOCO ===== */
-body.modo-foco {
-  filter: none; /* Mantém visual normal */
-}
 
 /* ===== MODO ZEN ===== */
-body.modo-zen .stat-box-num,
-body.modo-zen .card-value,
-body.modo-zen .stat-box-icon {
-  display: none !important;
-}
 
-body.modo-zen .card-label,
-body.modo-zen .stat-box-label {
-  opacity: 0.5;
-}
 
-body.modo-zen .badge,
-body.modo-zen [class*="count"] {
-  display: none !important;
-}
 
-body.modo-zen {
-  filter: saturate(0.8);
-}
 
-body.modo-zen .page-title {
-  font-size: 24px;
-}
 
 /* ===== MODO NOTURNO ===== (variante grafite, um pouco mais dim) */
 body.modo-noturno {
