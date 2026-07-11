@@ -2986,19 +2986,34 @@ input[type="datetime-local"]::before {
   .nav-btn .nav-icon { font-size: 18px; }
   .nav-btn span:not(.nav-icon) { display: inline; font-size: 10px; }
 
-  /* Área principal: usa a tela toda e não gruda no bottom nav */
+  /* Área principal: usa a tela toda e respeita a status bar do iOS (black-translucent) */
   .main {
     height: auto;
     min-height: 100vh;
-    padding: 16px 14px 90px;
+    padding: max(16px, calc(env(safe-area-inset-top) + 12px)) 14px calc(90px + env(safe-area-inset-bottom, 0px));
     width: 100%;
   }
 
   /* Headers e títulos mais compactos */
-  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
-  h1 { font-size: 22px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
+  .page-header h1, h1 { font-size: 20px; letter-spacing: -0.3px; }
   .page-subtitle { font-size: 12px; }
   h2, .section-title { font-size: 15px; }
+
+  /* Filtros avançados do Financeiro (Sprint 3): grid 2 colunas + busca full + limpar full */
+  .fin-filtros {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px !important;
+  }
+  .fin-filtros #fin-busca { grid-column: 1 / -1; min-width: 0; width: 100%; }
+  .fin-filtros select { width: 100%; }
+  .fin-filtros .fin-filtros-limpar {
+    grid-column: 1 / -1;
+    background: rgba(248, 81, 73, 0.12) !important;
+    color: var(--danger) !important;
+    border-color: rgba(248, 81, 73, 0.25) !important;
+  }
 
   /* Cards: 1 coluna, mais respiro */
   .cards-grid, .finance-grid, .stats-grid, .dashboard-row {

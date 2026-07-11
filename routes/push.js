@@ -6,6 +6,7 @@ const router = express.Router();
 
 // GET /api/push/config — retorna a public key pro frontend
 router.get('/config', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.json({ ativo: configurado, publicKey: publicKey || null });
 });
 

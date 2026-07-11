@@ -533,11 +533,11 @@
         </div>
 
         <!-- Busca e filtros avançados -->
-        <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+        <div class="fin-filtros" style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
           <input type="text" id="fin-busca" placeholder="🔍 Buscar por descrição..." oninput="atualizarFinFiltros()"
-            style="flex:1; min-width:180px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:6px 10px; font-size:13px;">
+            style="flex:1; min-width:180px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:8px 10px; font-size:13px;">
           <select id="fin-periodo" onchange="atualizarFinFiltros()"
-            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:6px 10px; font-size:12px;">
+            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:8px 10px; font-size:12px;">
             <option value="todos">Qualquer período</option>
             <option value="7d">Últimos 7 dias</option>
             <option value="30d" selected>Últimos 30 dias</option>
@@ -546,14 +546,14 @@
             <option value="ano">Este ano</option>
           </select>
           <select id="fin-conta" onchange="atualizarFinFiltros()"
-            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:6px 10px; font-size:12px;">
+            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:8px 10px; font-size:12px;">
             <option value="todas">Qualquer conta</option>
           </select>
           <select id="fin-categoria" onchange="atualizarFinFiltros()"
-            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:6px 10px; font-size:12px;">
+            style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:8px 10px; font-size:12px;">
             <option value="todas">Qualquer categoria</option>
           </select>
-          <button onclick="limparFinFiltros()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-muted); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer;">Limpar</button>
+          <button class="fin-filtros-limpar" onclick="limparFinFiltros()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-muted); border-radius:6px; padding:8px 12px; font-size:12px; cursor:pointer;">Limpar</button>
         </div>
 
         <ul id="lista-transacoes" class="transaction-list"></ul>
