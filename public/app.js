@@ -1288,12 +1288,37 @@ async function carregarRelatorios() {
   renderRelatorios();
 }
 
+let _relPeriodoAtivo = null; // 'mes:YYYY-MM' | 'range:from|to'
+
 async function selecionarMesRelatorio(ym) {
   try {
     _relAtual = await fetch(`/api/relatorios/${ym}`).then(x => x.json());
+    _relPeriodoAtivo = 'mes:' + ym;
     renderRelatorios();
   } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
+
+async function selecionarRangeRelatorio(periodo) {
+  const hoje = new Date();
+  const fmt = d => d.toISOString().substring(0, 10);
+  let from, to = fmt(hoje);
+  if (periodo === '7d') { const d = new Date(hoje); d.setDate(d.getDate() - 7); from = fmt(d); }
+  else if (periodo === '30d') { const d = new Date(hoje); d.setDate(d.getDate() - 30); from = fmt(d); }
+  else if (periodo === '90d') { const d = new Date(hoje); d.setDate(d.getDate() - 90); from = fmt(d); }
+  else if (periodo === 'ano') { from = `${hoje.getFullYear()}-01-01`; }
+  else return;
+  try {
+    const res = await fetch(`/api/relatorios/range?from=${from}&to=${to}`);
+    if (!res.ok) { await toastErro(res, 'Erro'); return; }
+    const j = await res.json();
+    // Adapta o shape pra ser compatível com renderRelatorios (que espera ym, ymPrev, anterior)
+    _relAtual = { ...j, ym: null, ymPrev: null, anterior: { entradas: 0, saidas: 0, deltaEntradas: 0, deltaSaidas: 0 } };
+    _relPeriodoAtivo = 'range:' + periodo;
+    renderRelatorios();
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
+}
+
+const _rangeLabels = { '7d': '7 dias', '30d': '30 dias', '90d': '90 dias', 'ano': 'Este ano' };
 
 function _labelMes(ym) {
   if (!ym) return '';
@@ -1309,10 +1334,19 @@ function renderRelatorios() {
   const r = _relAtual;
   if (!lista || !r) { painel.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Sem dados suficientes ainda.</p>'; return; }
 
+  // Estilo helper pros chips
+  const chipStyle = ativo => `background:${ativo ? 'rgba(91,124,250,0.2)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${ativo ? 'rgba(91,124,250,0.4)' : 'rgba(255,255,255,0.1)'}; color:${ativo ? '#5b7cfa' : 'var(--text-secondary)'}; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap;`;
+
+  // Chips de período custom (7d / 30d / 90d / ano)
+  const chipsPeriodo = ['7d','30d','90d','ano'].map(p => {
+    const ativo = _relPeriodoAtivo === 'range:' + p;
+    return `<button onclick="selecionarRangeRelatorio('${p}')" style="${chipStyle(ativo)}">${_rangeLabels[p]}</button>`;
+  }).join('');
+
   // Seletor de mês
   const seletor = lista.meses.map(m => {
-    const ativo = m.ym === r.ym;
-    return `<button onclick="selecionarMesRelatorio('${m.ym}')" style="background:${ativo ? 'rgba(91,124,250,0.2)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${ativo ? 'rgba(91,124,250,0.4)' : 'rgba(255,255,255,0.1)'}; color:${ativo ? '#5b7cfa' : 'var(--text-secondary)'}; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap;">${_labelMes(m.ym)}</button>`;
+    const ativo = _relPeriodoAtivo === 'mes:' + m.ym || (!_relPeriodoAtivo && m.ym === r.ym);
+    return `<button onclick="selecionarMesRelatorio('${m.ym}')" style="${chipStyle(ativo)}">${_labelMes(m.ym)}</button>`;
   }).join('');
 
   // Delta
@@ -1344,7 +1378,9 @@ function renderRelatorios() {
 
   painel.innerHTML = `
     <div style="margin-bottom:16px;">
-      <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Selecione o mês:</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Período:</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">${chipsPeriodo}</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Ou selecione um mês:</div>
       <div style="display:flex; gap:6px; flex-wrap:wrap;">${seletor}</div>
     </div>
 
@@ -3403,19 +3439,88 @@ async function carregarTransacoes() {
   }
 }
 
+// Popula os selects de conta/categoria com base nos dados atuais (chamado no render)
+function _preencherFinSelects() {
+  const selConta = document.getElementById('fin-conta');
+  const selCat = document.getElementById('fin-categoria');
+  if (!selConta || !selCat) return;
+
+  const contasMap = {};
+  if (_contasData && _contasData.contas) {
+    _contasData.contas.forEach(b => {
+      b.accounts.forEach(a => { contasMap[a.account_id] = b.apelido + (a.tipo === 'CREDIT' ? ' · Cartão' : ''); });
+    });
+  }
+  const contasList = Object.entries(contasMap);
+  const valorAtualConta = selConta.value;
+  selConta.innerHTML = '<option value="todas">Qualquer conta</option>' +
+    '<option value="manual">Adicionadas manualmente</option>' +
+    contasList.map(([id, nome]) => `<option value="${id}">${escapeHtml(nome)}</option>`).join('');
+  if (valorAtualConta && [...selConta.options].some(o => o.value === valorAtualConta)) selConta.value = valorAtualConta;
+
+  const catsPresentes = new Set(allTransactions.map(t => t.categoria || 'outros'));
+  const valorAtualCat = selCat.value;
+  const labels = _catLista.length ? Object.fromEntries(_catLista.map(c => [c.id, c.label])) : {};
+  selCat.innerHTML = '<option value="todas">Qualquer categoria</option>' +
+    [...catsPresentes].sort().map(c => `<option value="${c}">${escapeHtml(labels[c] || c)}</option>`).join('');
+  if (valorAtualCat && [...selCat.options].some(o => o.value === valorAtualCat)) selCat.value = valorAtualCat;
+}
+
+function _dataMinima(periodo) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  if (periodo === '7d') { const d = new Date(hoje); d.setDate(d.getDate() - 7); return d; }
+  if (periodo === '30d') { const d = new Date(hoje); d.setDate(d.getDate() - 30); return d; }
+  if (periodo === 'mes') return new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  if (periodo === 'mes-passado') return new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+  if (periodo === 'ano') return new Date(hoje.getFullYear(), 0, 1);
+  return null;
+}
+function _dataMaxima(periodo) {
+  const hoje = new Date();
+  if (periodo === 'mes-passado') { const d = new Date(hoje.getFullYear(), hoje.getMonth(), 1); d.setMilliseconds(-1); return d; }
+  return null;
+}
+
+function atualizarFinFiltros() { renderTransacoes(); }
+function limparFinFiltros() {
+  const busca = document.getElementById('fin-busca'); if (busca) busca.value = '';
+  const p = document.getElementById('fin-periodo'); if (p) p.value = '30d';
+  const c = document.getElementById('fin-conta'); if (c) c.value = 'todas';
+  const cat = document.getElementById('fin-categoria'); if (cat) cat.value = 'todas';
+  currentFinFilter = 'todas';
+  document.querySelectorAll('.filter-btn[data-fin-filter]').forEach(b => b.classList.toggle('active', b.getAttribute('data-fin-filter') === 'todas'));
+  renderTransacoes();
+}
+
 function renderTransacoes() {
   const lista = document.getElementById('lista-transacoes');
   const empty = document.getElementById('empty-financeiro');
 
+  _preencherFinSelects();
+
+  const busca = (document.getElementById('fin-busca')?.value || '').toLowerCase().trim();
+  const periodo = document.getElementById('fin-periodo')?.value || '30d';
+  const contaSel = document.getElementById('fin-conta')?.value || 'todas';
+  const catSel = document.getElementById('fin-categoria')?.value || 'todas';
+  const dtMin = _dataMinima(periodo);
+  const dtMax = _dataMaxima(periodo);
+
   let filtered = [...allTransactions];
   if (currentFinFilter === 'entrada') filtered = filtered.filter(t => t.tipo === 'entrada');
   else if (currentFinFilter === 'saida') filtered = filtered.filter(t => t.tipo === 'saida');
+  if (busca) filtered = filtered.filter(t => (t.descricao || '').toLowerCase().includes(busca));
+  if (dtMin) filtered = filtered.filter(t => new Date(t.data) >= dtMin);
+  if (dtMax) filtered = filtered.filter(t => new Date(t.data) <= dtMax);
+  if (contaSel === 'manual') filtered = filtered.filter(t => !t.account_id);
+  else if (contaSel !== 'todas') filtered = filtered.filter(t => t.account_id === contaSel);
+  if (catSel !== 'todas') filtered = filtered.filter(t => (t.categoria || 'outros') === catSel);
 
   if (filtered.length === 0) {
     lista.innerHTML = '';
     empty.style.display = allTransactions.length === 0 ? 'block' : 'none';
     if (allTransactions.length > 0) {
-      lista.innerHTML = `<div class="mini-item-empty">Nenhuma transação nesse filtro</div>`;
+      lista.innerHTML = `<div class="mini-item-empty">Nenhuma transação com esses filtros</div>`;
     }
   } else {
     empty.style.display = 'none';
@@ -3423,7 +3528,21 @@ function renderTransacoes() {
       alimentacao: '🍔', transporte: '🚗', moradia: '🏠', lazer: '🎮',
       saude: '💊', salario: '💼', freelance: '💻', outros: '📦'
     };
-    lista.innerHTML = filtered.map(t => {
+    // Total dos filtros aplicados (mostra no topo pra contextualizar o filtro)
+    const entradasSel = filtered.filter(t => t.tipo === 'entrada').reduce((s, t) => s + parseFloat(t.valor), 0);
+    const saidasSel = filtered.filter(t => t.tipo === 'saida').reduce((s, t) => s + parseFloat(t.valor), 0);
+    const cabecalho = `
+      <li style="background:rgba(255,255,255,0.03); border-radius:8px; padding:8px 12px; margin-bottom:6px; display:flex; justify-content:space-between; font-size:12px;">
+        <span style="color:var(--text-muted);">${filtered.length} transação(ões) filtradas</span>
+        <span>
+          <span style="color:#3fb950;">+${formatBRL(entradasSel)}</span>
+          <span style="color:var(--text-muted); margin:0 6px;">·</span>
+          <span style="color:#f85149;">−${formatBRL(saidasSel)}</span>
+          <span style="color:var(--text-muted); margin:0 6px;">·</span>
+          <span style="font-weight:600;">${formatBRL(entradasSel - saidasSel)}</span>
+        </span>
+      </li>`;
+    lista.innerHTML = cabecalho + filtered.map(t => {
       const simbolo = t.tipo === 'entrada' ? '+' : '-';
       const data = new Date(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
       const cat = t.categoria || 'outros';
