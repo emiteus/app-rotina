@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 
 // Middleware de autenticacao
+// SKIP_AUTH=true no .env local bypassa (uso pessoal no Electron/localhost);
+// Railway NÃO tem SKIP_AUTH → produção continua protegida por senha.
 function requireAuth(req, res, next) {
-  if (req.session && req.session.authenticated) {
-    return next();
-  }
+  if (process.env.SKIP_AUTH === 'true') return next();
+  if (req.session && req.session.authenticated) return next();
   return res.status(401).json({ erro: 'Nao autenticado' });
 }
 
@@ -24,9 +25,8 @@ router.post('/login', (req, res) => {
 
 // GET verificar autenticacao
 router.get('/check', (req, res) => {
-  if (req.session && req.session.authenticated) {
-    return res.json({ authenticated: true });
-  }
+  if (process.env.SKIP_AUTH === 'true') return res.json({ authenticated: true });
+  if (req.session && req.session.authenticated) return res.json({ authenticated: true });
   res.json({ authenticated: false });
 });
 
