@@ -865,12 +865,16 @@
       });
 
       // Intercepta fetch: se qualquer /api/* retornar 401, abre o modal
+      // e lança erro pro chamador — sem isso, res.json() vira {erro:...} e o
+      // app.js sobrescreve allTasks/allAlarms/etc (que eram []), quebrando
+      // .filter/.map em cascata.
       const originalFetch = window.fetch.bind(window);
       window.fetch = async function (input, init) {
         const res = await originalFetch(input, init);
         const url = typeof input === 'string' ? input : (input && input.url) || '';
         if (res.status === 401 && url.includes('/api/') && !url.includes('/api/auth/')) {
           mostrarLogin();
+          throw new Error('sessao_expirada');
         }
         return res;
       };
