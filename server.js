@@ -217,6 +217,70 @@ schedule.scheduleJob('0 10 * * *', async () => {
   }
 });
 
+// Orçamento estourado — 21h, checa cada limite do app_estado.orcamentos
+schedule.scheduleJob('0 21 * * *', async () => {
+  try {
+    const { get, all } = require('./lib/db');
+    const row = await get(`SELECT valor FROM app_estado WHERE chave = 'orcamentos'`);
+    if (!row || !row.valor) return;
+    let limites;
+    try { limites = JSON.parse(row.valor); } catch { return; }
+    const cats = Object.keys(limites || {}).filter(k => Number(limites[k]) > 0);
+    if (!cats.length) return;
+    const ym = new Date().toISOString().slice(0, 7);
+    const gastos = await all(
+      `SELECT categoria, COALESCE(SUM(valor),0) AS total
+       FROM financeiro
+       WHERE tipo = 'saida' AND TO_CHAR(data, 'YYYY-MM') = $1
+       GROUP BY categoria`,
+      [ym]
+    );
+    const gastoDe = {};
+    gastos.forEach(g => { gastoDe[g.categoria] = Number(g.total); });
+    const estouradas = cats
+      .filter(c => (gastoDe[c] || 0) > Number(limites[c]))
+      .map(c => ({ cat: c, gasto: gastoDe[c] || 0, limite: Number(limites[c]) }));
+    if (!estouradas.length) return;
+    const top = estouradas.sort((a, b) => (b.gasto - b.limite) - (a.gasto - a.limite))[0];
+    const pct = Math.round((top.gasto / top.limite - 1) * 100);
+    const brl = top.gasto.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const extra = estouradas.length > 1 ? ` (+${estouradas.length - 1})` : '';
+    await enviarPush('💸 Orçamento estourado', `${top.cat}: R$ ${brl} — ${pct}% acima do limite${extra}`, '/#financeiro');
+  } catch (e) {
+    console.error('[Orçamento] Erro:', e.message);
+  }
+});
+
+// Resumo diário 20h — tarefas do dia + saldo movimentado
+schedule.scheduleJob('0 20 * * *', async () => {
+  try {
+    const { get } = require('./lib/db');
+    const hoje = new Date().toISOString().slice(0, 10);
+    const tarefas = await get(
+      `SELECT COUNT(*)::int AS total,
+              SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
+       FROM tasks WHERE TO_CHAR(data_reset, 'YYYY-MM-DD') = $1`,
+      [hoje]
+    );
+    const mov = await get(
+      `SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor END),0) AS entradas,
+              COALESCE(SUM(CASE WHEN tipo='saida'   THEN valor END),0) AS saidas
+       FROM financeiro WHERE data = $1`,
+      [hoje]
+    );
+    const t = tarefas || { total: 0, concluidas: 0 };
+    const m = mov || { entradas: 0, saidas: 0 };
+    const partes = [];
+    if (t.total > 0) partes.push(`${t.concluidas}/${t.total} tarefas`);
+    if (Number(m.saidas) > 0) partes.push(`gastou R$ ${Number(m.saidas).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    if (Number(m.entradas) > 0) partes.push(`entrou R$ ${Number(m.entradas).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    if (!partes.length) return; // dia vazio, não incomoda
+    await enviarPush('📊 Resumo do dia', partes.join(' · '), '/');
+  } catch (e) {
+    console.error('[Resumo] Erro:', e.message);
+  }
+});
+
 // DAS do MEI — se estiver entre dia 17 e 19 e não pago, lembra às 9h
 schedule.scheduleJob('0 9 * * *', async () => {
   try {

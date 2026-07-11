@@ -1,5 +1,6 @@
 const express = require('express');
 const { run, all, get } = require('../lib/db');
+const { enviarPush } = require('../lib/push');
 
 const router = express.Router();
 
@@ -147,12 +148,14 @@ router.post('/:id/depositos', async (req, res) => {
       `INSERT INTO metas_depositos (meta_id, valor, descricao) VALUES ($1,$2,$3)`,
       [req.params.id, v, (req.body && req.body.descricao) || null]
     );
-    // Se atingiu ou passou o total, marca como concluída
-    const meta = await get(`SELECT valor_total FROM metas WHERE id = $1`, [req.params.id]);
+    // Se atingiu ou passou o total, marca como concluída e dispara push
+    const meta = await get(`SELECT nome, valor_total, concluida FROM metas WHERE id = $1`, [req.params.id]);
     if (meta) {
       const soma = await get(`SELECT COALESCE(SUM(valor),0) AS s FROM metas_depositos WHERE meta_id = $1`, [req.params.id]);
-      if (Number(soma.s) >= Number(meta.valor_total)) {
+      if (Number(soma.s) >= Number(meta.valor_total) && !meta.concluida) {
         await run(`UPDATE metas SET concluida = true WHERE id = $1`, [req.params.id]);
+        const brl = Number(meta.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        enviarPush('🎯 Meta batida!', `${meta.nome} — R$ ${brl} completos`, '/#financeiro').catch(() => {});
       }
     }
     res.json({ ok: true });
