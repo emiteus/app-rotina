@@ -69,7 +69,7 @@
     <section id="dashboard" class="tab-content active">
       <div class="page-header">
         <div>
-          <h1>Boa, <span id="saudacao">Mateus</span> 👋</h1>
+          <h1><span id="saudacao">Boa noite</span> 👋</h1>
           <p class="page-subtitle">Seu desempenho nos últimos 30 dias</p>
         </div>
         <div style="display: flex; gap: 12px;">
@@ -801,11 +801,91 @@
     </div>
   </div>
 
+  <!-- Modal de login (aparece se qualquer fetch retornar 401) -->
+  <div id="login-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:var(--bg-secondary, #202024); border:1px solid var(--border, rgba(255,255,255,0.08)); border-radius:14px; padding:24px; width:100%; max-width:340px;">
+      <h2 style="margin:0 0 6px 0; font-size:20px; color:var(--text, #e6e6e6);">🔒 App Rotina</h2>
+      <p style="margin:0 0 16px 0; font-size:13px; color:var(--text-muted, #6e6e78);">Entra pra continuar</p>
+      <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
+        <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required
+          style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text, #e6e6e6); border-radius:8px; padding:12px; font-size:15px; width:100%; box-sizing:border-box;">
+        <button type="submit" style="background:var(--accent, #5b7cfa); border:none; color:#fff; border-radius:8px; padding:12px; font-size:15px; font-weight:600; cursor:pointer;">Entrar</button>
+        <p id="login-erro" style="margin:0; font-size:12px; color:var(--danger, #f85149); display:none;"></p>
+      </form>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="app.js"></script>
   <script>
+    // ==================== Auth guard (login modal automático) ====================
+    (function () {
+      const overlay = document.getElementById('login-overlay');
+      const form = document.getElementById('login-form');
+      const inputSenha = document.getElementById('login-senha');
+      const erroEl = document.getElementById('login-erro');
+      let mostrando = false;
+
+      function mostrarLogin() {
+        if (mostrando) return;
+        mostrando = true;
+        overlay.style.display = 'flex';
+        setTimeout(() => inputSenha.focus(), 100);
+      }
+      function esconderLogin() {
+        mostrando = false;
+        overlay.style.display = 'none';
+        erroEl.style.display = 'none';
+        inputSenha.value = '';
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        erroEl.style.display = 'none';
+        try {
+          const r = await originalFetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ senha: inputSenha.value })
+          });
+          if (r.ok) {
+            esconderLogin();
+            location.reload();
+          } else {
+            const d = await r.json().catch(() => ({}));
+            erroEl.textContent = d.erro || 'Senha incorreta';
+            erroEl.style.display = 'block';
+          }
+        } catch (err) {
+          erroEl.textContent = 'Erro de rede: ' + err.message;
+          erroEl.style.display = 'block';
+        }
+      });
+
+      // Intercepta fetch: se qualquer /api/* retornar 401, abre o modal
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async function (input, init) {
+        const res = await originalFetch(input, init);
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (res.status === 401 && url.includes('/api/') && !url.includes('/api/auth/')) {
+          mostrarLogin();
+        }
+        return res;
+      };
+
+      // Boot: checa sessão antes de deixar o app.js rodar seus fetches
+      (async () => {
+        try {
+          const r = await originalFetch('/api/auth/check');
+          if (!r.ok) mostrarLogin();
+        } catch (e) {
+          mostrarLogin();
+        }
+      })();
+    })();
+
     // ==================== Web Push (Service Worker) ====================
     let __pushConfig = null;
     let __pushRegistration = null;

@@ -4733,7 +4733,7 @@ document.getElementById('desc-transacao')?.addEventListener('keypress', e => {
 //  INIT
 // =====================
 window.addEventListener('load', () => {
-  document.getElementById('saudacao').textContent = saudacao().replace('Boa ', '');
+  document.getElementById('saudacao').textContent = saudacao();
   atualizarData();
   atualizarHora();
   setInterval(atualizarHora, 1000);

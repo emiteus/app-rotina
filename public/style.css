@@ -3069,7 +3069,7 @@ input[type="datetime-local"]::before {
 
 /* Telas MUITO estreitas (iPhone SE, etc.) */
 @media (max-width: 380px) {
-  .main { padding: 12px 10px 90px; }
+  .main { padding: max(12px, calc(env(safe-area-inset-top) + 8px)) 10px calc(90px + env(safe-area-inset-bottom, 0px)); }
   .nav-btn span:not(.nav-icon) { display: none; }
   .nav-btn { padding: 10px 4px; }
   .nav-btn .nav-icon { font-size: 20px; }
