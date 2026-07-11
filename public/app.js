@@ -4938,6 +4938,7 @@ function renderTarefasAmanhaPage() {
 
   const lista = document.getElementById('lista-tarefas-amanha-page');
   const empty = document.getElementById('empty-tarefas-amanha-page');
+  if (!lista || !empty) return; // aba/elementos removidos
 
   if (tarefas.length === 0) {
     lista.innerHTML = '';
