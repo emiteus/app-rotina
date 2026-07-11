@@ -2952,20 +2952,13 @@ input[type="datetime-local"]::before {
     flex-direction: row;
     padding: 0;
     position: fixed;
-    /* Estende a barra ATÉ o fundo físico da tela, cobrindo a home indicator zone.
-       O padding-bottom empurra o conteúdo (ícones) pra ficar acima da home indicator.
-       Sem isso, o iOS aplica env() só depois de uns segundos e a barra "salta" pra cima. */
-    bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+    bottom: 0;
     left: 0;
     right: 0;
     z-index: 100;
     background: var(--bg-secondary);
     border-right: none;
     border-top: 1px solid var(--border);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    /* Força GPU layer pra evitar jitter/repaint quando o iOS troca o valor do env() */
-    transform: translateZ(0);
-    will-change: transform;
   }
   .logo, .sidebar-footer {
     display: none;
@@ -2992,11 +2985,11 @@ input[type="datetime-local"]::before {
   .nav-btn .nav-icon { font-size: 18px; }
   .nav-btn span:not(.nav-icon) { display: inline; font-size: 10px; }
 
-  /* Área principal: usa a tela toda e respeita a status bar do iOS (black-translucent) */
+  /* Área principal: usa a tela toda */
   .main {
     height: auto;
     min-height: 100vh;
-    padding: max(16px, calc(env(safe-area-inset-top) + 12px)) 14px calc(90px + env(safe-area-inset-bottom, 0px));
+    padding: 16px 14px 90px;
     width: 100%;
   }
 
@@ -3075,7 +3068,7 @@ input[type="datetime-local"]::before {
 
 /* Telas MUITO estreitas (iPhone SE, etc.) */
 @media (max-width: 380px) {
-  .main { padding: max(12px, calc(env(safe-area-inset-top) + 8px)) 10px calc(90px + env(safe-area-inset-bottom, 0px)); }
+  .main { padding: 12px 10px 90px; }
   .nav-btn span:not(.nav-icon) { display: none; }
   .nav-btn { padding: 10px 4px; }
   .nav-btn .nav-icon { font-size: 20px; }
