@@ -2245,12 +2245,61 @@ async function carregarContas() {
   const painel = document.getElementById('painel-contas');
   if (painel) painel.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
   try {
-    const res = await fetch('/api/openfinance/contas');
-    _contasData = await res.json();
+    const [contasResp, statusResp] = await Promise.all([
+      fetch('/api/openfinance/contas'),
+      fetch('/api/openfinance/items-status').catch(() => null)
+    ]);
+    _contasData = await contasResp.json();
+    if (statusResp && statusResp.ok) {
+      const s = await statusResp.json();
+      const statusMap = {};
+      (s.items || []).forEach(i => { statusMap[i.item_id] = i; });
+      (_contasData.contas || []).forEach(c => { c._sync = statusMap[c.item_id]; });
+    }
   } catch (e) {
     _contasData = { contas: [], consolidado: null };
   }
   renderContas();
+}
+
+function _chipStatusSync(sync) {
+  if (!sync) return '';
+  const h = sync.horas_desde_sync;
+  let cor, texto;
+  if (sync.auto_sync) { cor = '#31a24c'; texto = 'auto'; }
+  else if (h === null || h === undefined) { cor = '#6e6e78'; texto = 'nunca'; }
+  else if (h < 24) { cor = '#31a24c'; texto = `há ${h}h`; }
+  else if (h < 48) { cor = '#e8950c'; texto = `há ${Math.floor(h/24)}d`; }
+  else { cor = '#f81d13'; texto = `há ${Math.floor(h/24)}d`; }
+  return `<span title="${sync.ultima_sync || 'sem data'}" style="font-size:10px; background:${cor}22; color:${cor}; padding:2px 8px; border-radius:6px;">Sync ${texto}</span>`;
+}
+
+async function reconectarConta(itemId) {
+  try {
+    if (typeof PluggyConnect !== 'function') {
+      toast('Widget do Pluggy não carregou. Recarrega a página.', 'error');
+      return;
+    }
+    const r = await fetch('/api/openfinance/connect-token', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId })
+    });
+    const d = await r.json();
+    if (!r.ok || !d.accessToken) return toastErro(r, 'Falha ao gerar token de reconexão');
+    const conn = new PluggyConnect({
+      connectToken: d.accessToken,
+      includeSandbox: false,
+      onSuccess: async () => {
+        toast('Reconectado — sincronizando…', 'success');
+        try { await fetch('/api/openfinance/sync', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ itemId }) }); } catch (e) {}
+        carregarContas();
+      },
+      onError: (err) => { console.error('[Pluggy]', err); toast('Erro na reconexão', 'error'); }
+    });
+    conn.init();
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+  }
 }
 
 function _blocoConsolidado(titulo, d, cor) {
@@ -2292,14 +2341,20 @@ function renderContas() {
         <span>${a.tipo === 'CREDIT' ? 'Cartão' : 'Conta'} · ${escapeHtml(a.nome || '')}</span>
         <span style="color:${a.tipo === 'CREDIT' ? '#f5a623' : 'var(--text)'};">${a.tipo === 'CREDIT' ? '−' : ''}${formatBRL(Math.abs(Number(a.saldo)))}</span>
       </div>`).join('');
+    const chipSync = _chipStatusSync(b._sync);
+    const btnReconectar = (b._sync && b._sync.precisa_reconectar)
+      ? `<button onclick="reconectarConta('${b.item_id}')" style="background:rgba(248,81,73,0.15); border:1px solid rgba(248,81,73,0.3); color:#f85149; border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">🔄 reconectar</button>`
+      : '';
     return `
       <div style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <span style="font-weight:600; font-size:15px;">${escapeHtml(b.apelido)}</span>
             ${badge}
+            ${chipSync}
           </div>
-          <div style="display:flex; gap:6px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${btnReconectar}
             <button onclick="definirPessoaConta('${b.item_id}','${ehPJ ? 'PF' : 'PJ'}')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-secondary); border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">marcar como ${ehPJ ? 'PF' : 'PJ'}</button>
             <button onclick="renomearConta('${b.item_id}')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-secondary); border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">renomear</button>
           </div>
@@ -4744,6 +4799,20 @@ window.addEventListener('load', () => {
   carregarStats();
   carregarRecorrentes();
   carregarEventos();
+
+  // Sync do Open Finance ao abrir o app (1x/dia via localStorage lock)
+  // Pega transações novas da Nubank sem esperar o cron 6/14h30/20h
+  try {
+    const ultimo = Number(localStorage.getItem('of_last_open_sync') || 0);
+    const umDia = 20 * 60 * 60 * 1000; // 20h — pra sobrepor com o cron
+    if (Date.now() - ultimo > umDia) {
+      localStorage.setItem('of_last_open_sync', String(Date.now()));
+      fetch('/api/openfinance/sync', { method: 'POST' })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d && d.importadas > 0) carregarTransacoes(); })
+        .catch(() => {});
+    }
+  } catch (e) { /* localStorage indisponível */ }
 
   conectarWebSocket();
 

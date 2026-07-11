@@ -74,6 +74,39 @@ router.get('/status', async (req, res) => {
 });
 
 // =====================================================
+// ITEMS-STATUS — status detalhado por item (última sync, auto?, precisa reconectar?)
+// =====================================================
+router.get('/items-status', async (req, res) => {
+  try {
+    const items = await all(`
+      SELECT item_id, apelido, connector_nome, pessoa, ultima_sync, next_auto_sync, status
+      FROM openfinance_items
+      ORDER BY criado_em
+    `);
+    const agora = Date.now();
+    const out = items.map(it => {
+      const ultimaMs = it.ultima_sync ? new Date(it.ultima_sync).getTime() : 0;
+      const horas = ultimaMs ? Math.round((agora - ultimaMs) / 36e5) : null;
+      const auto = !!it.next_auto_sync;
+      return {
+        item_id: it.item_id,
+        apelido: it.apelido || it.connector_nome || 'Banco',
+        pessoa: it.pessoa || 'PF',
+        ultima_sync: it.ultima_sync,
+        horas_desde_sync: horas,
+        auto_sync: auto,
+        next_auto_sync: it.next_auto_sync,
+        precisa_reconectar: !auto && horas !== null && horas > 48,
+        status: it.status || 'ativo'
+      };
+    });
+    res.json({ items: out });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// =====================================================
 // SALDOS — saldo REAL das contas (banco = ativo, cartão = dívida)
 // =====================================================
 router.get('/saldos', async (req, res) => {
@@ -258,6 +291,13 @@ router.post('/import-item', async (req, res) => {
 // =====================================================
 async function syncItem(apiKey, itemId) {
   let importadas = 0, ignoradas = 0;
+
+  // Pega metadata do item pra saber se tem auto-sync (produção Pluggy) ou é Meu Pluggy
+  try {
+    const itemResp = await axios.get(`${PLUGGY_BASE}/items/${itemId}`, { headers: { 'X-API-KEY': apiKey } });
+    const nextAuto = itemResp.data && itemResp.data.nextAutoSyncAt;
+    await run(`UPDATE openfinance_items SET next_auto_sync = $1 WHERE item_id = $2`, [nextAuto || null, itemId]);
+  } catch (e) { /* segue mesmo sem meta */ }
 
   // Regras de categoria aprendidas (chave -> categoria)
   const regras = {};

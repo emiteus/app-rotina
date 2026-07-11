@@ -173,7 +173,39 @@ async function syncOpenFinanceDiario() {
     console.error('[OpenFinance] Erro no sync automático:', e.message);
   }
 }
+// 3x/dia: 6h, 14h30 (pós-refresh do Pluggy), 20h — pra pegar Nubank cedo
+// (Inter PF/PJ só sincronizam manualmente no meu.pluggy.ai enquanto Meu Pluggy)
+schedule.scheduleJob('0 6 * * *', syncOpenFinanceDiario);
 schedule.scheduleJob('30 14 * * *', syncOpenFinanceDiario);
+schedule.scheduleJob('0 20 * * *', syncOpenFinanceDiario);
+
+// 9h30 — alerta pra reconectar itens sem sync há > 48h (Meu Pluggy só)
+schedule.scheduleJob('30 9 * * *', async () => {
+  try {
+    const { all } = require('./lib/db');
+    const stales = await all(`
+      SELECT COALESCE(apelido, connector_nome, 'Banco') AS nome, ultima_sync
+      FROM openfinance_items
+      WHERE status = 'ativo'
+        AND next_auto_sync IS NULL
+        AND (ultima_sync IS NULL OR ultima_sync < NOW() - INTERVAL '48 hours')
+      ORDER BY ultima_sync ASC NULLS FIRST
+    `);
+    if (!stales.length) return;
+    const top = stales[0];
+    const horas = top.ultima_sync ? Math.round((Date.now() - new Date(top.ultima_sync).getTime()) / 36e5) : null;
+    const dias = horas ? Math.floor(horas / 24) : null;
+    const quando = dias ? `${dias} dia(s)` : (horas ? `${horas}h` : 'muito tempo');
+    const extra = stales.length > 1 ? ` (+${stales.length - 1})` : '';
+    await enviarPush(
+      '🔄 Reconectar banco',
+      `${top.nome} sem sincronizar há ${quando}${extra} — abre em meu.pluggy.ai`,
+      '/#financeiro'
+    );
+  } catch (e) {
+    console.error('[Reconectar] Erro:', e.message);
+  }
+});
 
 // Alertas diários de gasto incomum (10h) — só dispara push se tiver alerta relevante
 schedule.scheduleJob('0 10 * * *', async () => {
