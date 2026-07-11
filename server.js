@@ -54,6 +54,8 @@ const apostasRouter = require('./routes/apostas');
 const metasRouter = require('./routes/metas');
 const pjRouter = require('./routes/pj');
 const relatoriosRouter = require('./routes/relatorios');
+const pushRouter = require('./routes/push');
+const { enviarPush } = require('./lib/push');
 
 // Passar wsServer para as rotas
 tasksRouter.setWsServer(wsServer);
@@ -76,6 +78,7 @@ app.use('/api/apostas', requireAuth, apostasRouter);
 app.use('/api/metas', requireAuth, metasRouter);
 app.use('/api/pj', requireAuth, pjRouter);
 app.use('/api/relatorios', requireAuth, relatoriosRouter);
+app.use('/api/push', requireAuth, pushRouter);
 
 // Arquivos estaticos (index.html nao requer auth, auth.js vai verificar)
 app.use(express.static('public'));
@@ -147,13 +150,90 @@ async function syncOpenFinanceDiario() {
   try {
     if (!openfinanceRouter.temCredenciais || !openfinanceRouter.temCredenciais()) return;
     const r = await openfinanceRouter.syncAll();
-    if (r && r.erro) console.error('[OpenFinance] Erro no sync automático:', r.erro);
-    else if (r && !r.semItems) console.log(`[OpenFinance] Sync automático: ${r.importadas} nova(s) transação(ões)`);
+    if (r && r.erro) { console.error('[OpenFinance] Erro no sync automático:', r.erro); return; }
+    if (!r || r.semItems) return;
+    console.log(`[OpenFinance] Sync automático: ${r.importadas} nova(s) transação(ões)`);
+    if (r.importadas > 0) {
+      const { all } = require('./lib/db');
+      const hoje = new Date().toISOString().slice(0, 10);
+      const apostas = await all(
+        `SELECT COALESCE(SUM(valor),0) AS total, COUNT(*)::int AS qtd
+         FROM financeiro WHERE data = $1 AND categoria = 'apostas' AND tipo = 'saida'`,
+        [hoje]
+      );
+      const linha = apostas && apostas[0];
+      if (linha && linha.qtd > 0) {
+        const brl = Number(linha.total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        await enviarPush('Apostas de hoje', `Você registrou ${linha.qtd} aposta(s) — R$ ${brl}`, '/#financeiro');
+      } else {
+        await enviarPush('Sync do dia', `${r.importadas} nova(s) transação(ões) sincronizadas`, '/#financeiro');
+      }
+    }
   } catch (e) {
     console.error('[OpenFinance] Erro no sync automático:', e.message);
   }
 }
 schedule.scheduleJob('30 14 * * *', syncOpenFinanceDiario);
+
+// Alertas diários de gasto incomum (10h) — só dispara push se tiver alerta relevante
+schedule.scheduleJob('0 10 * * *', async () => {
+  try {
+    const { all } = require('./lib/db');
+    const rows = await all(`
+      SELECT TO_CHAR(data, 'YYYY-MM') AS mes, categoria, SUM(valor) AS total
+      FROM financeiro
+      WHERE tipo = 'saida' AND data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+      GROUP BY mes, categoria
+    `);
+    const mesAtual = new Date().toISOString().substring(0, 7);
+    const porCat = {};
+    rows.forEach(r => {
+      if (!porCat[r.categoria]) porCat[r.categoria] = { atual: 0, anteriores: [] };
+      if (r.mes === mesAtual) porCat[r.categoria].atual = Number(r.total);
+      else porCat[r.categoria].anteriores.push(Number(r.total));
+    });
+    const alertas = [];
+    Object.entries(porCat).forEach(([cat, d]) => {
+      if (!d.anteriores.length || d.atual <= 0) return;
+      const media = d.anteriores.reduce((s, v) => s + v, 0) / d.anteriores.length;
+      if (media > 0 && d.atual > media * 1.5 && (d.atual - media) > 50) {
+        alertas.push({ categoria: cat, atual: d.atual, media, diferenca: d.atual - media });
+      }
+    });
+    if (alertas.length) {
+      alertas.sort((a, b) => b.diferenca - a.diferenca);
+      const top = alertas[0];
+      const acima = Math.round((top.atual / top.media - 1) * 100);
+      const brl = Number(top.atual).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const extra = alertas.length > 1 ? ` (+${alertas.length - 1} categoria(s))` : '';
+      await enviarPush(
+        'Gasto acima da média',
+        `${top.categoria}: R$ ${brl} — ${acima}% acima da média${extra}`,
+        '/#financeiro'
+      );
+    }
+  } catch (e) {
+    console.error('[Alertas] Erro:', e.message);
+  }
+});
+
+// DAS do MEI — se estiver entre dia 17 e 19 e não pago, lembra às 9h
+schedule.scheduleJob('0 9 * * *', async () => {
+  try {
+    const hoje = new Date();
+    const dia = hoje.getDate();
+    if (dia < 17 || dia > 19) return;
+    const { get } = require('./lib/db');
+    const ym = hoje.toISOString().slice(0, 7);
+    const das = await get(`SELECT pago FROM mei_das WHERE ym = $1`, [ym]);
+    if (das && das.pago) return;
+    const faltam = 20 - dia;
+    const msg = faltam === 0 ? 'DAS vence hoje!' : `DAS vence em ${faltam} dia(s) (dia 20)`;
+    await enviarPush('Lembrete DAS', msg, '/#pj');
+  } catch (e) {
+    console.error('[DAS Reminder] Erro:', e.message);
+  }
+});
 
 // Enviar mensagem Telegram
 function enviarTelegram(mensagem) {

@@ -624,6 +624,19 @@
         <h3>Sem alarmes</h3>
         <p>Crie um alarme pra não esquecer das coisas importantes</p>
       </div>
+
+      <div class="form-card" style="margin-top:20px;">
+        <h3 style="margin:0 0 6px 0; font-size:16px;">🔔 Notificações Push</h3>
+        <p class="page-subtitle" id="push-status" style="margin:0 0 12px 0;">Verificando…</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-primary" id="push-btn-ativar" onclick="ativarPush()" style="display:none;">Ativar notificações</button>
+          <button class="btn-secondary" id="push-btn-desativar" onclick="desativarPush()" style="display:none;">Desativar</button>
+          <button class="btn-secondary" id="push-btn-testar" onclick="testarPush()" style="display:none;">Enviar teste</button>
+        </div>
+        <p style="margin:10px 0 0 0; font-size:12px; color:var(--text-muted);">
+          Você vai receber avisos de gastos incomuns (10h), sync do dia (14h30) e DAS vencendo (dia 17–19, às 9h).
+        </p>
+      </div>
     </section>
 
     <!-- TAB: Calendário -->
@@ -792,5 +805,135 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="app.js"></script>
+  <script>
+    // ==================== Web Push (Service Worker) ====================
+    let __pushConfig = null;
+    let __pushRegistration = null;
+
+    function _urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const b64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = atob(b64);
+      const out = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+      return out;
+    }
+
+    async function _atualizarUiPush() {
+      const status = document.getElementById('push-status');
+      const btnA = document.getElementById('push-btn-ativar');
+      const btnD = document.getElementById('push-btn-desativar');
+      const btnT = document.getElementById('push-btn-testar');
+      if (!status) return;
+
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        status.textContent = 'Este navegador não suporta push. (Tenta abrir o app instalado como PWA.)';
+        return;
+      }
+      if (!__pushConfig || !__pushConfig.ativo) {
+        status.textContent = 'Push desabilitado no servidor (VAPID ausente).';
+        return;
+      }
+      if (Notification.permission === 'denied') {
+        status.textContent = 'Permissão de notificação BLOQUEADA — libere nas configurações do navegador.';
+        return;
+      }
+
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = reg ? await reg.pushManager.getSubscription() : null;
+      if (sub) {
+        status.textContent = '✅ Notificações ativas neste dispositivo';
+        btnA.style.display = 'none';
+        btnD.style.display = '';
+        btnT.style.display = '';
+      } else {
+        status.textContent = 'Notificações desativadas neste dispositivo';
+        btnA.style.display = '';
+        btnD.style.display = 'none';
+        btnT.style.display = 'none';
+      }
+    }
+
+    async function ativarPush() {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          if (typeof toast === 'function') toast('Este navegador não suporta push', 'error');
+          return;
+        }
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          if (typeof toast === 'function') toast('Permissão negada', 'error');
+          return;
+        }
+        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js');
+        const reg = __pushRegistration;
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _urlBase64ToUint8Array(__pushConfig.publicKey)
+        });
+        const r = await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub })
+        });
+        if (!r.ok) {
+          if (typeof toastErro === 'function') return toastErro(r, 'Falha ao salvar subscription');
+          if (typeof toast === 'function') toast('Falha ao salvar subscription', 'error');
+          return;
+        }
+        if (typeof toast === 'function') toast('Notificações ativadas 🔔', 'success');
+        _atualizarUiPush();
+      } catch (e) {
+        console.error('[Push] ativar falhou:', e);
+        if (typeof toast === 'function') toast('Erro ao ativar: ' + e.message, 'error');
+      }
+    }
+
+    async function desativarPush() {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        if (sub) {
+          await fetch('/api/push/unsubscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint: sub.endpoint })
+          }).catch(() => {});
+          await sub.unsubscribe();
+        }
+        if (typeof toast === 'function') toast('Notificações desativadas', 'info');
+        _atualizarUiPush();
+      } catch (e) {
+        console.error('[Push] desativar falhou:', e);
+      }
+    }
+
+    async function testarPush() {
+      try {
+        const r = await fetch('/api/push/test', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          if (typeof toast === 'function') toast('Falha no teste', 'error');
+          return;
+        }
+        if (typeof toast === 'function') toast(`Push enviada (${d.enviadas || 0} dispositivo(s))`, 'success');
+      } catch (e) {
+        if (typeof toast === 'function') toast('Erro: ' + e.message, 'error');
+      }
+    }
+
+    // Boot: registra SW se possível e carrega config
+    (async function () {
+      try {
+        if (!('serviceWorker' in navigator)) return _atualizarUiPush();
+        __pushRegistration = await navigator.serviceWorker.register('/sw.js').catch(() => null);
+        const r = await fetch('/api/push/config');
+        if (r.ok) __pushConfig = await r.json();
+        _atualizarUiPush();
+      } catch (e) {
+        console.error('[Push] boot:', e);
+      }
+    })();
+  </script>
 </body>
 </html>
