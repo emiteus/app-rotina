@@ -3726,6 +3726,45 @@ html, body { height: auto !important; min-height: 100%; overflow: visible !impor
 body { overflow-x: hidden !important; }
 .main { overflow: visible; height: auto !important; }
 
+/* v14: sidebar FIXA no desktop (era rolando junto com o content) + ícones SVG monocromáticos */
+@media (min-width: 769px) {
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    z-index: 50 !important;
+  }
+  .main {
+    margin-left: 72px !important;
+  }
+}
+
+/* Ícones SVG: cor via currentColor (herda do parent color) */
+.nav-icon svg,
+.logo-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  color: currentColor;
+  filter: none !important; /* remove qualquer filter grayscale antigo dos emojis */
+}
+.sidebar .nav-btn .nav-icon,
+.sidebar .logo-icon {
+  filter: none !important;
+  color: var(--text-secondary);
+}
+.sidebar .nav-btn:hover .nav-icon {
+  color: var(--text-primary);
+}
+.sidebar .nav-btn.active .nav-icon {
+  color: var(--accent) !important;
+  filter: none !important;
+}
+.sidebar .logo-icon {
+  color: var(--accent);
+}
+
 /* ============================================================
    REDESIGN v6 — proporção Kirvano (cards compactos, não gigantes)
    ============================================================ */
