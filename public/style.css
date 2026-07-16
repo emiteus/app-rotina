@@ -3465,3 +3465,169 @@ h2 {
 .mini-up { color: var(--accent) !important; }
 .mini-down { color: var(--danger) !important; }
 
+/* ============================================================
+   REDESIGN v3 — matar todas as cores decorativas restantes
+   Barras multicolor, chips coloridos, timeline uppercase, emojis inline.
+   ============================================================ */
+
+/* Todas as barras de progresso: UMA cor só (verde neon uniforme) */
+.bar-fill-alta,
+.bar-fill-media,
+.bar-fill-baixa,
+.bar-fill-trabalho,
+.bar-fill-pessoal,
+.bar-fill-saude,
+.bar-fill-estudos,
+.bar-fill-geral,
+.bar-fill,
+.card-bar-fill,
+.progress-fill {
+  background: var(--accent) !important;
+  background-image: none !important;
+}
+
+/* Aniquila TODOS os gradientes de fundo decorativos */
+.quick-add-section,
+.stat-card,
+.form-card,
+.panel,
+.mini-item,
+.finance-box,
+.card,
+[class*="card-gradient"] {
+  background-image: none !important;
+}
+.card-gradient-blue::before,
+.card-gradient-green::before,
+.card-gradient-orange::before,
+.card-gradient-purple::before,
+.card-gradient-red::before,
+.card::before {
+  display: none !important;
+}
+
+/* Chips de prioridade: outline discreto, cor sutil */
+.badge-alta,
+.badge-media,
+.badge-baixa,
+[class*="badge-prio"],
+[class*="prio-tag"] {
+  background: transparent !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-secondary) !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  font-size: 10px !important;
+  text-transform: lowercase !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+.badge-alta { color: #ff8a92 !important; border-color: rgba(255,92,104,0.3) !important; }
+.badge-media { color: #d4a55a !important; border-color: rgba(255,181,71,0.3) !important; }
+.badge-baixa { color: #7ee0b0 !important; border-color: rgba(45,241,159,0.3) !important; }
+
+/* Timeline do dia: sub-headers sem uppercase, emojis dessaturados */
+.timeline-periodo,
+.timeline-periodo-header,
+[class*="timeline-tasks-"] > .titulo {
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+  font-size: 13px !important;
+}
+
+/* Emojis inline em labels/headers ficam dessaturados (sem virar cinza total) */
+.timeline-periodo::first-letter,
+.section-title::first-letter,
+.card-label::first-letter,
+h2::first-letter {
+  filter: saturate(0.4);
+}
+
+/* Chart legends: bullets monocromáticos */
+.legend-dot,
+[class*="legend-dot-"] {
+  background: var(--text-muted) !important;
+}
+.legend-dot.concluidas,
+.legend-dot-verde {
+  background: var(--accent) !important;
+}
+
+/* Barras dos filtros do dashboard (Todas/Pendentes/Concluídas) sem cor forte */
+.filter-btn { background: var(--bg-secondary) !important; }
+.filter-btn.active {
+  background: var(--bg-tertiary) !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+/* Barras horizontal (categoria/prioridade): trilho + fill uniformes */
+[class*="bar-track"],
+.bar-container {
+  background: rgba(255,255,255,0.05) !important;
+  border-radius: 6px !important;
+}
+
+/* Botão "Linha/Barra" — CTA verde chapado */
+.chart-btn {
+  background: transparent !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-secondary) !important;
+  padding: 6px 14px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+}
+.chart-btn.active {
+  background: var(--accent) !important;
+  color: #072418 !important;
+  border-color: var(--accent) !important;
+}
+
+/* Ver todas → / Gerenciar → : verde discreto */
+.link-btn { color: var(--accent) !important; font-weight: 500 !important; }
+.link-btn:hover { color: var(--accent-hover) !important; }
+
+/* Stat-boxes com hover mais sutil */
+.stat-box, .stat-card {
+  background-image: none !important;
+  background: var(--bg-card) !important;
+}
+
+/* "Por Categoria" / "Por Prioridade" headers */
+[class*="por-categoria"] h3,
+[class*="por-prioridade"] h3 {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+}
+
+/* Botões grandes tipo "Adicionar" — verde chapado uniforme */
+button.btn-primary,
+input[type="submit"] {
+  background-image: none !important;
+}
+
+/* XP bar + estrela: menos protagonismo */
+.xp-container,
+[class*="nivel-badge"] {
+  opacity: 0.6;
+}
+
+/* Números dos stat-cards em branco (garante) */
+.stat-value,
+.stat-num,
+.stat-box-num,
+.dashboard-stat-num {
+  background: none !important;
+  background-image: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+  color: var(--text-primary) !important;
+}
+

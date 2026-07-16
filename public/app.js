@@ -4404,8 +4404,8 @@ function atualizarDashboard() {
   });
   const saldo = entradas - saidas;
   document.getElementById('dash-saldo').textContent = formatBRL(saldo);
-  document.getElementById('dash-entradas').textContent = formatBRL(entradas).replace('R$ ', '');
-  document.getElementById('dash-saidas').textContent = formatBRL(saidas).replace('R$ ', '');
+  document.getElementById('dash-entradas').textContent = formatBRL(entradas).replace(/^R\$\s*/, '');
+  document.getElementById('dash-saidas').textContent = formatBRL(saidas).replace(/^R\$\s*/, '');
 
   // Alarmes
   const alarmesAtivos = allAlarms.filter(a => a.ativo !== false).length;
