@@ -105,8 +105,13 @@
       <div class="panel dashboard-chart-hero" style="margin-bottom: 24px;">
         <div class="panel-header">
           <div>
-            <div class="card-label" style="margin-bottom:6px;">Atividade — 30 dias</div>
+            <div class="card-label" style="margin-bottom:6px;">Atividade — <span id="chart-range-label">30 dias</span></div>
             <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">· <span id="stats-taxa">0</span>% conclusão</span></div>
+          </div>
+          <div class="chart-range-toggle">
+            <button class="chart-range-btn" data-range="7" onclick="setChartRange(7); document.getElementById('chart-range-label').textContent='7 dias'">7d</button>
+            <button class="chart-range-btn" data-range="15" onclick="setChartRange(15); document.getElementById('chart-range-label').textContent='15 dias'">15d</button>
+            <button class="chart-range-btn active" data-range="30" onclick="setChartRange(30); document.getElementById('chart-range-label').textContent='30 dias'">30d</button>
           </div>
         </div>
         <div class="chart-container">
