@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
              COALESCE(SUM(CASE WHEN tipo='saida'   THEN valor END),0) AS saidas
       FROM financeiro
       WHERE data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+        AND data < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY ym
       ORDER BY ym DESC`);
     res.json({

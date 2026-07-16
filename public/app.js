@@ -1282,7 +1282,10 @@ async function carregarRelatorios() {
   if (painel) painel.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
   try {
     _relLista = await fetch('/api/relatorios').then(x => x.json());
-    const ym = (_relLista.meses[0] && _relLista.meses[0].ym) || new Date().toISOString().substring(0, 7);
+    const ymAtual = new Date().toISOString().substring(0, 7);
+    // Prefere mês atual se houver movimentação; senão pega o mais recente da lista
+    const temAtual = (_relLista.meses || []).some(m => m.ym === ymAtual);
+    const ym = temAtual ? ymAtual : ((_relLista.meses[0] && _relLista.meses[0].ym) || ymAtual);
     _relAtual = await fetch(`/api/relatorios/${ym}`).then(x => x.json());
   } catch (e) { _relLista = null; _relAtual = null; }
   renderRelatorios();

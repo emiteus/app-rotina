@@ -344,7 +344,12 @@ async function syncItem(apiKey, itemId) {
       for (const t of results) {
         const dataUso = (t.date || '').split('T')[0] || new Date().toISOString().split('T')[0];
         if (dataUso < fromStr) { parar = true; continue; } // mais antiga que a janela → para
-        const tipo = (t.type === 'CREDIT' || Number(t.amount) > 0) ? 'entrada' : 'saida';
+        // Cartão de crédito (CREDIT): amount+ = compra (saída), amount- = estorno/pagamento (entrada).
+        // Conta bancária (BANK): amount+ ou type=CREDIT = entrada, senão saída.
+        const ehCartao = conta.type === 'CREDIT';
+        const tipo = ehCartao
+          ? (Number(t.amount) > 0 ? 'saida' : 'entrada')
+          : ((t.type === 'CREDIT' || Number(t.amount) > 0) ? 'entrada' : 'saida');
         const valor = Math.abs(Number(t.amount) || 0);
         if (valor === 0) { ignoradas++; continue; }
         const extId = `pluggy:${t.id}`;
@@ -429,5 +434,26 @@ router.delete('/items/:itemId', async (req, res) => {
 });
 
 router.setWsServer = function (ws) { wsServer = ws; };
+
+// =====================================================
+// BACKFILL CARTÕES — apaga transações Pluggy de contas CREDIT e re-sincroniza
+// (uso pontual após fix do bug de sinal invertido no sync)
+// =====================================================
+router.post('/backfill-cartoes', async (req, res) => {
+  try {
+    const cartoes = await all(`SELECT account_id FROM openfinance_accounts WHERE tipo = 'CREDIT'`);
+    if (cartoes.length === 0) return res.status(400).json({ erro: 'Nenhuma conta CREDIT encontrada.' });
+    const ids = cartoes.map(c => c.account_id);
+    const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
+    const del = await run(`DELETE FROM financeiro WHERE fonte = 'pluggy' AND account_id IN (${placeholders})`, ids);
+    const sync = await syncAll();
+    res.json({ ok: true, cartoes: ids.length, deletadas: del.rowCount, importadas: sync.importadas, ignoradas: sync.ignoradas });
+  } catch (err) {
+    if (err.code === 'PLUGGY_NAO_CONFIGURADO') {
+      return res.status(400).json({ erro: 'Open Finance não configurado.' });
+    }
+    res.status(500).json({ erro: err.response?.data?.message || err.message });
+  }
+});
 
 module.exports = router;
