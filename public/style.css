@@ -3631,3 +3631,97 @@ input[type="submit"] {
   color: var(--text-primary) !important;
 }
 
+/* ============================================================
+   REDESIGN v4 — dashboard minimalista real (só 3 blocos)
+   ============================================================ */
+
+/* Paleta mais fiel ao Kirvano */
+:root {
+  --bg-primary: #050608;
+  --bg-secondary: #0a0c10;
+  --bg-tertiary: #0f1216;
+  --bg-card: #0f1216;
+  --bg-card-hover: #14171c;
+  --card-bg: #0f1216;
+  --border: rgba(255, 255, 255, 0.04);
+  --border-strong: rgba(255, 255, 255, 0.08);
+  --text-primary: #ffffff;
+  --text-secondary: #7d8087;
+  --text-muted: #4a4d54;
+}
+
+/* Cards do dashboard: espaço interno maior, borda praticamente ausente */
+.dashboard-kpi-grid {
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 16px !important;
+  margin-bottom: 24px !important;
+}
+.dashboard-kpi-grid .card {
+  padding: 26px 28px !important;
+  min-height: 152px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.dashboard-kpi-grid .card-value {
+  font-size: 32px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+  margin: 6px 0 0 !important;
+}
+.dashboard-kpi-grid .card-label {
+  font-size: 14px !important;
+  color: var(--text-secondary) !important;
+  font-weight: 400 !important;
+  margin-bottom: 0 !important;
+}
+.dashboard-kpi-grid .card-mini {
+  color: var(--text-muted) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+.dashboard-kpi-grid .card-mini .mini-up { color: var(--accent) !important; margin-right: 12px; }
+.dashboard-kpi-grid .card-mini .mini-down { color: var(--danger) !important; }
+
+/* Chart hero */
+.dashboard-chart-hero {
+  padding: 24px 28px !important;
+}
+.dashboard-chart-hero .panel-header {
+  margin-bottom: 20px !important;
+  align-items: flex-start;
+}
+.dashboard-chart-hero .chart-container {
+  min-height: 260px;
+  height: 320px;
+}
+.dashboard-chart-hero .card-value {
+  color: var(--text-primary);
+}
+
+/* Mobile: KPI empilhado */
+@media (max-width: 768px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-kpi-grid .card { padding: 20px !important; min-height: unset; }
+  .dashboard-kpi-grid .card-value { font-size: 28px !important; }
+  .dashboard-chart-hero { padding: 20px !important; }
+  .dashboard-chart-hero .chart-container { height: 240px; }
+}
+
+/* Panel padrão mais espaçoso */
+.panel { padding: 24px 28px; }
+.panel-header { margin-bottom: 18px; }
+.panel-header h3 {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: -0.005em;
+}
+
+/* Body sem overflow-hidden pra scroll natural do dashboard */
+body { overflow-y: auto; overflow-x: hidden; }
+.main { overflow: visible; }
+

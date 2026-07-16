@@ -62,125 +62,55 @@
   <!-- Main Content -->
   <main class="main">
 
-    <!-- TAB: Dashboard -->
+    <!-- TAB: Dashboard (redesign minimalista) -->
     <section id="dashboard" class="tab-content active">
       <div class="page-header">
         <div>
           <h1><span id="saudacao">Boa noite</span></h1>
-          <p class="page-subtitle">Seu desempenho nos últimos 30 dias</p>
-        </div>
-        <div style="display: flex; gap: 12px;">
-          <button class="quick-btn" onclick="abrirResumoDiario()" style="background: rgba(245, 166, 35, 0.15); border: 2px solid rgba(245, 166, 35, 0.3); min-width: 50px; padding: 8px;">
-            <span>📊</span>
-          </button>
+          <p class="page-subtitle">Últimos 30 dias</p>
         </div>
       </div>
 
-      <!-- XP Display -->
-      <div id="player-xp" style="margin-bottom: 20px;"></div>
-
-      <!-- Quick Add Section -->
-      <div class="quick-add-section">
-        <div class="quick-add-header">Ação Rápida</div>
-        <div class="quick-add-buttons">
-          <button class="quick-btn quick-btn-task" onclick="abrirQuickAddModal('tarefa')">
-            <span>Tarefa</span>
-          </button>
-          <button class="quick-btn quick-btn-money" onclick="abrirQuickAddModal('transacao')">
-            <span>Transação</span>
-          </button>
-          <button class="quick-btn quick-btn-event" onclick="abrirQuickAddModal('evento')">
-            <span>Evento</span>
-          </button>
-          <button class="quick-btn" onclick="abrirPomodoro()">
-            <span>Pomodoro</span>
-          </button>
-          <button class="quick-btn" onclick="abrirConfigOrcamentos()">
-            <span>Orçamento</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="cards-grid">
+      <!-- 3 KPI cards, tipo Kirvano -->
+      <div class="cards-grid dashboard-kpi-grid">
         <div class="card">
-          <div class="card-label">Tarefas Hoje</div>
-          <div class="card-value">
-            <span id="dash-tarefas-concluidas">0</span>/<span id="dash-tarefas-total">0</span>
-          </div>
-          <div class="card-bar">
-            <div class="card-bar-fill" id="dash-tarefas-bar" style="width: 0%"></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-label">Saldo Total</div>
+          <div class="card-label">Saldo total</div>
           <div class="card-value" id="dash-saldo">R$ 0,00</div>
-          <div class="card-mini">
+          <div class="card-mini" style="margin-top:12px;">
             <span class="mini-up">+ <span id="dash-entradas">0,00</span></span>
             <span class="mini-down">− <span id="dash-saidas">0,00</span></span>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-label">Alarmes Ativos</div>
-          <div class="card-value" id="dash-alarmes">0</div>
-          <div class="card-mini">
-            <span id="dash-proximo-alarme">Nenhum agendado</span>
+          <div class="card-label">Tarefas hoje</div>
+          <div class="card-value">
+            <span id="dash-tarefas-concluidas">0</span>/<span id="dash-tarefas-total">0</span>
+          </div>
+          <div class="card-bar" style="margin-top:16px;">
+            <div class="card-bar-fill" id="dash-tarefas-bar" style="width: 0%"></div>
           </div>
         </div>
 
         <div class="card">
-          <div class="card-label">Streak Atual</div>
+          <div class="card-label">Streak atual</div>
           <div class="card-value"><span id="dash-streak">0</span> dias</div>
-          <div class="card-mini">
+          <div class="card-mini" style="margin-top:12px;">
             <span>Seguidos completando tarefas</span>
           </div>
         </div>
       </div>
 
-      <!-- Stats 30 dias -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 class="section-title">Desempenho — Últimos 30 dias</h2>
-        <div class="chart-toggle">
-          <button class="chart-btn active" data-type="line" onclick="alternarTipoGrafico('line')">
-            <span>Linha</span>
-          </button>
-          <button class="chart-btn" data-type="bar" onclick="alternarTipoGrafico('bar')">
-            <span>Barra</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="stat-box-icon">✅</div>
-          <div class="stat-box-num" id="stats-concluidas">0</div>
-          <div class="stat-box-label">Tarefas Concluídas</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-box-icon">📈</div>
-          <div class="stat-box-num"><span id="stats-taxa">0</span>%</div>
-          <div class="stat-box-label">Taxa de Conclusão</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-box-icon">📅</div>
-          <div class="stat-box-num" id="stats-media">0</div>
-          <div class="stat-box-label">Média / dia</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-box-icon">🏆</div>
-          <div class="stat-box-num" id="stats-melhor-taxa">0%</div>
-          <div class="stat-box-label" id="stats-melhor-dia">Melhor dia</div>
-        </div>
-      </div>
-
-      <!-- Gráfico de barras -->
-      <div class="panel">
+      <!-- Chart hero: um único gráfico grande, sem 4 mini stat cards redundantes -->
+      <div class="panel dashboard-chart-hero" style="margin-bottom: 24px;">
         <div class="panel-header">
-          <h3>Atividade Diária (30 dias)</h3>
-          <div class="legend">
-            <span class="legend-item"><span class="legend-dot legend-dot-completed"></span>Concluídas</span>
-            <span class="legend-item"><span class="legend-dot legend-dot-total"></span>Total</span>
+          <div>
+            <div class="card-label" style="margin-bottom:6px;">Atividade — 30 dias</div>
+            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">· <span id="stats-taxa">0</span>% conclusão</span></div>
+          </div>
+          <div class="chart-toggle" style="display:flex; gap:6px;">
+            <button class="chart-btn active" data-type="line" onclick="alternarTipoGrafico('line')">Linha</button>
+            <button class="chart-btn" data-type="bar" onclick="alternarTipoGrafico('bar')">Barra</button>
           </div>
         </div>
         <div class="chart-container">
@@ -188,67 +118,29 @@
         </div>
       </div>
 
-      <div class="dashboard-row">
-        <!-- Distribuição por categoria -->
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Por Categoria</h3>
-          </div>
-          <div id="chart-categorias"></div>
+      <!-- Últimas transações — lista discreta com link pra Financeiro -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Últimas transações</h3>
+          <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas →</button>
         </div>
-
-        <!-- Distribuição por prioridade -->
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Por Prioridade</h3>
-          </div>
-          <div id="chart-prioridades"></div>
-        </div>
+        <div id="dash-transacoes-list" class="mini-list"></div>
       </div>
 
-      <div class="dashboard-row">
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Top Tarefas Pendentes</h3>
-            <button class="link-btn" onclick="trocarAba('rotina')">Ver todas →</button>
-          </div>
-          <div id="dash-tarefas-list" class="mini-list"></div>
-        </div>
-
-        <!-- Timeline do Dia -->
-        <div class="panel">
-          <div class="panel-header">
-            <h3>📍 Timeline do Dia</h3>
-            <button class="link-btn" onclick="trocarAba('rotina')">Gerenciar →</button>
-          </div>
-          <div class="timeline-container">
-            <div class="timeline-period" id="timeline-manha">
-              <div class="timeline-label">☀️ Manhã</div>
-              <div class="timeline-tasks" id="timeline-tasks-manha"></div>
-            </div>
-            <div class="timeline-period" id="timeline-tarde">
-              <div class="timeline-label">🌤️ Tarde</div>
-              <div class="timeline-tasks" id="timeline-tasks-tarde"></div>
-            </div>
-            <div class="timeline-period" id="timeline-noite">
-              <div class="timeline-label">🌙 Noite</div>
-              <div class="timeline-tasks" id="timeline-tasks-noite"></div>
-            </div>
-            <div class="timeline-period" id="timeline-sem-hora">
-              <div class="timeline-label">❓ Sem Hora</div>
-              <div class="timeline-tasks" id="timeline-tasks-sem-hora"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Últimas Transações</h3>
-            <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas →</button>
-          </div>
-          <div id="dash-transacoes-list" class="mini-list"></div>
-        </div>
-      </div>
+      <!-- IDs escondidos que o app.js escreve mas não devem aparecer visualmente -->
+      <div id="player-xp" style="display:none;"></div>
+      <div id="dash-alarmes" style="display:none;">0</div>
+      <div id="dash-proximo-alarme" style="display:none;"></div>
+      <div id="dash-tarefas-list" style="display:none;"></div>
+      <div id="chart-categorias" style="display:none;"></div>
+      <div id="chart-prioridades" style="display:none;"></div>
+      <div id="stats-media" style="display:none;">0</div>
+      <div id="stats-melhor-taxa" style="display:none;">0%</div>
+      <div id="stats-melhor-dia" style="display:none;"></div>
+      <div id="timeline-tasks-manha" style="display:none;"></div>
+      <div id="timeline-tasks-tarde" style="display:none;"></div>
+      <div id="timeline-tasks-noite" style="display:none;"></div>
+      <div id="timeline-tasks-sem-hora" style="display:none;"></div>
     </section>
 
     <!-- TAB: Rotina -->
