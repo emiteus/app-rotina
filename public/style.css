@@ -4315,13 +4315,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .flatpickr-weekdays {
   background: transparent !important;
 }
-.flatpickr-weekday {
+.flatpickr-weekday,
+.flatpickr-weekdays .flatpickr-weekday,
+span.flatpickr-weekday {
   color: var(--text-muted) !important;
   background: transparent !important;
   font-weight: 500 !important;
   font-size: 11px !important;
   text-transform: none !important;
 }
+/* flatpickr às vezes usa cor default vermelha em weekend — força cinza uniforme */
+.flatpickr-weekdays * { color: var(--text-muted) !important; }
 .dayContainer {
   padding: 6px !important;
 }
@@ -4365,24 +4369,41 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .flatpickr-time {
   border-top: 1px solid var(--border) !important;
   background: transparent !important;
+  color: var(--text-primary) !important;
 }
 .flatpickr-time input {
   color: var(--text-primary) !important;
   background: transparent !important;
-  font-size: 14px !important;
+  font-size: 15px !important;
   font-weight: 500 !important;
+  /* remove seleção azul default do browser */
+  caret-color: var(--accent) !important;
 }
+.flatpickr-time input::selection { background: var(--accent-dim) !important; }
 .flatpickr-time .flatpickr-am-pm:hover,
 .flatpickr-time input:hover,
 .flatpickr-time .flatpickr-am-pm:focus,
 .flatpickr-time input:focus {
   background: var(--bg-tertiary) !important;
+  color: var(--accent) !important;
+}
+.flatpickr-time .flatpickr-time-separator,
+.flatpickr-time .flatpickr-am-pm {
+  color: var(--text-primary) !important;
 }
 .flatpickr-time .numInputWrapper span.arrowUp:after {
   border-bottom-color: var(--accent) !important;
 }
 .flatpickr-time .numInputWrapper span.arrowDown:after {
   border-top-color: var(--accent) !important;
+}
+/* Highlighted (o "10" selecionado no time picker) — foco verde em vez de azul */
+.flatpickr-time input.flatpickr-hour:focus,
+.flatpickr-time input.flatpickr-minute:focus,
+.flatpickr-time input:focus {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  outline: none !important;
 }
 .flatpickr-input[type="hidden"] + input {
   background: var(--bg-secondary) !important;
