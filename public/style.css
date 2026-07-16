@@ -3810,11 +3810,22 @@ body { overflow-y: auto; overflow-x: hidden; }
   margin-bottom: 6px !important;
 }
 
-/* Desktop: main com padding normal, sem centralização exagerada */
+/* Desktop: main com padding + max-width pra não esticar */
 @media (min-width: 769px) {
   .main {
-    padding: 28px 32px 32px !important;
+    padding: 40px 48px 48px !important;
+    max-width: 1240px !important;
+    margin: 0 auto !important;
   }
+  /* Cards com padding maior agora que não vão esticar tanto */
+  .dashboard-kpi-grid .card {
+    padding: 26px 30px !important;
+    min-height: 128px !important;
+  }
+  .dashboard-kpi-grid .card-value { font-size: 26px !important; }
+  .dashboard-chart-hero { padding: 26px 30px !important; }
+  .dashboard-chart-hero .chart-container { height: 300px !important; }
+  #dashboard .panel { padding: 24px 28px !important; }
 }
 
 @media (max-width: 768px) {
