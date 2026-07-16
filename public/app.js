@@ -1405,15 +1405,15 @@ function renderRelatorios() {
 
     <!-- PF vs PJ -->
     <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
-      <div style="flex:1; min-width:180px; background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-left:3px solid #5b7cfa; border-radius:12px; padding:14px;">
-        <div style="font-size:12px; color:#5b7cfa; font-weight:600; margin-bottom:6px;">Pessoa Física</div>
-        <div style="font-size:12px; padding:2px 0;">Entradas: <b style="color:#3fb950;">+${formatBRL(r.pf.entradas)}</b></div>
-        <div style="font-size:12px; padding:2px 0;">Saídas: <b style="color:#f85149;">−${formatBRL(r.pf.saidas)}</b></div>
+      <div style="flex:1; min-width:180px; background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
+        <div style="font-size:12px; color:var(--text-muted); font-weight:500; margin-bottom:8px; letter-spacing:0.02em;">Pessoa Física</div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; padding:2px 0;"><span style="color:var(--text-muted);">Entradas</span><span style="color:#3fb950;">+${formatBRL(r.pf.entradas)}</span></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; padding:2px 0;"><span style="color:var(--text-muted);">Saídas</span><span style="color:#f85149;">−${formatBRL(r.pf.saidas)}</span></div>
       </div>
-      <div style="flex:1; min-width:180px; background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-left:3px solid #e8950c; border-radius:12px; padding:14px;">
-        <div style="font-size:12px; color:#e8950c; font-weight:600; margin-bottom:6px;">Pessoa Jurídica (MEI)</div>
-        <div style="font-size:12px; padding:2px 0;">Receitas: <b style="color:#3fb950;">+${formatBRL(r.pj.entradas)}</b></div>
-        <div style="font-size:12px; padding:2px 0;">Despesas: <b style="color:#f85149;">−${formatBRL(r.pj.saidas)}</b></div>
+      <div style="flex:1; min-width:180px; background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
+        <div style="font-size:12px; color:var(--text-muted); font-weight:500; margin-bottom:8px; letter-spacing:0.02em;">Pessoa Jurídica · MEI</div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; padding:2px 0;"><span style="color:var(--text-muted);">Receitas</span><span style="color:#3fb950;">+${formatBRL(r.pj.entradas)}</span></div>
+        <div style="display:flex; justify-content:space-between; font-size:12px; padding:2px 0;"><span style="color:var(--text-muted);">Despesas</span><span style="color:#f85149;">−${formatBRL(r.pj.saidas)}</span></div>
       </div>
     </div>
 
@@ -2302,15 +2302,14 @@ async function reconectarConta(itemId) {
   }
 }
 
-function _blocoConsolidado(titulo, d, cor) {
+function _blocoConsolidado(titulo, d) {
   const liquido = d.saldoBanco - d.saldoCredito;
   return `
-    <div style="flex:1; background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-left:3px solid ${cor}; border-radius:12px; padding:16px;">
-      <div style="font-size:13px; font-weight:700; color:${cor}; margin-bottom:10px;">${titulo}</div>
-      <div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0;"><span style="color:var(--text-muted);">Em conta</span><span style="font-weight:600;">${formatBRL(d.saldoBanco)}</span></div>
-      <div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0;"><span style="color:var(--text-muted);">Faturas cartão</span><span style="color:#f5a623;">−${formatBRL(d.saldoCredito)}</span></div>
-      <div style="display:flex; justify-content:space-between; font-size:13px; padding:6px 0 3px; margin-top:4px; border-top:1px solid rgba(255,255,255,0.08);"><span>Líquido</span><span style="font-weight:700; color:${liquido >= 0 ? '#31a24c' : '#f81d13'};">${formatBRL(liquido)}</span></div>
-      <div style="display:flex; justify-content:space-between; font-size:11px; padding:6px 0 0; color:var(--text-muted);"><span>Mês: +${formatBRL(d.entradasMes)}</span><span>−${formatBRL(d.saidasMes)}</span></div>
+    <div style="flex:1; min-width:220px; background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
+      <div style="font-size:12px; font-weight:500; color:var(--text-muted); margin-bottom:12px; letter-spacing:0.02em;">${titulo}</div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0;"><span style="color:var(--text-muted);">Em conta</span><span>${formatBRL(d.saldoBanco)}</span></div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; padding:3px 0;"><span style="color:var(--text-muted);">Faturas cartão</span><span style="color:var(--text-secondary);">−${formatBRL(d.saldoCredito)}</span></div>
+      <div style="display:flex; justify-content:space-between; font-size:13px; padding:8px 0 0; margin-top:8px; border-top:1px solid rgba(255,255,255,0.06);"><span style="color:var(--text-muted);">Líquido</span><span style="font-weight:600; color:${liquido >= 0 ? '#3fb950' : '#f85149'};">${formatBRL(liquido)}</span></div>
     </div>`;
 }
 
@@ -2327,19 +2326,17 @@ function renderContas() {
   const consolidadoHtml = `
     <h2 style="font-size:15px; margin:0 0 12px;">Consolidado</h2>
     <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
-      ${_blocoConsolidado('👤 Pessoa Física', c.PF, '#5b7cfa')}
-      ${_blocoConsolidado('🏢 Pessoa Jurídica (MEI)', c.PJ, '#e8950c')}
+      ${_blocoConsolidado('Pessoa Física', c.PF)}
+      ${_blocoConsolidado('Pessoa Jurídica · MEI', c.PJ)}
     </div>`;
 
   const bancosHtml = dados.contas.map(b => {
     const ehPJ = b.pessoa === 'PJ';
-    const badge = ehPJ
-      ? '<span style="font-size:10px; background:rgba(232,149,12,0.2); color:#e8950c; padding:2px 8px; border-radius:6px;">PJ · MEI</span>'
-      : '<span style="font-size:10px; background:rgba(91,124,250,0.2); color:#5b7cfa; padding:2px 8px; border-radius:6px;">PF</span>';
+    const badge = `<span style="font-size:10px; background:rgba(255,255,255,0.06); color:var(--text-muted); padding:2px 8px; border-radius:6px; letter-spacing:0.02em;">${ehPJ ? 'PJ · MEI' : 'PF'}</span>`;
     const accountsHtml = b.accounts.map(a => `
       <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; color:var(--text-secondary);">
         <span>${a.tipo === 'CREDIT' ? 'Cartão' : 'Conta'} · ${escapeHtml(a.nome || '')}</span>
-        <span style="color:${a.tipo === 'CREDIT' ? '#f5a623' : 'var(--text)'};">${a.tipo === 'CREDIT' ? '−' : ''}${formatBRL(Math.abs(Number(a.saldo)))}</span>
+        <span>${a.tipo === 'CREDIT' ? '−' : ''}${formatBRL(Math.abs(Number(a.saldo)))}</span>
       </div>`).join('');
     const chipSync = _chipStatusSync(b._sync);
     const btnReconectar = (b._sync && b._sync.precisa_reconectar)
@@ -2360,9 +2357,8 @@ function renderContas() {
           </div>
         </div>
         ${accountsHtml}
-        <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); color:var(--text-muted);">
-          <span>Este mês: +${formatBRL(b.entradasMes)} / −${formatBRL(b.saidasMes)}</span>
-          <span>Líquido: ${formatBRL(b.saldoBanco - b.saldoCredito)}</span>
+        <div style="display:flex; justify-content:flex-end; font-size:11px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06); color:var(--text-muted);">
+          <span>Líquido: <span style="color:var(--text-secondary); font-weight:500;">${formatBRL(b.saldoBanco - b.saldoCredito)}</span></span>
         </div>
       </div>`;
   }).join('');
