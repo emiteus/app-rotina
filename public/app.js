@@ -5192,18 +5192,24 @@ function renderTendencias(porDia) {
   const taxas = dias.map(([_, d]) => (d.concluidas / d.total) * 100);
   const taxaMedia = taxas.length > 0 ? taxas.reduce((a, b) => a + b, 0) / taxas.length : 0;
 
-  tendencias.push(`📊 Taxa média: ${Math.round(taxaMedia)}%`);
+  tendencias.push(`Taxa média: ${Math.round(taxaMedia)}%`);
 
   if (dias.length >= 2) {
     const ultimaDias = dias.slice(0, 2);
-    const progressao = ultimaDias[0][1].concluidas > ultimaDias[1][1].concluidas ? 'subindo ↗️' : 'caindo ↘️';
-    tendencias.push(`📉 Tendência está ${progressao}`);
+    const progressao = ultimaDias[0][1].concluidas > ultimaDias[1][1].concluidas ? 'subindo' : 'caindo';
+    const seta = progressao === 'subindo' ? '↗' : '↘';
+    tendencias.push({ label: 'Tendência', value: progressao, arrow: seta });
   }
 
-  tendencias.push(`✅ Total de tarefas: ${allTasks.length}`);
-  tendencias.push(`🔥 Maior dia: ${Object.values(porDia).reduce((max, d) => Math.max(max, d.concluidas), 0)} tarefas`);
+  tendencias.push(`Total de tarefas: ${allTasks.length}`);
+  tendencias.push(`Maior dia: ${Object.values(porDia).reduce((max, d) => Math.max(max, d.concluidas), 0)} tarefas`);
 
-  container.innerHTML = tendencias.map(t => `<div class="tendencia-item">${t}</div>`).join('');
+  container.innerHTML = tendencias.map(t => {
+    if (typeof t === 'string') return `<div class="tendencia-item">${t}</div>`;
+    const seta = t.arrow || '';
+    const cor = t.value === 'subindo' ? 'var(--accent)' : 'var(--danger)';
+    return `<div class="tendencia-item">${t.label}: ${t.value} <span style="color:${cor}; margin-left:6px;">${seta}</span></div>`;
+  }).join('');
 }
 
 // =====================
