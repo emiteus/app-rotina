@@ -3635,19 +3635,19 @@ input[type="submit"] {
    REDESIGN v4 — dashboard minimalista real (só 3 blocos)
    ============================================================ */
 
-/* Paleta mais fiel ao Kirvano */
+/* Paleta Kirvano — BG mais claro (era preto puro) + cards com contraste real */
 :root {
-  --bg-primary: #050608;
-  --bg-secondary: #0a0c10;
-  --bg-tertiary: #0f1216;
-  --bg-card: #0f1216;
-  --bg-card-hover: #14171c;
-  --card-bg: #0f1216;
-  --border: rgba(255, 255, 255, 0.04);
-  --border-strong: rgba(255, 255, 255, 0.08);
-  --text-primary: #ffffff;
-  --text-secondary: #7d8087;
-  --text-muted: #4a4d54;
+  --bg-primary: #0d0f13;
+  --bg-secondary: #12151b;
+  --bg-tertiary: #1a1d24;
+  --bg-card: #181b21;
+  --bg-card-hover: #1e222a;
+  --card-bg: #181b21;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.1);
+  --text-primary: #f2f4f8;
+  --text-secondary: #8b9099;
+  --text-muted: #5a5f68;
 }
 
 /* Cards do dashboard: espaço interno maior, borda praticamente ausente */
