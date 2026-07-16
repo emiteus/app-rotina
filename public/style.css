@@ -3269,3 +3269,199 @@ h2, .section-title { color: var(--text-secondary); font-weight: 500; font-size: 
   color: var(--text-primary) !important;
   box-shadow: var(--shadow-lg) !important;
 }
+
+/* ============================================================
+   REDESIGN v2 — passar mais perto do Kirvano
+   Sem uppercase. Sem emojis decorativos. Números em branco.
+   Sidebar desktop só com ícones. Labels em Sentence case.
+   ============================================================ */
+
+/* Aniquila todos os uppercases + tracking pesado */
+.card-label,
+.stat-label,
+.stat-box-label,
+.quick-add-header,
+.section-title,
+h2 {
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+  font-weight: 400 !important;
+}
+
+.card-label,
+.quick-add-header {
+  font-size: 13px !important;
+  color: var(--text-secondary) !important;
+}
+
+.stat-box-label,
+.stat-label {
+  font-size: 13px !important;
+  color: var(--text-secondary) !important;
+}
+
+.section-title,
+h2 {
+  font-size: 15px !important;
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+/* Números principais em BRANCO, não neon */
+.card-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+/* Cards de estatística: sem gradiente colorido, sem ícone gigante */
+.stat-box {
+  padding: 22px 20px;
+}
+.stat-box:hover {
+  transform: none;
+  border-color: var(--border-strong);
+}
+.stat-box-icon {
+  display: none;
+}
+.stat-box-num,
+.stat-num {
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+  font-size: 30px !important;
+  letter-spacing: -0.02em !important;
+  margin-bottom: 6px !important;
+}
+
+/* Saudação sem exclamação/emoji: peso menor */
+#dashboard .page-header h1 {
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+/* Sidebar desktop: só ícones (72px) */
+@media (min-width: 769px) {
+  .sidebar {
+    width: 72px !important;
+    padding: 24px 8px !important;
+  }
+  .sidebar .logo-text,
+  .sidebar .nav-btn span:not(.nav-icon),
+  .sidebar .sidebar-footer {
+    display: none !important;
+  }
+  .sidebar .logo {
+    justify-content: center;
+    margin-bottom: 24px;
+    padding: 0;
+  }
+  .nav-btn {
+    justify-content: center;
+    padding: 12px !important;
+    border-radius: 10px !important;
+  }
+  .nav-btn.active {
+    background: var(--bg-tertiary) !important;
+    color: var(--accent) !important;
+    box-shadow: none !important;
+  }
+  .nav-btn .nav-icon {
+    font-size: 20px;
+    filter: grayscale(0.6);
+  }
+  .nav-btn.active .nav-icon {
+    filter: none;
+  }
+  /* Main respira mais */
+  .main {
+    padding: 32px 40px 40px !important;
+  }
+}
+
+/* Botão "Linha/Barra" chart toggle no estilo Kirvano (verde chapado no ativo) */
+.chart-toggle-btn,
+.filter-btn {
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-secondary) !important;
+  border-radius: 8px !important;
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  transition: all var(--transition);
+}
+.chart-toggle-btn.active,
+.filter-btn.active {
+  background: var(--accent) !important;
+  color: #072418 !important;
+  border-color: var(--accent) !important;
+}
+
+/* Chip verde discreto (tipo "+740.2%" do Kirvano) */
+.badge-positive,
+.chip-verde,
+.status-badge-ok {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  border: none !important;
+  padding: 3px 10px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* Barra de XP simples ao invés de gradiente colorido */
+.xp-bar-fill,
+.progress-fill {
+  background: var(--accent) !important;
+}
+
+/* Container de "AÇÃO RÁPIDA" — labels e botões limpos */
+.quick-add-section .quick-btn {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 10px !important;
+  font-weight: 500;
+  transition: border-color var(--transition), background var(--transition);
+}
+.quick-add-section .quick-btn:hover {
+  border-color: var(--border-strong) !important;
+  background: var(--bg-tertiary) !important;
+}
+
+/* Legendas do chart (Concluídas/Total) mais discretas */
+.legend-item {
+  color: var(--text-secondary) !important;
+  font-size: 12px;
+}
+.legend-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50%;
+}
+
+/* Sub-abas do Financeiro mais Kirvano-like */
+.fin-subtab-btn {
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+}
+.fin-subtab-btn.active {
+  color: var(--text-primary) !important;
+  border-bottom: 2px solid var(--accent) !important;
+}
+
+/* Mini itens (transações, alarmes) sem cor esquisita no valor */
+.transaction-list .valor.entrada { color: var(--accent) !important; }
+.transaction-list .valor.saida { color: var(--danger) !important; }
+
+/* Setas + / − discretas no dashboard (era verde/vermelho neon) */
+.mini-up { color: var(--accent) !important; }
+.mini-down { color: var(--danger) !important; }
+
