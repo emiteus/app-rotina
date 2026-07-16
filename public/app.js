@@ -3818,7 +3818,20 @@ function renderStats(data) {
   renderHorizontalBars('chart-prioridades', data.prioridades || {}, 'pri');
 }
 
-function renderChartBars(historico) {
+let _chartRange = 30;
+let _chartHistorico = [];
+
+function setChartRange(n) {
+  _chartRange = n;
+  document.querySelectorAll('.chart-range-btn').forEach(b => {
+    b.classList.toggle('active', Number(b.dataset.range) === n);
+  });
+  if (_chartHistorico.length) renderChartBars(_chartHistorico);
+}
+
+function renderChartBars(historicoFull) {
+  _chartHistorico = historicoFull;
+  const historico = historicoFull.slice(-_chartRange);
   if (historico.length === 0) {
     const canvas = document.getElementById('chart-bars');
     if (canvas) {
@@ -3893,8 +3906,24 @@ function renderChartBars(historico) {
       },
       scales: {
         y: {
-          display: false,
-          beginAtZero: true
+          beginAtZero: true,
+          ticks: { display: false },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.04)',
+            drawBorder: false,
+            lineWidth: 1,
+            drawTicks: false
+          },
+          border: { display: false },
+          // ~5 linhas horizontais
+          suggestedMax: undefined,
+          afterBuildTicks: (axis) => {
+            const max = axis.max || 5;
+            const step = Math.max(1, Math.ceil(max / 4));
+            const ticks = [];
+            for (let v = 0; v <= max; v += step) ticks.push({ value: v });
+            axis.ticks = ticks;
+          }
         },
         x: {
           ticks: {
