@@ -4298,6 +4298,17 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .flatpickr-current-month input.cur-year {
   color: var(--text-primary) !important;
   font-weight: 500 !important;
+  width: 58px !important;
+  padding: 0 4px !important;
+  box-sizing: border-box !important;
+}
+.flatpickr-current-month .numInputWrapper {
+  width: 68px !important;
+  min-width: 68px !important;
+}
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+  padding: 4px 8px !important;
+  margin-right: 6px !important;
 }
 .flatpickr-prev-month,
 .flatpickr-next-month {
@@ -4370,12 +4381,21 @@ span.flatpickr-weekday {
   border-top: 1px solid var(--border) !important;
   background: transparent !important;
   color: var(--text-primary) !important;
+  height: auto !important;
+  max-height: none !important;
+  padding: 8px 0 !important;
+  min-height: 56px !important;
+}
+.flatpickr-time .numInputWrapper {
+  height: 40px !important;
 }
 .flatpickr-time input {
   color: var(--text-primary) !important;
   background: transparent !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
   font-weight: 500 !important;
+  height: 40px !important;
+  line-height: 40px !important;
   /* remove seleção azul default do browser */
   caret-color: var(--accent) !important;
 }
