@@ -4411,6 +4411,92 @@ span.flatpickr-weekday {
   color: var(--text-primary) !important;
 }
 
+/* v19: Seleção múltipla de tarefas — barra flutuante estilo Kirvano */
+.bulk-actions {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 100px;
+  padding: 10px 14px 10px 20px;
+  box-shadow: 0 20px 48px rgba(0,0,0,0.6);
+  z-index: 200;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+}
+.bulk-actions.open { display: flex; }
+.bulk-count-txt {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.bulk-count-txt b {
+  color: var(--text-primary);
+  font-weight: 700;
+  margin-right: 3px;
+}
+.bulk-actions-btns { display: flex; gap: 6px; }
+.bulk-btn {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+.bulk-btn:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.2); }
+.bulk-btn-ok {
+  background: var(--accent) !important;
+  color: #052421 !important;
+  border-color: var(--accent) !important;
+  font-weight: 600 !important;
+}
+.bulk-btn-ok:hover { background: var(--accent-hover) !important; }
+.bulk-btn-danger {
+  background: transparent !important;
+  color: var(--danger) !important;
+  border-color: rgba(255,92,104,0.3) !important;
+}
+.bulk-btn-danger:hover { background: rgba(255,92,104,0.1) !important; }
+
+/* Modo seleção: destaca visualmente que o click no checkbox = selecionar */
+body.modo-selecao .task-check {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+body.modo-selecao .task-item {
+  transition: background var(--transition);
+}
+body.modo-selecao .task-item:hover {
+  background: var(--bg-card-hover);
+}
+body.modo-selecao .btn-delete { display: none !important; } /* esconde X individual no modo seleção */
+
+/* Botão "Selecionar" quando ativo (== Cancelar) fica outline vermelho discreto */
+#btn-modo-selecao.active {
+  color: var(--danger) !important;
+  border-color: rgba(255,92,104,0.3) !important;
+}
+
+/* Ajusta bottom do bulk-actions em mobile pra não colar no bottom nav */
+@media (max-width: 768px) {
+  .bulk-actions {
+    bottom: 82px;
+    padding: 8px 12px 8px 16px;
+    gap: 10px;
+  }
+  .bulk-btn { padding: 5px 12px; font-size: 12px; }
+}
+
 /* v13: 4 cards mini estilo Kirvano abaixo do chart */
 .dashboard-extra-grid {
   display: grid;

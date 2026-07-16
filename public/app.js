@@ -3416,7 +3416,68 @@ async function adicionarTarefa() {
   }
 }
 
+// ==================== Seleção múltipla de tarefas ====================
+let modoSelecao = false;
+const selecionadas = new Set();
+
+function toggleModoSelecao() {
+  modoSelecao = !modoSelecao;
+  selecionadas.clear();
+  const btn = document.getElementById('btn-modo-selecao');
+  const bar = document.getElementById('bulk-actions');
+  document.body.classList.toggle('modo-selecao', modoSelecao);
+  if (btn) btn.textContent = modoSelecao ? 'Cancelar' : 'Selecionar';
+  if (btn) btn.classList.toggle('active', modoSelecao);
+  if (bar) bar.classList.toggle('open', modoSelecao);
+  atualizarBulkCount();
+  carregarTarefas();
+}
+
+function selecionarTarefa(id, checked) {
+  if (checked) selecionadas.add(id); else selecionadas.delete(id);
+  atualizarBulkCount();
+}
+
+function atualizarBulkCount() {
+  const el = document.getElementById('bulk-count');
+  if (el) el.textContent = selecionadas.size;
+}
+
+async function bulkConcluir() {
+  if (!selecionadas.size) return toast('Nada selecionado', 'info');
+  const ids = [...selecionadas];
+  const ok = await confirmModal(`Concluir ${ids.length} tarefa(s)?`, 'Confirmar', '✓');
+  if (!ok) return;
+  try {
+    await Promise.all(ids.map(id => fetch(`/api/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ concluida: true })
+    })));
+    toast(`${ids.length} tarefa(s) concluída(s)`, 'success');
+    toggleModoSelecao(); // desativa modo + reload
+  } catch (e) {
+    toast('Erro em massa: ' + e.message, 'error');
+  }
+}
+
+async function bulkExcluir() {
+  if (!selecionadas.size) return toast('Nada selecionado', 'info');
+  const ids = [...selecionadas];
+  const ok = await confirmModal(`Excluir ${ids.length} tarefa(s)? Isso não pode ser desfeito.`, 'Confirmar exclusão', '🗑️');
+  if (!ok) return;
+  try {
+    await Promise.all(ids.map(id => fetch(`/api/tasks/${id}`, { method: 'DELETE' })));
+    toast(`${ids.length} tarefa(s) excluída(s)`, 'info');
+    toggleModoSelecao();
+  } catch (e) {
+    toast('Erro em massa: ' + e.message, 'error');
+  }
+}
+
 async function marcarTarefa(id, concluida) {
+  // Se está em modo seleção, o click no checkbox só toggla o Set
+  if (modoSelecao) { selecionarTarefa(id, concluida); return; }
   try {
     await fetch(`/api/tasks/${id}`, {
       method: 'PATCH',

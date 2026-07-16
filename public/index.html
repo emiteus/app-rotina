@@ -261,11 +261,24 @@
           </div>
         </div>
 
-        <div class="filter-bar">
-          <button class="filter-btn active" data-filter="todas">Todas</button>
-          <button class="filter-btn" data-filter="pendentes">Pendentes</button>
-          <button class="filter-btn" data-filter="concluidas">Concluídas</button>
-          <button class="filter-btn" data-filter="alta">Alta</button>
+        <div class="filter-bar" style="justify-content: space-between;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="filter-btn active" data-filter="todas">Todas</button>
+            <button class="filter-btn" data-filter="pendentes">Pendentes</button>
+            <button class="filter-btn" data-filter="concluidas">Concluídas</button>
+            <button class="filter-btn" data-filter="alta">Alta</button>
+          </div>
+          <button class="filter-btn" id="btn-modo-selecao" onclick="toggleModoSelecao()">Selecionar</button>
+        </div>
+
+        <!-- Barra de ações em massa (aparece quando modoSelecao ativo) -->
+        <div id="bulk-actions" class="bulk-actions">
+          <span class="bulk-count-txt"><b id="bulk-count">0</b> selecionada(s)</span>
+          <div class="bulk-actions-btns">
+            <button onclick="bulkConcluir()" class="bulk-btn bulk-btn-ok">Concluir</button>
+            <button onclick="bulkExcluir()" class="bulk-btn bulk-btn-danger">Excluir</button>
+            <button onclick="toggleModoSelecao()" class="bulk-btn">Cancelar</button>
+          </div>
         </div>
 
         <!-- SEÇÃO HOJE (aberta por padrão) -->
