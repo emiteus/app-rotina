@@ -3849,7 +3849,7 @@ function renderChartBars(historicoFull) {
 
   const concluidas = historico.map(h => parseInt(h.concluidas) || 0);
 
-  const accent = '#2df19f';
+  const accent = '#26e0c8';
 
   // Destruir gráfico anterior se existir
   if (performanceChart) {
@@ -3860,8 +3860,8 @@ function renderChartBars(historicoFull) {
 
   // Gradient verde → transparente pra área embaixo da linha (estilo Kirvano)
   const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient.addColorStop(0, 'rgba(45, 241, 159, 0.25)');
-  gradient.addColorStop(1, 'rgba(45, 241, 159, 0.0)');
+  gradient.addColorStop(0, 'rgba(38, 224, 200, 0.25)');
+  gradient.addColorStop(1, 'rgba(38, 224, 200, 0.0)');
 
   performanceChart = new Chart(ctx, {
     type: 'line',

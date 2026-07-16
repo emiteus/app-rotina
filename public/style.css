@@ -22,11 +22,11 @@
   --text-muted: #55555c;
   --text: #f5f5f7;
 
-  /* Cor de acento única: verde neon */
-  --accent: #2df19f;
-  --accent-hover: #46f8ab;
-  --accent-dim: rgba(45, 241, 159, 0.12);
-  --success: #2df19f;
+  /* Cor de acento: verde-turquesa Kirvano */
+  --accent: #26e0c8;
+  --accent-hover: #3fe8d3;
+  --accent-dim: rgba(38, 224, 200, 0.12);
+  --success: #26e0c8;
   --danger: #ff5c68;
   --warning: #ffb547;
   --info: #6ab7ff;
@@ -3145,7 +3145,7 @@ body {
 /* ----- Botões ----- */
 .btn-primary {
   background: var(--accent);
-  color: #072418;
+  color: #052421;
   border: none;
   border-radius: 10px;
   padding: 10px 18px;
@@ -3251,7 +3251,7 @@ h2, .section-title { color: var(--text-secondary); font-weight: 500; font-size: 
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
-.modal-btn-confirm { background: var(--accent); color: #072418; border: none; }
+.modal-btn-confirm { background: var(--accent); color: #052421; border: none; }
 .modal-btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); }
 
 /* ----- Scrollbar quase invisível ----- */
@@ -3399,7 +3399,7 @@ h2 {
 .chart-toggle-btn.active,
 .filter-btn.active {
   background: var(--accent) !important;
-  color: #072418 !important;
+  color: #052421 !important;
   border-color: var(--accent) !important;
 }
 
@@ -3583,7 +3583,7 @@ h2::first-letter {
 }
 .chart-btn.active {
   background: var(--accent) !important;
-  color: #072418 !important;
+  color: #052421 !important;
   border-color: var(--accent) !important;
 }
 
@@ -3897,7 +3897,7 @@ body { overflow-y: auto; overflow-x: hidden; }
 .chart-range-btn:hover { color: var(--text-primary); }
 .chart-range-btn.active {
   background: var(--accent);
-  color: #072418;
+  color: #052421;
 }
 
 /* Ver todas → link em verde neon */
