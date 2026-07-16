@@ -938,9 +938,9 @@ select optgroup {
 
 .alarm-rep {
   font-size: 11px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: -0.005em;
 }
 
 .alarm-toggle {
@@ -4047,6 +4047,45 @@ button[onclick*="Adicionar"]:hover {
 
 /* Tab content NUNCA com opacity < 1 (bug Alarmes) */
 .tab-content.active { opacity: 1 !important; }
+
+/* ============================================================
+   v10 — 5 fixes finais
+   ============================================================ */
+
+/* Sidebar ativo: ícone dessaturado + background verde-transparent + barra lateral */
+.sidebar .nav-btn.active .nav-icon {
+  filter: grayscale(1) brightness(1.2) opacity(0.9) !important;
+}
+@media (min-width: 769px) {
+  .sidebar .nav-btn.active {
+    background: var(--accent-dim) !important;
+    box-shadow: inset 3px 0 0 var(--accent) !important;
+  }
+}
+@media (max-width: 768px) {
+  .sidebar .nav-btn.active {
+    background: transparent !important;
+    box-shadow: inset 0 -2px 0 var(--accent) !important;
+  }
+}
+
+/* Tendências: sem borda esquerda colorida + fundo neutro + emoji dessaturado */
+.tendencia-item {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-left: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  color: var(--text-primary) !important;
+  padding: 14px 16px !important;
+}
+.tendencia-item > *:first-child {
+  filter: grayscale(0.7) brightness(0.9);
+}
+
+/* Heatmap: legend em cinza claro */
+.heatmap-legend { color: var(--text-muted) !important; }
+.heatmap-cell { border: none !important; }
+.heatmap { background: var(--bg-card) !important; padding: 16px !important; border-radius: 12px !important; }
 
 /* Financeiro Visão Geral: cards saldo/entrada/saida — números brancos, sem cor forte */
 .finance-box.saldo-box,

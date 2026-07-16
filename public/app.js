@@ -3909,7 +3909,7 @@ function renderChartBars(historicoFull) {
           beginAtZero: true,
           ticks: { display: false },
           grid: {
-            color: 'rgba(255, 255, 255, 0.04)',
+            color: 'rgba(255, 255, 255, 0.08)',
             drawBorder: false,
             lineWidth: 1,
             drawTicks: false
@@ -5150,12 +5150,13 @@ function renderHeatmap(porDia) {
     const info = porDia[diaStr];
     const taxa = info ? Math.round((info.concluidas / info.total) * 100) : 0;
 
-    let cor = '#1a1a1a'; // Cinza padrão
-    if (taxa >= 90) cor = '#10b981'; // Verde intenso
-    else if (taxa >= 70) cor = '#6ee7b7'; // Verde claro
-    else if (taxa >= 50) cor = '#fbbf24'; // Amarelo
-    else if (taxa > 0) cor = '#f5a623'; // Laranja
-    else if (info) cor = '#f81d13'; // Vermelho
+    // Escala monocromática verde-turquesa (só uma cor com opacidade variável)
+    let cor = 'rgba(255,255,255,0.03)'; // sem dados
+    if (taxa >= 90) cor = 'rgba(38,224,200,0.95)';
+    else if (taxa >= 70) cor = 'rgba(38,224,200,0.7)';
+    else if (taxa >= 50) cor = 'rgba(38,224,200,0.45)';
+    else if (taxa > 0) cor = 'rgba(38,224,200,0.22)';
+    else if (info) cor = 'rgba(255,255,255,0.06)'; // dia sem conclusão
 
     const dataFormatada = new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 
@@ -5170,11 +5171,11 @@ function renderHeatmap(porDia) {
   // Legenda
   html += `
     <div class="heatmap-legend" style="margin-top: 16px; display: flex; gap: 12px; font-size: 12px; justify-content: center; flex-wrap: wrap;">
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: #1a1a1a; border-radius: 2px; margin-right: 4px;"></span>Sem dados</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: #f81d13; border-radius: 2px; margin-right: 4px;"></span>0-49%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: #f5a623; border-radius: 2px; margin-right: 4px;"></span>50-69%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: #fbbf24; border-radius: 2px; margin-right: 4px;"></span>70-89%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: #10b981; border-radius: 2px; margin-right: 4px;"></span>90%+</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(255,255,255,0.03); border-radius: 2px; margin-right: 4px;"></span>Sem dados</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.22); border-radius: 2px; margin-right: 4px;"></span>0-49%</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.45); border-radius: 2px; margin-right: 4px;"></span>50-69%</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.7); border-radius: 2px; margin-right: 4px;"></span>70-89%</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.95); border-radius: 2px; margin-right: 4px;"></span>90%+</span>
     </div>
   `;
 
