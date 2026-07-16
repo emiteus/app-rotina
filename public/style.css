@@ -3846,6 +3846,208 @@ body { overflow-y: auto; overflow-x: hidden; }
   .main { padding: 16px 14px 90px !important; }
 }
 
+/* ============================================================
+   REDESIGN v8 — matar cores das outras abas (Financeiro, Tarefas, Alarmes)
+   ============================================================ */
+
+/* Grid horizontal do chart mais visível */
+canvas + canvas { display: none; } /* garante 1 canvas só */
+
+/* Ícones da sidebar em cinza monocromático, exceto o ativo */
+.sidebar .nav-btn .nav-icon,
+.sidebar .logo-icon {
+  filter: grayscale(1) brightness(0.7) opacity(0.7);
+  transition: filter var(--transition);
+}
+.sidebar .nav-btn:hover .nav-icon {
+  filter: grayscale(1) brightness(1) opacity(1);
+}
+.sidebar .nav-btn.active .nav-icon {
+  filter: grayscale(0) brightness(1.1) opacity(1);
+}
+
+/* FILTER BUTTONS (Todas/Entradas/Saídas/Pendentes/Concluídas/Alta) — outline discreto */
+.filter-btn,
+.tarefas-filtro-btn {
+  background: transparent !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-secondary) !important;
+  padding: 6px 14px !important;
+  border-radius: 100px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  background-image: none !important;
+}
+.filter-btn:hover,
+.tarefas-filtro-btn:hover {
+  background: var(--bg-card-hover) !important;
+  color: var(--text-primary) !important;
+}
+.filter-btn.active,
+.tarefas-filtro-btn.active {
+  background: transparent !important;
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+/* BOTÃO + ADICIONAR — outline verde, não flood */
+.btn-primary,
+button[onclick*="adicionar"],
+button[onclick*="Adicionar"] {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  border-radius: 10px !important;
+  padding: 9px 18px !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+}
+.btn-primary:hover,
+button[onclick*="adicionar"]:hover,
+button[onclick*="Adicionar"]:hover {
+  background: var(--accent-dim) !important;
+  color: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  transform: none !important;
+}
+
+/* CTA especial "Ativar notificações" e outros que precisam de mais destaque */
+.btn-primary-solid,
+#push-btn-ativar {
+  background: var(--accent) !important;
+  color: #052421 !important;
+  border: none !important;
+}
+
+/* CONTADOR "5" ao lado de "Hoje" (era gradient roxo) */
+.tarefas-count,
+.contador-tarefas,
+[class*="count-badge"],
+.badge-contador {
+  background: transparent !important;
+  background-image: none !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-secondary) !important;
+  padding: 2px 10px !important;
+  border-radius: 100px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* CARDS FINANCEIRO (EM CONTA verde flooded / ENTRADAS / SAÍDAS) — normalizar */
+.finance-box,
+.finance-card,
+[class*="fin-box"] {
+  background: var(--bg-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 14px !important;
+  padding: 22px 24px !important;
+}
+.finance-box .valor,
+.finance-box .card-value,
+.finance-card .valor,
+.finance-card .card-value,
+.saldo-valor,
+.entrada-valor,
+.saida-valor {
+  color: var(--text-primary) !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+  font-weight: 700 !important;
+  font-size: 24px !important;
+}
+.finance-box .label,
+.finance-card .label {
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+  color: var(--text-secondary) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+/* Todos os UPPERCASE que sobraram */
+[class*="label"],
+[class*="titulo"],
+.section-header {
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+}
+
+/* Badge de Categorizar "145" laranja gigante */
+#badge-pendentes,
+.badge-numero,
+[class*="badge-count"] {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  border: none !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border-radius: 100px !important;
+}
+
+/* Valores das transações — verde/vermelho MENOS saturado */
+.transaction-list .valor,
+.mini-item .valor,
+.item-valor,
+[class*="valor-entrada"] {
+  color: var(--accent) !important;
+  font-weight: 600 !important;
+}
+[class*="valor-saida"],
+.mini-down-text {
+  color: var(--danger) !important;
+  font-weight: 600 !important;
+}
+
+/* Categoria pill (outros/saude/trabalho) — outline discreto */
+.categoria-tag,
+.transacao-categoria,
+[class*="cat-tag"] {
+  background: transparent !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-muted) !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  text-transform: lowercase !important;
+}
+
+/* Emojis inline em labels dessaturados */
+[class*="cat-tag"] > *:first-child,
+.categoria-tag > *:first-child,
+.mini-item > *:first-child > *:first-child {
+  filter: grayscale(0.7) brightness(0.85);
+}
+
+/* Chip de resumo "170 transações filtradas +R$ -R$" — cinza */
+.resumo-transacoes,
+[class*="resumo-filtro"] {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  padding: 12px 16px !important;
+}
+
+/* Página headers — sem uppercase */
+.page-header h1 {
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* Grid Y do chart mais visível (agora não some) */
+.dashboard-chart-hero .chart-container canvas {
+  /* forçado via renderChartBars options — deixa o CSS livre */
+}
+
+/* Tab content NUNCA com opacity < 1 (bug Alarmes) */
+.tab-content.active { opacity: 1 !important; }
+
 /* Legend do chart em cima MENOR e discreta (era ocupando altura toda) */
 .legend {
   gap: 20px !important;
