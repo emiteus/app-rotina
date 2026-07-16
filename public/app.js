@@ -4903,6 +4903,29 @@ window.addEventListener('load', () => {
   const dataInput = document.getElementById('data-tarefa');
   if (dataInput) dataInput.value = hojeLocal();
 
+  // v17: aplicar flatpickr em todos inputs de data/hora (tema Kirvano via CSS)
+  if (typeof flatpickr === 'function') {
+    document.querySelectorAll('input[type="date"]').forEach(inp => {
+      flatpickr(inp, {
+        locale: 'pt',
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd \\d\\e M',
+        disableMobile: true
+      });
+    });
+    document.querySelectorAll('input[type="time"]').forEach(inp => {
+      flatpickr(inp, {
+        locale: 'pt',
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: 'H:i',
+        time_24hr: true,
+        disableMobile: true
+      });
+    });
+  }
+
   // Atualizar data da página de amanhã
   const amanhaDate = new Date();
   amanhaDate.setDate(amanhaDate.getDate() + 1);
