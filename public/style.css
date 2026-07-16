@@ -4048,6 +4048,58 @@ button[onclick*="Adicionar"]:hover {
 /* Tab content NUNCA com opacity < 1 (bug Alarmes) */
 .tab-content.active { opacity: 1 !important; }
 
+/* Financeiro Visão Geral: cards saldo/entrada/saida — números brancos, sem cor forte */
+.finance-box.saldo-box,
+.finance-box.entrada-box,
+.finance-box.saida-box {
+  background: var(--bg-card) !important;
+  background-image: none !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  padding: 22px 26px !important;
+  color: var(--text-primary) !important;
+}
+.finance-box .box-label {
+  color: var(--text-secondary) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+  margin-bottom: 8px !important;
+  opacity: 1 !important;
+}
+.finance-box h2,
+.finance-box h3 {
+  color: var(--text-primary) !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  margin: 0 !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+  text-transform: none !important;
+}
+/* Diferenciação sutil de entrada/saída: só um dot ao lado */
+.finance-box.entrada-box h3::before {
+  content: '';
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.finance-box.saida-box h3::before {
+  content: '';
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 /* Legend do chart em cima MENOR e discreta (era ocupando altura toda) */
 .legend {
   gap: 20px !important;
