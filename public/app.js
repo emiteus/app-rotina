@@ -3835,132 +3835,78 @@ function renderChartBars(historico) {
   });
 
   const concluidas = historico.map(h => parseInt(h.concluidas) || 0);
-  const totais = historico.map(h => parseInt(h.total) || 0);
 
-  // Cores (Notion Dark Theme - melhorado)
-  const corConcluidas = '#10b981'; // verde vibrant
-  const corTotal = '#3b82f6';      // azul vibrant
+  const accent = '#2df19f';
 
   // Destruir gráfico anterior se existir
   if (performanceChart) {
     performanceChart.destroy();
   }
 
-  // Criar novo gráfico
   const ctx = document.getElementById('chart-bars').getContext('2d');
+
+  // Gradient verde → transparente pra área embaixo da linha (estilo Kirvano)
+  const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+  gradient.addColorStop(0, 'rgba(45, 241, 159, 0.25)');
+  gradient.addColorStop(1, 'rgba(45, 241, 159, 0.0)');
+
   performanceChart = new Chart(ctx, {
-    type: currentChartType === 'line' ? 'line' : 'bar',
+    type: 'line',
     data: {
       labels: labels,
-      datasets: [
-        {
-          label: 'Concluídas',
-          data: concluidas,
-          borderColor: corConcluidas,
-          backgroundColor: currentChartType === 'line' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.85)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.45,
-          pointBackgroundColor: corConcluidas,
-          pointBorderColor: '#0f0f0f',
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 8,
-          borderRadius: currentChartType === 'line' ? 0 : 6,
-          segment: {
-            borderColor: corConcluidas,
-            borderDash: undefined
-          }
-        },
-        {
-          label: 'Total',
-          data: totais,
-          borderColor: corTotal,
-          backgroundColor: currentChartType === 'line' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.75)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.45,
-          pointBackgroundColor: corTotal,
-          pointBorderColor: '#0f0f0f',
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 8,
-          borderRadius: currentChartType === 'line' ? 0 : 6,
-          segment: {
-            borderColor: corTotal,
-            borderDash: undefined
-          }
-        }
-      ]
+      datasets: [{
+        label: 'Concluídas',
+        data: concluidas,
+        borderColor: accent,
+        backgroundColor: gradient,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointBackgroundColor: accent,
+        pointBorderColor: '#0a0c10',
+        pointBorderWidth: 2
+      }]
     },
     options: {
       responsive: true,
-      maintainAspectRatio: true,
-      layout: {
-        padding: { top: 20, right: 20, bottom: 10, left: 10 }
-      },
-      interaction: {
-        intersect: false,
-        mode: 'index'
-      },
+      maintainAspectRatio: false,
+      layout: { padding: { top: 10, right: 8, bottom: 4, left: 8 } },
+      interaction: { intersect: false, mode: 'index' },
       plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          labels: {
-            color: '#e5e7eb',
-            font: { size: 14, weight: 600 },
-            padding: 20,
-            usePointStyle: true,
-            pointStyle: 'circle',
-            boxWidth: 12
-          }
-        },
+        legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(15, 15, 15, 0.95)',
-          borderColor: '#3b82f6',
-          borderWidth: 2,
+          backgroundColor: 'rgba(10, 12, 16, 0.95)',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
           titleColor: '#ffffff',
-          titleFont: { size: 13, weight: 'bold' },
-          bodyColor: '#d1d5db',
-          bodyFont: { size: 12 },
-          padding: 12,
-          displayColors: true,
-          boxPadding: 8,
+          titleFont: { size: 12, weight: '600' },
+          bodyColor: accent,
+          bodyFont: { size: 13, weight: '600' },
+          padding: 10,
+          displayColors: false,
           callbacks: {
-            label: function(context) {
-              return context.dataset.label + ': ' + context.parsed.y + ' tarefas';
-            }
+            label: (ctx) => ctx.parsed.y + (ctx.parsed.y === 1 ? ' tarefa' : ' tarefas')
           }
         }
       },
       scales: {
         y: {
-          beginAtZero: true,
-          ticks: {
-            color: '#9ca3af',
-            font: { size: 13 },
-            stepSize: 1,
-            padding: 8
-          },
-          grid: {
-            color: 'rgba(255, 255, 255, 0.08)',
-            drawBorder: false,
-            lineWidth: 1
-          }
+          display: false,
+          beginAtZero: true
         },
         x: {
           ticks: {
-            color: '#9ca3af',
-            font: { size: 12, weight: 500 },
-            maxRotation: 45,
-            minRotation: 45,
-            padding: 8
+            color: '#55555c',
+            font: { size: 11, weight: '400' },
+            maxRotation: 0,
+            padding: 6,
+            autoSkip: true,
+            maxTicksLimit: 8
           },
-          grid: {
-            display: false,
-            drawBorder: false
-          }
+          grid: { display: false, drawBorder: false },
+          border: { display: false }
         }
       }
     }
