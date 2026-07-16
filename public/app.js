@@ -1100,7 +1100,7 @@ function renderAnaliseFinanceira() {
           <span>Reserva deste mês <span style="color:var(--text-muted);">(acumulado: ${formatBRL(a.reservaTotal)})</span></span>
           <span style="display:flex; align-items:center; gap:8px;">
             <span style="color:var(--text-muted);">${formatBRL(a.reservaMes)} / ${formatBRL(a.reservaMeta)}</span>
-            <button onclick="abrirAddReserva()" style="background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:6px; padding:2px 8px; font-size:11px; cursor:pointer;">+ Guardar</button>
+            <button onclick="abrirAddReserva()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:2px 8px; font-size:11px; cursor:pointer;">+ Guardar</button>
           </span>
         </div>
         <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden;">
@@ -1237,7 +1237,7 @@ function renderPJ() {
         <div style="display:flex; gap:6px;">
           ${das.pago
             ? `<button onclick="marcarDas('${das.ym}', false)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-secondary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Desmarcar</button>`
-            : `<button onclick="marcarDas('${das.ym}', true)" style="background:rgba(63,185,80,0.18); border:1px solid rgba(63,185,80,0.4); color:#3fb950; border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Marcar como pago</button>`}
+            : `<button onclick="marcarDas('${das.ym}', true)" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Marcar como pago</button>`}
         </div>
       </div>
       <details>
@@ -1338,7 +1338,7 @@ function renderRelatorios() {
   if (!lista || !r) { painel.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Sem dados suficientes ainda.</p>'; return; }
 
   // Estilo helper pros chips
-  const chipStyle = ativo => `background:${ativo ? 'rgba(91,124,250,0.2)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${ativo ? 'rgba(91,124,250,0.4)' : 'rgba(255,255,255,0.1)'}; color:${ativo ? '#5b7cfa' : 'var(--text-secondary)'}; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap;`;
+  const chipStyle = ativo => `background:${ativo ? 'rgba(38,224,200,0.14)' : 'rgba(255,255,255,0.05)'}; border:1px solid ${ativo ? 'rgba(38,224,200,0.35)' : 'rgba(255,255,255,0.1)'}; color:${ativo ? 'var(--accent, #26e0c8)' : 'var(--text-secondary)'}; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap;`;
 
   // Chips de período custom (7d / 30d / 90d / ano)
   const chipsPeriodo = ['7d','30d','90d','ano'].map(p => {
@@ -1373,7 +1373,7 @@ function renderRelatorios() {
               <span style="color:var(--text-muted); font-size:11px;">${c.entradas > 0 ? '<span style="color:#3fb950;">+'+formatBRL(c.entradas)+'</span> ' : ''}${c.saidas > 0 ? '<span style="color:#f85149;">−'+formatBRL(c.saidas)+'</span>' : ''}</span>
             </div>
             <div style="height:6px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden;">
-              <div style="height:100%; width:${pct}%; background:#5b7cfa;"></div>
+              <div style="height:100%; width:${pct}%; background:var(--accent, #26e0c8); opacity:0.85;"></div>
             </div>
           </div>`;
       }).join('')
@@ -1457,8 +1457,8 @@ function renderMetas() {
       <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Planejamento baseado nos últimos ${b.mesesAmostra} meses</div>
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:10px;">
         <div><div style="font-size:11px; color:var(--text-muted);">Renda média</div><div style="font-size:16px; font-weight:600;">${formatBRL(b.rendaMedia)}</div></div>
-        <div><div style="font-size:11px; color:var(--text-muted);">Gasto médio</div><div style="font-size:16px; font-weight:600; color:#e8950c;">${formatBRL(b.gastoMedio)}</div></div>
-        <div><div style="font-size:11px; color:var(--text-muted);">Sobra estimada</div><div style="font-size:16px; font-weight:700; color:#3fb950;">${formatBRL(b.sobraEstimada)}</div></div>
+        <div><div style="font-size:11px; color:var(--text-muted);">Gasto médio</div><div style="font-size:16px; font-weight:600;">${formatBRL(b.gastoMedio)}</div></div>
+        <div><div style="font-size:11px; color:var(--text-muted);">Sobra estimada</div><div style="font-size:16px; font-weight:600; color:${b.sobraEstimada > 0 ? '#3fb950' : 'var(--text-primary)'};">${formatBRL(b.sobraEstimada)}</div></div>
         <div><div style="font-size:11px; color:var(--text-muted);">Já comprometido em metas</div><div style="font-size:16px; font-weight:600;">${formatBRL(d.compromissosMensais)}</div></div>
         <div><div style="font-size:11px; color:var(--text-muted);">Livre pra metas s/ prazo</div><div style="font-size:16px; font-weight:600; color:${d.livre > 0 ? '#3fb950' : '#f85149'};">${formatBRL(d.livre)}</div></div>
       </div>
@@ -1467,7 +1467,7 @@ function renderMetas() {
 
   const cards = (d.metas || []).map(m => {
     const pct = m.pct || 0;
-    const cor = m.concluida ? '#3fb950' : (pct >= 66 ? '#3fb950' : pct >= 33 ? '#e8950c' : '#5b7cfa');
+    const cor = 'var(--accent, #26e0c8)';
     const prazoTxt = m.prazo
       ? `até ${new Date(m.prazo).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' })}${m.mesesRest != null ? ` · ${m.mesesRest} mês(es)` : ''}`
       : (m.eta ? `sem prazo · ETA ${m.eta} mês(es)` : 'sem prazo');
@@ -1478,7 +1478,7 @@ function renderMetas() {
       ? '<span style="font-size:10px; background:rgba(63,185,80,0.2); color:#3fb950; padding:2px 8px; border-radius:6px;">concluída</span>'
       : '';
     return `
-      <div style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-left:3px solid ${cor}; border-radius:12px; padding:14px; margin-bottom:10px;">
+      <div style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
           <div style="flex:1;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:2px;">
@@ -1492,13 +1492,13 @@ function renderMetas() {
             ${mensalTxt}
           </div>
         </div>
-        <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; margin-bottom:8px;">
-          <div style="height:100%; width:${pct}%; background:${cor};"></div>
+        <div style="height:6px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; margin-bottom:10px;">
+          <div style="height:100%; width:${pct}%; background:${cor}; opacity:${pct >= 66 ? 0.9 : pct >= 33 ? 0.6 : 0.4};"></div>
         </div>
         <div style="display:flex; gap:6px;">
-          <button onclick="depositarMeta(${m.id}, '${escapeHtml(m.nome).replace(/'/g, "\\'")}')" ${m.concluida ? 'disabled' : ''} style="flex:1; background:rgba(63,185,80,0.18); border:1px solid rgba(63,185,80,0.4); color:#3fb950; border-radius:6px; padding:6px; font-size:11px; cursor:pointer; ${m.concluida ? 'opacity:0.4; cursor:not-allowed;' : ''}">+ Guardar</button>
+          <button onclick="depositarMeta(${m.id}, '${escapeHtml(m.nome).replace(/'/g, "\\'")}')" ${m.concluida ? 'disabled' : ''} style="flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px; font-size:11px; cursor:pointer; ${m.concluida ? 'opacity:0.4; cursor:not-allowed;' : ''}">+ Guardar</button>
           <button onclick="editarMeta(${m.id})" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-secondary); border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer;">Editar</button>
-          <button onclick="removerMeta(${m.id}, '${escapeHtml(m.nome).replace(/'/g, "\\'")}')" style="background:rgba(248,81,73,0.12); border:1px solid rgba(248,81,73,0.3); color:#f85149; border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer;">Remover</button>
+          <button onclick="removerMeta(${m.id}, '${escapeHtml(m.nome).replace(/'/g, "\\'")}')" style="background:transparent; border:1px solid rgba(248,81,73,0.35); color:#f85149; border-radius:6px; padding:6px 12px; font-size:11px; cursor:pointer;">Remover</button>
         </div>
       </div>`;
   }).join('');
@@ -1511,7 +1511,7 @@ function renderMetas() {
     ${painelBase}
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h2 style="font-size:15px; margin:0;">Suas metas</h2>
-      <button onclick="novaMeta()" style="background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">+ Nova meta</button>
+      <button onclick="novaMeta()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">+ Nova meta</button>
     </div>
     ${listaHtml}`;
 }
@@ -1622,7 +1622,7 @@ function renderApostas() {
       </div>
       <div style="flex:1; min-width:180px; background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
         <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">A receber de amigos</div>
-        <div style="font-size:22px; font-weight:700; color:#e8950c;">${formatBRL(d.totalReceber)}</div>
+        <div style="font-size:22px; font-weight:700;">${formatBRL(d.totalReceber)}</div>
         <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${d.amigos.filter(a => a.status === 'pendente').length} amigo(s) com saldo em aberto</div>
       </div>
     </div>`;
@@ -1639,11 +1639,11 @@ function renderApostas() {
           <span style="color:${p.tipo === 'entrada' ? '#31a24c' : '#f81d13'}; font-size:13px; white-space:nowrap;">${s}${formatBRL(Number(p.valor))}</span>
         </div>
         <div style="display:flex; gap:6px; margin-bottom:6px;">
-          <button onclick="apostaClassificar('${p.id}','eu')" style="flex:1; background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:6px; padding:6px; font-size:11px; cursor:pointer;">Fui eu</button>
-          <button onclick="apostaClassificarAmigo('${p.id}')" style="flex:1; background:rgba(232,149,12,0.18); border:1px solid rgba(232,149,12,0.4); color:#e8950c; border-radius:6px; padding:6px; font-size:11px; cursor:pointer;">De um amigo</button>
+          <button onclick="apostaClassificar('${p.id}','eu')" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px; font-size:11px; cursor:pointer;">Fui eu</button>
+          <button onclick="apostaClassificarAmigo('${p.id}')" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px; font-size:11px; cursor:pointer;">De um amigo</button>
           <button onclick="abrirApostaConjunto('${p.id}', ${Number(p.valor)})" style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:var(--text-secondary); border-radius:6px; padding:6px; font-size:11px; cursor:pointer;">Em conjunto</button>
         </div>
-        <button onclick="abrirNaoEhAposta('${p.id}')" style="width:100%; background:rgba(248,81,73,0.12); border:1px solid rgba(248,81,73,0.3); color:#f85149; border-radius:6px; padding:5px; font-size:11px; cursor:pointer;">Não é aposta</button>
+        <button onclick="abrirNaoEhAposta('${p.id}')" style="width:100%; background:transparent; border:1px solid rgba(248,81,73,0.35); color:#f85149; border-radius:6px; padding:5px; font-size:11px; cursor:pointer;">Não é aposta</button>
       </div>`;
   }
   const pendSaidas = (d.pendentes || []).filter(p => p.tipo === 'saida');
@@ -1653,8 +1653,8 @@ function renderApostas() {
     pendHtml = '<p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">Nenhuma aposta pra classificar. 🎯</p>';
   } else {
     pendHtml = '<h2 style="font-size:15px; margin:0 0 4px;">Apostas pra classificar</h2><p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Quem apostou? Em conjunto = parte sua + parte do amigo.</p>';
-    if (pendSaidas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:#f81d13; margin:6px 0;">↓ Saídas — apostas feitas (${pendSaidas.length})</div>` + pendSaidas.map(cardPend).join('');
-    if (pendEntradas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:#31a24c; margin:14px 0 6px;">↑ Entradas — recebido / ganho (${pendEntradas.length})</div>` + pendEntradas.map(cardPend).join('');
+    if (pendSaidas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:var(--text-muted); margin:6px 0;">Saídas — apostas feitas (${pendSaidas.length})</div>` + pendSaidas.map(cardPend).join('');
+    if (pendEntradas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:var(--text-muted); margin:14px 0 6px;">Entradas — recebido / ganho (${pendEntradas.length})</div>` + pendEntradas.map(cardPend).join('');
   }
 
   // Acerto de contas por amigo
@@ -2065,7 +2065,7 @@ function renderCategorizar() {
         <div style="display:flex; align-items:center; gap:8px; padding:7px 10px; background:rgba(255,255,255,0.03); border-radius:8px; margin-bottom:6px;">
           <span style="flex:1; font-size:12px;">${escapeHtml(limparDescricao(r.exemplo || r.chave).slice(0, 36))}</span>
           ${_catAutocompleteHtml(`regra-sel-${r.chave}`, r.categoria).replace('style="flex:1;', 'style="flex:0 0 160px;')}
-          <button onclick="salvarEdicaoRegra('${r.chave}')" style="background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">Salvar</button>
+          <button onclick="salvarEdicaoRegra('${r.chave}')" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">Salvar</button>
           <span onclick="removerRegra('${r.chave}')" style="cursor:pointer; color:#f81d13; font-size:13px;">✕</span>
         </div>`).join('');
 
@@ -2186,7 +2186,7 @@ async function renderOrcamentosCategorias() {
     <div style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <span style="font-size:12px; color:var(--text-muted);">Teto mensal por categoria (mês atual)</span>
-        <button onclick="abrirConfigOrcamentosCat()" style="background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:6px; padding:4px 12px; font-size:12px; cursor:pointer;">Configurar</button>
+        <button onclick="abrirConfigOrcamentosCat()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:4px 12px; font-size:12px; cursor:pointer;">Configurar</button>
       </div>
       ${barras}
     </div>`;
@@ -2269,12 +2269,14 @@ function _chipStatusSync(sync) {
   if (!sync) return '';
   const h = sync.horas_desde_sync;
   let cor, texto;
-  if (sync.auto_sync) { cor = '#31a24c'; texto = 'auto'; }
+  if (sync.auto_sync) { cor = '#3fb950'; texto = 'auto'; }
   else if (h === null || h === undefined) { cor = '#6e6e78'; texto = 'nunca'; }
-  else if (h < 24) { cor = '#31a24c'; texto = `há ${h}h`; }
-  else if (h < 48) { cor = '#e8950c'; texto = `há ${Math.floor(h/24)}d`; }
-  else { cor = '#f81d13'; texto = `há ${Math.floor(h/24)}d`; }
-  return `<span title="${sync.ultima_sync || 'sem data'}" style="font-size:10px; background:${cor}22; color:${cor}; padding:2px 8px; border-radius:6px;">Sync ${texto}</span>`;
+  else if (h < 24) { cor = '#3fb950'; texto = `${h}h atrás`; }
+  else if (h < 48) { cor = '#e8950c'; texto = `${Math.floor(h/24)}d atrás`; }
+  else { cor = '#f85149'; texto = `${Math.floor(h/24)}d atrás`; }
+  return `<span title="${sync.ultima_sync || 'sem data'}" style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted);">
+    <span style="width:6px; height:6px; border-radius:50%; background:${cor};"></span>${texto}
+  </span>`;
 }
 
 async function reconectarConta(itemId) {
@@ -2336,32 +2338,39 @@ function renderContas() {
   const bancosHtml = dados.contas.map(b => {
     const ehPJ = b.pessoa === 'PJ';
     const badge = `<span style="font-size:10px; background:rgba(255,255,255,0.06); color:var(--text-muted); padding:2px 8px; border-radius:6px; letter-spacing:0.02em;">${ehPJ ? 'PJ · MEI' : 'PF'}</span>`;
-    const accountsHtml = b.accounts.map(a => `
-      <div style="display:flex; justify-content:space-between; font-size:12px; padding:4px 0; color:var(--text-secondary);">
-        <span>${a.tipo === 'CREDIT' ? 'Cartão' : 'Conta'} · ${escapeHtml(a.nome || '')}</span>
-        <span>${a.tipo === 'CREDIT' ? '−' : ''}${formatBRL(Math.abs(Number(a.saldo)))}</span>
-      </div>`).join('');
     const chipSync = _chipStatusSync(b._sync);
+    const numContas = b.accounts.filter(a => a.tipo === 'BANK').length;
+    const numCartoes = b.accounts.filter(a => a.tipo === 'CREDIT').length;
+    const descPartes = [];
+    if (numContas) descPartes.push(`${numContas} conta${numContas > 1 ? 's' : ''}`);
+    if (numCartoes) descPartes.push(`${numCartoes} cartão${numCartoes > 1 ? 'es' : ''}`);
+    const desc = descPartes.join(' · ') || 'sem contas';
+    const liquido = b.saldoBanco - b.saldoCredito;
+    const iniciais = (b.apelido || '?').trim().slice(0, 2).toUpperCase();
     const btnReconectar = (b._sync && b._sync.precisa_reconectar)
-      ? `<button onclick="reconectarConta('${b.item_id}')" style="background:rgba(248,81,73,0.15); border:1px solid rgba(248,81,73,0.3); color:#f85149; border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">🔄 reconectar</button>`
+      ? `<button onclick="reconectarConta('${b.item_id}')" style="background:transparent; border:1px solid rgba(248,81,73,0.35); color:#f85149; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Reconectar</button>`
       : '';
     return `
-      <div style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; margin-bottom:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <span style="font-weight:600; font-size:15px;">${escapeHtml(b.apelido)}</span>
-            ${badge}
-            ${chipSync}
+      <div style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:flex-start; gap:12px;">
+          <div style="width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--text-secondary); flex-shrink:0; letter-spacing:0.02em;">${escapeHtml(iniciais)}</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+              <span style="font-weight:600; font-size:15px;">${escapeHtml(b.apelido)}</span>
+              ${badge}
+            </div>
+            <div style="font-size:12px; color:var(--text-muted);">${desc}</div>
           </div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            ${btnReconectar}
-            <button onclick="definirPessoaConta('${b.item_id}','${ehPJ ? 'PF' : 'PJ'}')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-secondary); border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">marcar como ${ehPJ ? 'PF' : 'PJ'}</button>
-            <button onclick="renomearConta('${b.item_id}')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-secondary); border-radius:6px; padding:3px 10px; font-size:11px; cursor:pointer;">renomear</button>
-          </div>
+          ${chipSync}
         </div>
-        ${accountsHtml}
-        <div style="display:flex; justify-content:flex-end; font-size:11px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06); color:var(--text-muted);">
-          <span>Líquido: <span style="color:var(--text-secondary); font-weight:500;">${formatBRL(b.saldoBanco - b.saldoCredito)}</span></span>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; padding-top:10px; border-top:1px solid rgba(255,255,255,0.06);">
+          <span style="font-size:11px; color:var(--text-muted);">Líquido</span>
+          <span style="font-size:15px; font-weight:600; color:${liquido >= 0 ? '#3fb950' : '#f85149'};">${formatBRL(liquido)}</span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${btnReconectar}
+          <button onclick="renomearConta('${b.item_id}')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:var(--text-secondary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Renomear</button>
+          <button onclick="definirPessoaConta('${b.item_id}','${ehPJ ? 'PF' : 'PJ'}')" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); color:var(--text-secondary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Marcar como ${ehPJ ? 'PF' : 'PJ'}</button>
         </div>
       </div>`;
   }).join('');
@@ -2370,9 +2379,8 @@ function renderContas() {
     ${consolidadoHtml}
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h2 style="font-size:15px; margin:0;">Suas contas</h2>
-      <span style="font-size:11px; color:var(--text-muted);">Marque cada banco como PF ou PJ pra separar suas finanças do MEI</span>
     </div>
-    ${bancosHtml}`;
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">${bancosHtml}</div>`;
 }
 
 async function definirPessoaConta(itemId, pessoa) {
@@ -2554,7 +2562,7 @@ function abrirRelatorioMensal() {
         <span style="color:var(--text-muted);">${formatBRL(v)}</span>
       </div>
       <div style="height:6px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden;">
-        <div style="height:100%; width:${(v / maxCat) * 100}%; background:#5b7cfa;"></div>
+        <div style="height:100%; width:${(v / maxCat) * 100}%; background:var(--accent, #26e0c8); opacity:0.85;"></div>
       </div>
     </div>`).join('') : '<p style="color:var(--text-muted); font-size:13px;">Sem saídas registradas este mês.</p>';
 
@@ -2753,7 +2761,7 @@ function renderIR() {
     <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; margin-bottom:18px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
         <h2 style="margin:0; font-size:16px;">Despesas dedutíveis</h2>
-        <button onclick="addDeducaoIR()" style="background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer;">+ Adicionar</button>
+        <button onclick="addDeducaoIR()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer;">+ Adicionar</button>
       </div>
       <p style="font-size:11px; color:var(--text-muted); margin:0 0 12px;">Saúde, educação, previdência (PGBL) e dependentes podem reduzir o imposto. Guarde os recibos.</p>
       ${dedHtml}
@@ -2763,7 +2771,7 @@ function renderIR() {
     <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px;">
       <h2 style="margin:0 0 12px; font-size:16px;">Anotações</h2>
       <textarea id="ir-notas" placeholder="Pendências, dúvidas pro contador, prazos..." style="width:100%; min-height:90px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px; color:var(--text); font-size:13px; resize:vertical;">${(d.notas || '').replace(/</g, '&lt;')}</textarea>
-      <button onclick="salvarNotasIR()" style="margin-top:8px; background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:8px; padding:6px 14px; font-size:13px; cursor:pointer;">Salvar anotações</button>
+      <button onclick="salvarNotasIR()" style="margin-top:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:6px 14px; font-size:13px; cursor:pointer;">Salvar anotações</button>
     </div>
   `;
 }
@@ -2816,7 +2824,7 @@ function renderBancos() {
           Sincronize automaticamente toda movimentação dos seus bancos (Nubank, Inter, C6, PicPay...).
           Precisa configurar suas credenciais do Pluggy uma única vez.
         </p>
-        <button onclick="mostrarSetupPluggy()" style="background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">Como configurar</button>
+        <button onclick="mostrarSetupPluggy()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">Como configurar</button>
       </div>`;
     return;
   }
@@ -2881,8 +2889,8 @@ function renderBancos() {
         <h2 style="margin:0; font-size:16px;">Bancos conectados</h2>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button onclick="sincronizarBancos()" style="background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.4); color:#31a24c; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
-          <button onclick="importarPorItemId()" style="background:rgba(245,166,35,0.18); border:1px solid rgba(245,166,35,0.4); color:#f5c46b; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
-          <button onclick="conectarBanco()" style="background:rgba(91,124,250,0.18); border:1px solid rgba(91,124,250,0.4); color:#5b7cfa; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">+ Conectar</button>
+          <button onclick="importarPorItemId()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
+          <button onclick="conectarBanco()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">+ Conectar</button>
         </div>
       </div>
       ${saldoHtml}
@@ -3857,6 +3865,12 @@ async function carregarStats() {
 function renderStats(data) {
   const r = data.resumo || {};
   document.getElementById('dash-streak').textContent = r.streak || 0;
+  // recalcula delta do streak agora que temos o valor real
+  if (typeof _atualizarDeltasKPI === 'function') {
+    const hoje = hojeLocal();
+    const tarefasHoje = (allTasks || []).filter(t => t.data_reset && t.data_reset.split('T')[0] === hoje);
+    _atualizarDeltasKPI(tarefasHoje.filter(t => t.concluida).length, tarefasHoje.length);
+  }
   document.getElementById('stats-concluidas').textContent = r.totalConcluidas || 0;
   document.getElementById('stats-taxa').textContent = r.taxaMedia || 0;
   document.getElementById('stats-media').textContent = r.mediaPorDia || 0;
@@ -4442,6 +4456,9 @@ function atualizarDashboard() {
   document.getElementById('dash-entradas').textContent = formatBRL(entradas).replace(/^R\$\s*/, '');
   document.getElementById('dash-saidas').textContent = formatBRL(saidas).replace(/^R\$\s*/, '');
 
+  // Deltas dos KPIs (Kirvano-style)
+  _atualizarDeltasKPI(concluidas, total);
+
   // Alarmes
   const alarmesAtivos = allAlarms.filter(a => a.ativo !== false).length;
   document.getElementById('dash-alarmes').textContent = alarmesAtivos;
@@ -4486,6 +4503,66 @@ function atualizarDashboard() {
   // Saldo real das contas conectadas tem prioridade sobre o fluxo de transações
   if (typeof aplicarSaldosReais === 'function') aplicarSaldosReais();
 
+}
+
+// Preenche os 3 badges de delta dos KPIs (Kirvano-style)
+function _atualizarDeltasKPI(tarefasConcluidas, tarefasTotal) {
+  const setDelta = (id, txt, tipo) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = txt || '';
+    el.classList.remove('card-delta-pos', 'card-delta-neg');
+    if (tipo === 'pos') el.classList.add('card-delta-pos');
+    else if (tipo === 'neg') el.classList.add('card-delta-neg');
+  };
+
+  // Saldo: % de crescimento das entradas (30d recentes vs 30d anteriores)
+  try {
+    const agora = Date.now();
+    const d30 = 30 * 24 * 60 * 60 * 1000;
+    let ent30 = 0, ent60 = 0;
+    (allTransactions || []).forEach(t => {
+      if (t.tipo !== 'entrada') return;
+      const ts = new Date(t.data).getTime();
+      if (isNaN(ts)) return;
+      const idade = agora - ts;
+      if (idade < 0) return; // ignora futuras
+      if (idade <= d30) ent30 += parseFloat(t.valor);
+      else if (idade <= 2 * d30) ent60 += parseFloat(t.valor);
+    });
+    if (ent60 > 0) {
+      const delta = ((ent30 - ent60) / ent60) * 100;
+      const sinal = delta >= 0 ? '+' : '';
+      setDelta('dash-saldo-delta', `${sinal}${delta.toFixed(1)}%`, delta >= 0 ? 'pos' : 'neg');
+    } else if (ent30 > 0) {
+      setDelta('dash-saldo-delta', 'novo', 'pos');
+    } else {
+      setDelta('dash-saldo-delta', '', null);
+    }
+  } catch (e) { setDelta('dash-saldo-delta', '', null); }
+
+  // Tarefas: % de conclusão hoje
+  if (tarefasTotal > 0) {
+    const pct = Math.round((tarefasConcluidas / tarefasTotal) * 100);
+    setDelta('dash-tarefas-delta', `${pct}%`, pct >= 100 ? 'pos' : (pct >= 50 ? null : 'neg'));
+  } else {
+    setDelta('dash-tarefas-delta', '', null);
+  }
+
+  // Streak: mostra recorde se for maior que o atual (guardado em app_estado)
+  try {
+    const streakAtual = parseInt(document.getElementById('dash-streak')?.textContent || '0', 10);
+    const recorde = parseInt(estadoGet('streakRecorde') || '0', 10);
+    if (streakAtual > recorde) estadoSet('streakRecorde', String(streakAtual));
+    const rec = Math.max(streakAtual, recorde);
+    if (rec > 0 && rec > streakAtual) {
+      setDelta('dash-streak-delta', `recorde ${rec}`, null);
+    } else if (rec > 0 && streakAtual === rec) {
+      setDelta('dash-streak-delta', 'no recorde', 'pos');
+    } else {
+      setDelta('dash-streak-delta', '', null);
+    }
+  } catch (e) { setDelta('dash-streak-delta', '', null); }
 }
 
 function encontrarProximoAlarme() {
