@@ -3722,8 +3722,9 @@ input[type="submit"] {
 }
 
 /* Body sem overflow-hidden pra scroll natural do dashboard */
-body { overflow-y: auto; overflow-x: hidden; }
-.main { overflow: visible; }
+html, body { height: auto !important; min-height: 100%; overflow: visible !important; }
+body { overflow-x: hidden !important; }
+.main { overflow: visible; height: auto !important; }
 
 /* ============================================================
    REDESIGN v6 — proporção Kirvano (cards compactos, não gigantes)
