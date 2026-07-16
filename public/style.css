@@ -6,43 +6,45 @@
 }
 
 :root {
-  /* Escuro suave (grafite) — estilo Linear/GitHub dark */
-  --bg-primary: #1a1b1e;
-  --bg-secondary: #202024;
-  --bg-tertiary: #2a2b30;
-  --bg-card: #25262b;
-  --bg-card-hover: #2d2e34;
-  --card-bg: #25262b;        /* alias usado pelos painéis */
+  /* Minimalista tipo Kirvano — preto puro, uma cor de acento, bordas invisíveis */
+  --bg-primary: #0a0a0b;
+  --bg-secondary: #0f0f11;
+  --bg-tertiary: #16161a;
+  --bg-card: #111114;
+  --bg-card-hover: #16161a;
+  --card-bg: #111114;
 
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.13);
+  --border: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.09);
 
-  --text-primary: #e6e6e6;
-  --text-secondary: #a0a0a8;
-  --text-muted: #6e6e78;
-  --text: #e6e6e6;           /* alias usado pelos painéis */
+  --text-primary: #f5f5f7;
+  --text-secondary: #8b8b93;
+  --text-muted: #55555c;
+  --text: #f5f5f7;
 
-  --accent: #5b7cfa;
-  --accent-hover: #748ffc;
-  --success: #3fb950;
-  --danger: #f85149;
-  --warning: #d29922;
-  --info: #5b7cfa;
+  /* Cor de acento única: verde neon */
+  --accent: #2df19f;
+  --accent-hover: #46f8ab;
+  --accent-dim: rgba(45, 241, 159, 0.12);
+  --success: #2df19f;
+  --danger: #ff5c68;
+  --warning: #ffb547;
+  --info: #6ab7ff;
 
-  /* Cards com acento neutro único (sem multicolor) */
-  --grad-blue: #3a3b42;
-  --grad-green: #3a3b42;
-  --grad-orange: #3a3b42;
-  --grad-purple: #3a3b42;
-  --grad-red: #3a3b42;
+  /* Todos os "gradientes" viram o mesmo neutro — sem multicolor */
+  --grad-blue: transparent;
+  --grad-green: transparent;
+  --grad-orange: transparent;
+  --grad-purple: transparent;
+  --grad-red: transparent;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.6);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
 
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -3073,4 +3075,197 @@ input[type="datetime-local"]::before {
   .nav-btn { padding: 10px 4px; }
   .nav-btn .nav-icon { font-size: 20px; }
   h1 { font-size: 20px; }
+}
+
+/* ============================================================
+   REDESIGN 2026-07 — MINIMALISTA (inspirado no Kirvano)
+   Preto puro, uma cor de acento (verde neon), bordas invisíveis,
+   tipografia clean, sem gradientes coloridos, números protagonistas.
+   ============================================================ */
+
+body {
+  background: var(--bg-primary);
+  font-feature-settings: 'ss01', 'cv11';
+  letter-spacing: -0.01em;
+}
+
+/* ----- Cards: sem top-bar colorida, hover sutil ----- */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  transition: border-color var(--transition), background var(--transition);
+  box-shadow: none;
+}
+.card::before { display: none !important; }
+.card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+.card-icon { display: none; }
+.card-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+.card-value {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.card-mini { color: var(--text-muted); }
+
+/* ----- Quick add: sem gradiente colorido ----- */
+.quick-add-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.quick-add-header { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; font-size: 11px; }
+
+/* ----- Panels ----- */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.form-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+/* ----- Botões ----- */
+.btn-primary {
+  background: var(--accent);
+  color: #072418;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+  font-family: inherit;
+  box-shadow: none;
+  background-image: none;
+}
+.btn-primary:hover { background: var(--accent-hover); transform: none; }
+.btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+  font-family: inherit;
+}
+.btn-secondary:hover { border-color: rgba(255,255,255,0.2); background: var(--bg-card-hover); }
+
+/* ----- Inputs ----- */
+input, select, textarea {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 10px !important;
+  padding: 10px 12px !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  transition: border-color var(--transition);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+}
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+
+/* ----- Sidebar (desktop) — mais slim ----- */
+.sidebar {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+.nav-btn { color: var(--text-secondary); font-weight: 500; }
+.nav-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.nav-btn.active {
+  background: var(--bg-tertiary);
+  color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.logo-icon {
+  background: var(--accent);
+  -webkit-background-clip: text;
+  color: var(--accent);
+  -webkit-text-fill-color: initial;
+}
+
+/* ----- Bottom nav (mobile) — mais fino, acento discreto ----- */
+@media (max-width: 768px) {
+  .sidebar {
+    background: rgba(10, 10, 11, 0.92);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-top: 1px solid var(--border);
+  }
+  .nav-btn.active {
+    background: transparent;
+    color: var(--accent);
+    box-shadow: none;
+  }
+  .nav-btn .nav-icon { filter: grayscale(0.4); }
+  .nav-btn.active .nav-icon { filter: none; }
+}
+
+/* ----- Chips & badges (mais sutis) ----- */
+.transaction-list li, .alarm-list li, .mini-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* ----- Timeline task ----- */
+.timeline-task {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+}
+.timeline-task:hover { border-color: var(--border-strong); }
+
+/* ----- Página / headers ----- */
+h1 { letter-spacing: -0.02em; font-weight: 700; }
+h2, .section-title { color: var(--text-secondary); font-weight: 500; font-size: 13px; text-transform: uppercase; letter-spacing: 0.6px; }
+.page-subtitle { color: var(--text-muted); }
+
+/* ----- Modais ----- */
+.modal-content, .modal-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+.modal-btn-confirm { background: var(--accent); color: #072418; border: none; }
+.modal-btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-strong); }
+
+/* ----- Scrollbar quase invisível ----- */
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+
+/* ----- Tabs do financeiro ----- */
+.fin-subtab-btn { color: var(--text-muted) !important; border-bottom-color: transparent !important; font-weight: 500 !important; }
+.fin-subtab-btn.active { color: var(--text-primary) !important; border-bottom-color: var(--accent) !important; }
+
+/* ----- Toast ----- */
+.toast {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
