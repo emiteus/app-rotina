@@ -128,6 +128,45 @@
         <div id="dash-transacoes-list" class="mini-list"></div>
       </div>
 
+      <!-- 4 cards Kirvano-style embaixo -->
+      <div class="dashboard-extra-grid" style="margin-top:20px;">
+        <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro')" style="cursor:pointer;">
+          <div class="panel-header">
+            <h3>Alertas do dia</h3>
+          </div>
+          <div id="dash-alertas" class="mini-panel-body">
+            <p class="mini-empty">Sem alertas</p>
+          </div>
+        </div>
+
+        <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro'); setTimeout(()=>trocarSubAbaFin('fin-metas'),100);" style="cursor:pointer;">
+          <div class="panel-header">
+            <h3>Metas em andamento</h3>
+          </div>
+          <div id="dash-metas" class="mini-panel-body">
+            <p class="mini-empty">Nenhuma meta ativa</p>
+          </div>
+        </div>
+
+        <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro'); setTimeout(()=>trocarSubAbaFin('fin-pj'),100);" style="cursor:pointer;">
+          <div class="panel-header">
+            <h3>Próximo DAS</h3>
+          </div>
+          <div id="dash-das" class="mini-panel-body">
+            <p class="mini-empty">MEI não configurado</p>
+          </div>
+        </div>
+
+        <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro'); setTimeout(()=>trocarSubAbaFin('fin-contas'),100);" style="cursor:pointer;">
+          <div class="panel-header">
+            <h3>Contas pra reconectar</h3>
+          </div>
+          <div id="dash-reconectar" class="mini-panel-body">
+            <p class="mini-empty">Tudo sincronizado</p>
+          </div>
+        </div>
+      </div>
+
       <!-- IDs escondidos que o app.js escreve mas não devem aparecer visualmente -->
       <div id="player-xp" style="display:none;"></div>
       <div id="dash-alarmes" style="display:none;">0</div>

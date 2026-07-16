@@ -4124,6 +4124,63 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
 }
 
+/* v13: 4 cards mini estilo Kirvano abaixo do chart */
+.dashboard-extra-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.dashboard-mini-card {
+  padding: 20px 22px !important;
+  border-radius: 14px !important;
+  transition: border-color var(--transition), background var(--transition);
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+}
+.dashboard-mini-card:hover {
+  border-color: var(--border-strong) !important;
+  background: var(--bg-card-hover) !important;
+}
+.dashboard-mini-card .panel-header {
+  margin-bottom: 12px !important;
+}
+.dashboard-mini-card .panel-header h3 {
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+}
+.mini-panel-body { font-size: 13px; color: var(--text-primary); flex: 1; }
+.mini-panel-body .mini-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+}
+.mini-panel-body .mini-metric {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+  line-height: 1.15;
+}
+.mini-panel-body .mini-caption {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+.mini-panel-body .mini-warn { color: var(--danger); }
+.mini-panel-body .mini-ok { color: var(--accent); }
+
+@media (max-width: 900px) {
+  .dashboard-extra-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+}
+@media (max-width: 500px) {
+  .dashboard-extra-grid { grid-template-columns: 1fr; }
+}
+
 /* Financeiro Visão Geral: cards saldo/entrada/saida — números brancos, sem cor forte */
 .finance-box.saldo-box,
 .finance-box.entrada-box,

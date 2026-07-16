@@ -4447,6 +4447,99 @@ function encontrarProximoAlarme() {
 // =====================
 //  HELPERS
 // =====================
+// ==================== Dashboard: 4 cards mini (Kirvano-style) ====================
+async function carregarDashboardExtras() {
+  const [alertas, metas, pj, ofStatus] = await Promise.all([
+    fetch('/api/financeiro/alertas').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch('/api/metas').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch('/api/pj').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    fetch('/api/openfinance/items-status').then(r => r.ok ? r.json() : {}).catch(() => ({}))
+  ]);
+  _renderAlertasCard(alertas);
+  _renderMetasCard(metas);
+  _renderDasCard(pj);
+  _renderReconectarCard(ofStatus);
+}
+
+function _renderAlertasCard(d) {
+  const el = document.getElementById('dash-alertas');
+  if (!el) return;
+  const arr = (d && d.alertas) || [];
+  if (!arr.length) {
+    el.innerHTML = '<p class="mini-empty">Sem alertas hoje</p>';
+    return;
+  }
+  const top = arr[0];
+  const brl = Number(top.atual).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const extra = arr.length > 1 ? ` <span class="mini-caption">+ ${arr.length - 1} outras</span>` : '';
+  el.innerHTML = `
+    <p class="mini-metric mini-warn">${top.acima}%</p>
+    <p class="mini-caption">${top.categoria}: R$ ${brl} este mês${extra}</p>
+  `;
+}
+
+function _renderMetasCard(d) {
+  const el = document.getElementById('dash-metas');
+  if (!el) return;
+  const arr = ((d && d.metas) || []).filter(m => !m.concluida);
+  if (!arr.length) {
+    el.innerHTML = '<p class="mini-empty">Nenhuma meta ativa</p>';
+    return;
+  }
+  const top = arr[0];
+  const juntado = Number(top.juntado || 0);
+  const total = Number(top.valor_total || 1);
+  const pct = Math.min(100, Math.round((juntado / total) * 100));
+  const extra = arr.length > 1 ? ` <span class="mini-caption">+ ${arr.length - 1}</span>` : '';
+  el.innerHTML = `
+    <p class="mini-metric">${pct}%</p>
+    <p class="mini-caption">${escapeHtml(top.nome)}${extra}</p>
+    <div class="card-bar" style="margin-top:8px;"><div class="card-bar-fill" style="width:${pct}%"></div></div>
+  `;
+}
+
+function _renderDasCard(d) {
+  const el = document.getElementById('dash-das');
+  if (!el) return;
+  const das = d && d.das;
+  if (!das || !das.proxima) {
+    el.innerHTML = '<p class="mini-empty">MEI não configurado</p>';
+    return;
+  }
+  const p = das.proxima;
+  const vence = new Date(p.vencimento || `${p.ym}-20`);
+  const diff = Math.ceil((vence - new Date()) / (1000 * 60 * 60 * 24));
+  const brl = p.valor ? Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : null;
+  let msg, cls = '';
+  if (p.pago) { msg = 'Já pago'; cls = 'mini-ok'; }
+  else if (diff < 0) { msg = `Atrasado há ${Math.abs(diff)}d`; cls = 'mini-warn'; }
+  else if (diff === 0) { msg = 'Vence hoje'; cls = 'mini-warn'; }
+  else { msg = `Vence em ${diff}d`; }
+  el.innerHTML = `
+    <p class="mini-metric ${cls}">${brl ? 'R$ ' + brl : 'DAS'}</p>
+    <p class="mini-caption">${msg}</p>
+  `;
+}
+
+function _renderReconectarCard(d) {
+  const el = document.getElementById('dash-reconectar');
+  if (!el) return;
+  const items = (d && d.items) || [];
+  const stales = items.filter(i => i.precisa_reconectar);
+  if (!stales.length) {
+    el.innerHTML = '<p class="mini-empty">Tudo sincronizado</p>';
+    return;
+  }
+  const top = stales[0];
+  const dias = top.horas_desde_sync ? Math.floor(top.horas_desde_sync / 24) : null;
+  const quando = dias ? `${dias}d atrás` : `${top.horas_desde_sync}h atrás`;
+  const extra = stales.length > 1 ? ` <span class="mini-caption">+ ${stales.length - 1}</span>` : '';
+  el.innerHTML = `
+    <p class="mini-metric mini-warn">${stales.length}</p>
+    <p class="mini-caption">${escapeHtml(top.apelido)}: ${quando}${extra}</p>
+  `;
+}
+
 function formatBRL(v) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -4791,6 +4884,9 @@ window.addEventListener('load', () => {
 
   conectarWebSocket();
 
+  // 4 cards Kirvano-style embaixo do chart
+  carregarDashboardExtras();
+
   // Refresh a cada 30s
   setInterval(() => {
     carregarTarefas();
@@ -4800,6 +4896,8 @@ window.addEventListener('load', () => {
 
   // Stats a cada 60s
   setInterval(carregarStats, 60000);
+  // Extras a cada 2 min
+  setInterval(carregarDashboardExtras, 120000);
 
   // Definir data padrão no input como hoje (local)
   const dataInput = document.getElementById('data-tarefa');
