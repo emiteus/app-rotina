@@ -2046,7 +2046,7 @@ function renderCategorizar() {
         }).join('');
         const maisTxt = txs.length > maxShow ? `<div style="font-size:11px; color:var(--text-muted); padding-top:2px;">+ ${txs.length - maxShow} outra(s)</div>` : '';
         return `
-          <div style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; margin-bottom:8px;">
+          <div data-cat-card="${encodeURIComponent(p.chave)}" style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; margin-bottom:8px; overflow:hidden;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:13px; flex:1; font-weight:500;">${escapeHtml(limparDescricao(p.exemplo).slice(0, 44))}</span>
               <span style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${p.qtd}x · ${simbolo}${formatBRL(Number(p.total))}</span>
@@ -2089,18 +2089,35 @@ async function aplicarCategoria(chave, exemplo) {
   if (!el) return;
   const categoria = await _catResolver(el.value);
   if (!categoria) return;
-  const scrollY = window.scrollY;
+  const card = document.querySelector(`[data-cat-card="${encodeURIComponent(chave).replace(/"/g, '\\"')}"]`);
+  if (card) card.style.opacity = '0.5';
   try {
     const res = await fetch('/api/categorias/aprender', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chave, categoria, exemplo })
     });
     const d = await res.json();
-    if (!res.ok) { toast(d.erro || 'Erro', 'error'); return; }
+    if (!res.ok) { if (card) card.style.opacity = '1'; toast(d.erro || 'Erro', 'error'); return; }
     toast(`Categorizado (${d.aplicadas} transações)`, 'success');
-    await carregarCategorizar();
-    requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
-  } catch (e) { toast('Erro ao categorizar: ' + (e.message || 'sem conexão'), 'error'); }
+    // Remove só esse card da UI + atualiza estado local, sem full reload (preserva scroll)
+    _catPendentes = _catPendentes.filter(p => p.chave !== chave);
+    atualizarBadgePendentes(_catPendentes.length);
+    if (card) {
+      card.style.transition = 'opacity 0.18s ease, max-height 0.22s ease, margin 0.22s ease, padding 0.22s ease';
+      card.style.maxHeight = card.offsetHeight + 'px';
+      requestAnimationFrame(() => {
+        card.style.opacity = '0';
+        card.style.maxHeight = '0';
+        card.style.paddingTop = '0';
+        card.style.paddingBottom = '0';
+        card.style.marginBottom = '0';
+        card.style.borderWidth = '0';
+        setTimeout(() => card.remove(), 240);
+      });
+    }
+    // Se lista ficou vazia, atualiza contador do header em segundo plano (sem re-render)
+    if (_catPendentes.length === 0) setTimeout(() => carregarCategorizar(), 300);
+  } catch (e) { if (card) card.style.opacity = '1'; toast('Erro ao categorizar: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function salvarEdicaoRegra(chave) {
