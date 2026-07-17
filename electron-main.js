@@ -101,6 +101,21 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     // Reforça o ícone (em dev, Windows tende a usar o do electron.exe se não fizer isso)
     if (APP_ICON) { try { mainWindow.setIcon(APP_ICON); } catch (e) {} }
+    // Windows: seta AUMID + ícone diretamente nas propriedades da JANELA. Sem isso,
+    // Windows Explorer usa o AUMID do processo (que é o Electron default) e mostra
+    // o átomo na taskbar mesmo com setIcon correto. Precisa .ico com caminho ABSOLUTO.
+    if (process.platform === 'win32') {
+      try {
+        const iconPath = app.isPackaged
+          ? path.join(process.resourcesPath, 'icon.ico')
+          : path.join(__dirname, 'public', 'icon.ico');
+        mainWindow.setAppDetails({
+          appId: 'com.approtina.app',
+          appIconPath: iconPath,
+          appIconIndex: 0
+        });
+      } catch (e) { console.log('[setAppDetails] falhou:', e.message); }
+    }
     mainWindow.maximize();
     mainWindow.show();
   });
