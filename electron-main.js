@@ -63,6 +63,21 @@ function createWindow() {
   mainWindow.setMenuBarVisibility(false);
   mainWindow.removeMenu();
 
+  // Reativa atalhos úteis mesmo sem menu bar (Ctrl+Shift+I = DevTools, Ctrl+R = reload)
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    } else if (input.control && input.key.toLowerCase() === 'r') {
+      mainWindow.webContents.reloadIgnoringCache();
+      event.preventDefault();
+    } else if (input.key === 'F12') {
+      mainWindow.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
+
   // Em desenvolvimento, abre localhost:3000
   // Em produção, carrega o arquivo local
   const startUrl = isDev

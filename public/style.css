@@ -1793,7 +1793,8 @@ body.modo-noturno {
   --text-secondary: #9a9aa4;
   --text-muted: #66666f;
 
-  filter: brightness(0.97);
+  /* NOTA: NÃO usar filter/transform/perspective aqui — quebra position:fixed
+     dos filhos (sidebar rola com o content). Já é escuro suficiente. */
 }
 
 body.modo-noturno .card {
