@@ -1,6 +1,6 @@
 {
   "name": "app-rotina",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "electron-main.js",
   "scripts": {
