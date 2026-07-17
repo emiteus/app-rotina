@@ -1,6 +1,6 @@
 {
   "name": "app-rotina",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "electron-main.js",
   "scripts": {
@@ -67,7 +67,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "public/icon.ico"
