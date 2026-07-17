@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=28">
+  <link rel="stylesheet" href="style.css?v=29">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -83,12 +83,17 @@
 
     <!-- TAB: Dashboard (redesign minimalista) -->
     <section id="dashboard" class="tab-content active">
-      <div class="page-header">
+      <div class="page-header" style="justify-content:space-between; align-items:center; display:flex;">
         <div>
           <h1><span id="saudacao">Boa noite</span></h1>
           <p class="page-subtitle">Últimos 30 dias</p>
         </div>
+        <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(38,224,200,0.12); border:1px solid rgba(38,224,200,0.35); color:var(--accent, #26e0c8); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
+          Analisar meu dia
+        </button>
       </div>
+      <div id="analise-ia-box" style="display:none; background:var(--card-bg, #25262b); border:1px solid rgba(38,224,200,0.25); border-radius:12px; padding:18px 20px; margin-bottom:20px; font-size:14px; line-height:1.6; color:var(--text-primary);"></div>
 
       <!-- 3 KPI cards, tipo Kirvano -->
       <div class="cards-grid dashboard-kpi-grid">
@@ -775,7 +780,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

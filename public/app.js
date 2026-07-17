@@ -1521,6 +1521,42 @@ function renderMetas() {
     ${listaHtml}`;
 }
 
+// IA: análise do dia — botão no dashboard
+async function analisarDiaIA() {
+  const btn = document.getElementById('btn-analise-ia');
+  const box = document.getElementById('analise-ia-box');
+  if (!btn || !box) return;
+  const btnOld = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Analisando…';
+  box.style.display = 'block';
+  box.innerHTML = '<span style="color:var(--text-muted);">A IA tá olhando seus dados…</span>';
+  try {
+    const res = await fetch('/api/ia/analise/diaria', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      box.innerHTML = `<span style="color:#f85149;">${escapeHtml(d.erro || 'Erro na IA')}</span>`;
+      return;
+    }
+    // Formata parágrafos: divide por \n\n
+    const paragrafos = String(d.analise || '').split(/\n\n+/).map(p => `<p style="margin:0 0 10px;">${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
+    box.innerHTML = `
+      <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent, #26e0c8);"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
+        Análise gerada pela IA
+        <button onclick="document.getElementById('analise-ia-box').style.display='none'" style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px;">✕</button>
+      </div>
+      ${paragrafos}`;
+  } catch (e) {
+    box.innerHTML = `<span style="color:#f85149;">Erro: ${escapeHtml(e.message || 'sem conexão')}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = btnOld;
+  }
+}
+
 async function novaMetaIA() {
   const r = await promptModal({
     titulo: 'Descreva sua meta',

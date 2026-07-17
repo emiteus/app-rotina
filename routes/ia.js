@@ -185,4 +185,106 @@ Exemplos:
   }
 });
 
+// POST /api/ia/analise/diaria
+// Reúne dados do dia (tarefas + financeiro) e pede pra IA resumir em pt-BR conversacional.
+router.post('/analise/diaria', async (req, res) => {
+  if (!temKey()) return res.status(400).json({ erro: 'ANTHROPIC_API_KEY não configurada.' });
+
+  try {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const inicio30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    // Tarefas de hoje (concluídas + total + streak)
+    const tarefasHoje = await all(
+      `SELECT COUNT(*)::int AS total, SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
+       FROM tasks WHERE data_reset::date = $1`,
+      [hoje]
+    );
+
+    // Financeiro do dia
+    const finHoje = await all(
+      `SELECT tipo, categoria, valor, descricao
+       FROM financeiro WHERE data::date = $1
+       ORDER BY valor DESC LIMIT 20`,
+      [hoje]
+    );
+
+    // Financeiro dos últimos 30 dias (pra comparar média)
+    const finMedia = await all(
+      `SELECT
+         COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas30,
+         COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas30,
+         COUNT(*)::int AS n
+       FROM financeiro
+       WHERE data::date BETWEEN $1 AND $2 AND data::date < $3`,
+      [inicio30, ontem, hoje]
+    );
+
+    const t = tarefasHoje[0] || { total: 0, concluidas: 0 };
+    const m = finMedia[0] || { entradas30: 0, saidas30: 0, n: 0 };
+    const gastosHoje = finHoje.filter(f => f.tipo === 'saida').reduce((s, f) => s + Number(f.valor), 0);
+    const entradasHoje = finHoje.filter(f => f.tipo === 'entrada').reduce((s, f) => s + Number(f.valor), 0);
+    const gastoMedioDia = Number(m.saidas30) / 30;
+
+    const contexto = {
+      data: hoje,
+      tarefas: { total: t.total, concluidas: t.concluidas, taxa: t.total > 0 ? Math.round((t.concluidas / t.total) * 100) : 0 },
+      financeiro_hoje: {
+        entradas: entradasHoje,
+        saidas: gastosHoje,
+        saldo: entradasHoje - gastosHoje,
+        transacoes: finHoje.slice(0, 10).map(f => ({
+          desc: (f.descricao || '').slice(0, 40),
+          valor: Number(f.valor),
+          tipo: f.tipo,
+          categoria: f.categoria
+        }))
+      },
+      media_30d: {
+        gasto_medio_dia: Math.round(gastoMedioDia * 100) / 100,
+        diferenca_hoje_vs_media: gastosHoje - gastoMedioDia
+      }
+    };
+
+    const systemPrompt = `Você é um assistente pessoal do usuário — informal, direto, tipo um amigo que dá insights sobre o dia dele. Responda em português brasileiro conversacional (usa "vc" ou "você"). Estrutura:
+
+1. Frase de abertura curta comentando o dia (produtividade + finanças em 1-2 linhas)
+2. Um insight ou padrão notável nos dados (ex: gastou muito em uma categoria, tarefa importante ainda pendente, etc.)
+3. Uma sugestão prática pra amanhã ou agora
+
+Regras:
+- Total máximo 3 parágrafos curtos, ~200 palavras.
+- Não invente dados que não estão no JSON.
+- Se o dia teve pouca atividade, seja breve e sugira algo pra começar.
+- Use emojis só se fizerem sentido (1-2 no total).
+- Não repita números óbvios do dashboard — dê análise, não descrição.`;
+
+    const anthropicResp = await axios.post(
+      ANTHROPIC_URL,
+      {
+        model: MODEL,
+        max_tokens: 500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: JSON.stringify(contexto) }]
+      },
+      {
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json'
+        },
+        timeout: 15000
+      }
+    );
+
+    const texto = (anthropicResp.data?.content?.[0]?.text || '').trim();
+    res.json({ analise: texto, contexto, usage: anthropicResp.data?.usage });
+  } catch (err) {
+    const status = err.response?.status || 500;
+    const msg = err.response?.data?.error?.message || err.message;
+    res.status(status).json({ erro: msg });
+  }
+});
+
 module.exports = router;
