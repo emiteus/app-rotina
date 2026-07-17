@@ -1,6 +1,10 @@
 const { app, BrowserWindow, Menu, session, nativeImage, dialog } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
+const log = require('electron-log/main');
+log.initialize();
+log.transports.file.level = 'debug';
+autoUpdater.logger = log;
 
 // isDev built-in — evita dep externa (que ficaria em devDependencies e sumiria no .exe)
 const isDev = !app.isPackaged;
@@ -154,6 +158,11 @@ app.on('ready', async () => {
     }, 3000);
   }
 });
+
+autoUpdater.on('checking-for-update', () => log.info('[updater] checking...'));
+autoUpdater.on('update-available', (info) => log.info('[updater] AVAILABLE:', info.version));
+autoUpdater.on('update-not-available', (info) => log.info('[updater] not-available:', info.version));
+autoUpdater.on('download-progress', (p) => log.info('[updater] progress:', Math.round(p.percent) + '%'));
 
 // Quando uma atualização já foi baixada em background, pergunta se quer reiniciar.
 autoUpdater.on('update-downloaded', async () => {
