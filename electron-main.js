@@ -1,7 +1,9 @@
 const { app, BrowserWindow, Menu, session, nativeImage, dialog } = require('electron');
 const path = require('path');
-const isDev = require('electron-is-dev');
 const { autoUpdater } = require('electron-updater');
+
+// isDev built-in — evita dep externa (que ficaria em devDependencies e sumiria no .exe)
+const isDev = !app.isPackaged;
 
 const PROD_URL = 'https://app-rotina-production-f84e.up.railway.app/';
 

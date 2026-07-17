@@ -84,7 +84,8 @@
       {
         "provider": "github",
         "owner": "emiteus",
-        "repo": "app-rotina"
+        "repo": "app-rotina",
+        "releaseType": "release"
       }
     ]
   }
