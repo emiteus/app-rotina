@@ -176,7 +176,8 @@ autoUpdater.on('update-downloaded', async () => {
     defaultId: 0,
     cancelId: 1
   });
-  if (response === 0) autoUpdater.quitAndInstall();
+  // (isSilent=true, isForceRunAfter=true) → NSIS oneClick roda invisível e reabre o app.
+  if (response === 0) autoUpdater.quitAndInstall(true, true);
 });
 autoUpdater.on('error', (err) => console.log('[updater] erro:', err.message));
 
