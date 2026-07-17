@@ -1671,7 +1671,7 @@ function renderApostas() {
               <span>Apostei por ele: ${formatBRL(a.apostado)}</span>
               <span>Já me pagou: ${formatBRL(a.recebido + a.pago)}</span>
             </div>
-            <button onclick="registrarPagamentoAmigo('${escapeHtml(a.amigo).replace(/'/g, "\\'")}')" style="margin-top:8px; background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.4); color:#31a24c; border-radius:6px; padding:4px 12px; font-size:11px; cursor:pointer;">Registrar pagamento</button>
+            <button onclick="registrarPagamentoAmigo('${escapeHtml(a.amigo).replace(/'/g, "\\'")}')" style="margin-top:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:4px 12px; font-size:11px; cursor:pointer;">Registrar pagamento</button>
           </div>`;
       }).join('')
     : '<p style="color:var(--text-muted); font-size:12px;">Nenhum amigo com apostas ainda.</p>';
@@ -2038,7 +2038,7 @@ function renderCategorizar() {
         const txHtml = txs.slice(0, maxShow).map(t => {
           const dt = t.data ? new Date(t.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '--';
           const s = t.tipo === 'entrada' ? '+' : '−';
-          const badgePessoa = t.pessoa === 'PJ' ? ' <span style="color:#e8950c;">PJ</span>' : '';
+          const badgePessoa = t.pessoa === 'PJ' ? ' <span style="color:var(--text-secondary); font-weight:500;">PJ</span>' : '';
           return `<div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); padding:2px 0;">
             <span>${dt} · ${escapeHtml(t.banco || 'Conta')}${badgePessoa}</span>
             <span>${s}${formatBRL(t.valor)}</span>
@@ -2054,7 +2054,7 @@ function renderCategorizar() {
             <div style="background:rgba(255,255,255,0.02); border-radius:6px; padding:6px 10px; margin-bottom:8px;">${txHtml}${maisTxt}</div>
             <div style="display:flex; gap:8px;">
               ${_catAutocompleteHtml(`cat-sel-${p.chave}`, sug)}
-              <button onclick="aplicarCategoria('${p.chave}', ${JSON.stringify(p.exemplo || '').replace(/"/g, '&quot;')})" style="background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.4); color:#31a24c; border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Aplicar</button>
+              <button onclick="aplicarCategoria('${p.chave}', ${JSON.stringify(p.exemplo || '').replace(/"/g, '&quot;')})" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Aplicar</button>
             </div>
           </div>`;
       }).join('');
@@ -2089,6 +2089,7 @@ async function aplicarCategoria(chave, exemplo) {
   if (!el) return;
   const categoria = await _catResolver(el.value);
   if (!categoria) return;
+  const scrollY = window.scrollY;
   try {
     const res = await fetch('/api/categorias/aprender', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2097,7 +2098,8 @@ async function aplicarCategoria(chave, exemplo) {
     const d = await res.json();
     if (!res.ok) { toast(d.erro || 'Erro', 'error'); return; }
     toast(`Categorizado (${d.aplicadas} transações)`, 'success');
-    carregarCategorizar();
+    await carregarCategorizar();
+    requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
   } catch (e) { toast('Erro ao categorizar: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
@@ -2515,7 +2517,7 @@ function renderOrganizacaoFinanceira() {
         <div style="height:100%; width:${pctEmp}%; background:#31a24c;"></div>
       </div>
       <div style="display:flex; gap:8px;">
-        <button onclick="ajustarParcelaEmprestimo(1)" style="flex:1; background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.4); color:#31a24c; border-radius:8px; padding:8px; cursor:pointer; font-size:13px;">✓ Paguei uma parcela</button>
+        <button onclick="ajustarParcelaEmprestimo(1)" style="flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:8px; cursor:pointer; font-size:13px;">✓ Paguei uma parcela</button>
         <button onclick="ajustarParcelaEmprestimo(-1)" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-muted); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px;">↩ desfazer</button>
       </div>
     </div>
@@ -2752,7 +2754,7 @@ function renderIR() {
     <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; margin-bottom:18px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h2 style="margin:0; font-size:16px;">Rendimentos do ano</h2>
-        <button onclick="addRendimentoIR()" style="background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.4); color:#31a24c; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer;">+ Adicionar</button>
+        <button onclick="addRendimentoIR()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer;">+ Adicionar</button>
       </div>
       ${rendHtml}
       <div style="text-align:right; margin-top:10px; font-size:13px;">Total: <b>${formatBRL(totalRend)}</b></div>
@@ -2888,7 +2890,7 @@ function renderBancos() {
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h2 style="margin:0; font-size:16px;">Bancos conectados</h2>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button onclick="sincronizarBancos()" style="background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.4); color:#31a24c; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
+          <button onclick="sincronizarBancos()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
           <button onclick="importarPorItemId()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
           <button onclick="conectarBanco()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">+ Conectar</button>
         </div>
