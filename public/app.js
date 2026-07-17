@@ -1526,6 +1526,7 @@ async function novaMetaIA() {
     titulo: 'Descreva sua meta',
     campos: [{
       name: 'texto',
+      tipo: 'textarea',
       label: 'Ex: "quero comprar cadeira gamer de R$ 2500 até dezembro", "juntar 10 mil pra viagem"',
       placeholder: 'Digite em linguagem natural...'
     }],
@@ -2024,14 +2025,20 @@ async function carregarCatListaForcado() {
 function promptModal({ titulo, campos, submitLabel = 'Salvar' }) {
   return new Promise(resolve => {
     const id = 'pm-' + Math.random().toString(36).slice(2, 8);
-    const camposHtml = campos.map(c => `
+    const camposHtml = campos.map(c => {
+      const inputHtml = c.tipo === 'textarea'
+        ? `<textarea id="${id}-${c.name}" placeholder="${escapeHtml(c.placeholder || '')}" rows="3"
+            style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:8px; font-size:13px; resize:vertical; font-family:inherit; box-sizing:border-box;">${escapeHtml(c.valor == null ? '' : String(c.valor))}</textarea>`
+        : `<input id="${id}-${c.name}" type="${c.tipo || 'text'}" ${c.tipo === 'number' ? 'step="0.01"' : ''}
+            value="${escapeHtml(c.valor == null ? '' : String(c.valor))}"
+            placeholder="${escapeHtml(c.placeholder || '')}"
+            style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:8px; font-size:13px; box-sizing:border-box;">`;
+      return `
       <div style="margin-bottom:12px;">
         <label style="font-size:13px; display:block; margin-bottom:4px;">${escapeHtml(c.label || c.name)}</label>
-        <input id="${id}-${c.name}" type="${c.tipo || 'text'}" ${c.tipo === 'number' ? 'step="0.01"' : ''}
-          value="${escapeHtml(c.valor == null ? '' : String(c.valor))}"
-          placeholder="${escapeHtml(c.placeholder || '')}"
-          style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:8px; font-size:13px;">
-      </div>`).join('');
+        ${inputHtml}
+      </div>`;
+    }).join('');
     const modal = document.createElement('div');
     modal.id = id;
     modal.innerHTML = `
