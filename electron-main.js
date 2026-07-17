@@ -1,6 +1,9 @@
-const { app, BrowserWindow, Menu, session, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, session, nativeImage, dialog } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
+const { autoUpdater } = require('electron-updater');
+
+const PROD_URL = 'https://app-rotina-production-f84e.up.railway.app/';
 
 // Forçar Windows a agrupar/exibir o app com o nosso ID e ícone (não o do electron.exe)
 if (process.platform === 'win32') {
@@ -78,12 +81,9 @@ function createWindow() {
     }
   });
 
-  // Em desenvolvimento, abre localhost:3000
-  // Em produção, carrega o arquivo local
-  const startUrl = isDev
-    ? 'http://localhost:3000'
-    : `file://${path.join(__dirname, 'public/index.html')}`;
-
+  // Dev: localhost com server.js rodando local.
+  // Prod (empacotado): aponta pra Railway — sem server embutido, sem segredo no .exe.
+  const startUrl = isDev ? 'http://localhost:3000' : PROD_URL;
   mainWindow.loadURL(startUrl);
 
   // Escala global menor (deixa as informações mais compactas)
@@ -115,7 +115,29 @@ app.on('ready', async () => {
   // Sem isso, o Electron reusa disk cache mesmo quando o servidor manda arquivo novo.
   try { await session.defaultSession.clearCache(); } catch (e) {}
   createWindow();
+  // Auto-update: em produção, checa GitHub Releases a cada boot.
+  if (!isDev) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(err => console.log('[updater]', err.message));
+    }, 3000);
+  }
 });
+
+// Quando uma atualização já foi baixada em background, pergunta se quer reiniciar.
+autoUpdater.on('update-downloaded', async () => {
+  if (!mainWindow) return;
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Atualização disponível',
+    message: 'Uma nova versão do App Rotina foi baixada.',
+    detail: 'Reiniciar agora pra aplicar? Você pode continuar usando e reiniciar depois.',
+    buttons: ['Reiniciar agora', 'Depois'],
+    defaultId: 0,
+    cancelId: 1
+  });
+  if (response === 0) autoUpdater.quitAndInstall();
+});
+autoUpdater.on('error', (err) => console.log('[updater] erro:', err.message));
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

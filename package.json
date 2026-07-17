@@ -7,7 +7,10 @@
     "start": "node server.js",
     "dev": "node server.js",
     "electron-dev": "electron .",
-    "electron-build": "electron-builder",
+    "electron-build": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always",
+    "release:patch": "npm version patch -m \"release: %s\" && git push && git push --tags",
+    "release:minor": "npm version minor -m \"release: %s\" && git push && git push --tags",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -17,6 +20,7 @@
   "dependencies": {
     "axios": "^1.16.1",
     "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "node-schedule": "^2.1.1",
@@ -35,25 +39,53 @@
   "build": {
     "appId": "com.approtina.app",
     "productName": "App Rotina",
+    "asar": true,
     "files": [
       "electron-main.js",
       "electron-preload.js",
-      "public/**/*",
+      "public/icon.ico",
+      "public/icon-512.png",
+      "public/icon-192.png",
+      "public/icon.png",
       "node_modules/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE,license,*.d.ts,*.map}",
+      "!node_modules/**/{test,tests,__tests__,example,examples,demo,docs}/**/*",
+      "!node_modules/sharp/**/*",
+      "!node_modules/pg/**/*",
+      "!node_modules/pg-*/**/*",
+      "!node_modules/web-push/**/*",
+      "!node_modules/express/**/*",
+      "!node_modules/express-*/**/*",
+      "!node_modules/ws/**/*",
+      "!node_modules/node-schedule/**/*",
+      "!node_modules/uuid/**/*",
+      "!node_modules/axios/**/*",
+      "!node_modules/dotenv/**/*"
     ],
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
       ],
       "icon": "public/icon.ico"
     },
     "nsis": {
       "oneClick": false,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+      "createStartMenuShortcut": true,
+      "shortcutName": "App Rotina"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "emiteus",
+        "repo": "app-rotina"
+      }
+    ]
   }
 }
