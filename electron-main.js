@@ -7,9 +7,13 @@ const isDev = !app.isPackaged;
 
 const PROD_URL = 'https://app-rotina-production-f84e.up.railway.app/';
 
-// Forçar Windows a agrupar/exibir o app com o nosso ID e ícone (não o do electron.exe)
+// Forçar Windows a agrupar/exibir o app com o nosso ID e ícone (não o do electron.exe).
+// Sufixo com versão força Windows a tratar como app "novo" e re-cachear o ícone —
+// sem isso, a taskbar do Win11 mantém o átomo padrão do Electron cacheado.
+const APP_VERSION = require('./package.json').version.replace(/\./g, '_');
+const AUMID = `com.approtina.app.v${APP_VERSION}`;
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.approtina.app');
+  app.setAppUserModelId(AUMID);
 }
 
 // Desativa cache do Chromium interno (senão o Electron serve CSS/JS velhos mesmo
@@ -104,7 +108,7 @@ function createWindow() {
     try {
       // process.execPath aponta pro próprio App Rotina.exe (que tem ícone correto embutido)
       mainWindow.setAppDetails({
-        appId: 'com.approtina.app',
+        appId: AUMID,
         relaunchDisplayName: 'App Rotina',
         appIconPath: process.execPath,
         appIconIndex: 0
@@ -118,9 +122,13 @@ function createWindow() {
     aplicarAppDetails();
     mainWindow.maximize();
     mainWindow.show();
-    // Windows às vezes ignora setAppDetails do ready-to-show — reaplica após um tick
-    setTimeout(aplicarAppDetails, 500);
-    setTimeout(aplicarAppDetails, 2000);
+    // Windows Taskbar às vezes cacheia o ícone padrão do Electron no primeiro paint.
+    // Hide+show força a taskbar rerender com o AUMID + ícone corretos.
+    setTimeout(() => {
+      aplicarAppDetails();
+      mainWindow.hide();
+      setTimeout(() => { mainWindow.show(); aplicarAppDetails(); }, 50);
+    }, 300);
   });
 
   // DevTools desativado (pode abrir com Ctrl+Shift+I se precisar)
