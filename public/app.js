@@ -2045,6 +2045,9 @@ function renderCategorizar() {
           </div>`;
         }).join('');
         const maisTxt = txs.length > maxShow ? `<div style="font-size:11px; color:var(--text-muted); padding-top:2px;">+ ${txs.length - maxShow} outra(s)</div>` : '';
+        const exemploEsc = JSON.stringify(p.exemplo || '').replace(/"/g, '&quot;');
+        const valorEsc = Number(p.total) || 0;
+        const tipoEsc = p.tipo || '';
         return `
           <div data-cat-card="${encodeURIComponent(p.chave)}" style="background:var(--card-bg, #25262b); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; margin-bottom:8px; overflow:hidden;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -2052,10 +2055,14 @@ function renderCategorizar() {
               <span style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${p.qtd}x · ${simbolo}${formatBRL(Number(p.total))}</span>
             </div>
             <div style="background:rgba(255,255,255,0.02); border-radius:6px; padding:6px 10px; margin-bottom:8px;">${txHtml}${maisTxt}</div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:stretch;">
               ${_catAutocompleteHtml(`cat-sel-${p.chave}`, sug)}
-              <button onclick="aplicarCategoria('${p.chave}', ${JSON.stringify(p.exemplo || '').replace(/"/g, '&quot;')})" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Aplicar</button>
+              <button onclick="sugerirCategoriaIA('${p.chave}', ${exemploEsc}, ${valorEsc}, '${tipoEsc}')" title="Sugerir com IA (Claude)" style="background:rgba(38,224,200,0.12); border:1px solid rgba(38,224,200,0.35); color:var(--accent, #26e0c8); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>IA
+              </button>
+              <button onclick="aplicarCategoria('${p.chave}', ${exemploEsc})" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Aplicar</button>
             </div>
+            <div id="ia-motivo-${p.chave}" style="font-size:11px; color:var(--text-muted); margin-top:6px; padding-left:2px; display:none;"></div>
           </div>`;
       }).join('');
 
@@ -2082,6 +2089,55 @@ function renderCategorizar() {
       <h2 style="font-size:15px; margin:0 0 12px;">Regras aprendidas (${_catRegras.length})</h2>
       ${regrasHtml}
     </div>`;
+}
+
+// Chama IA pra sugerir categoria com base numa descrição em linguagem natural.
+// Pega a descrição do próprio input (ou pede pro user digitar) e preenche o autocomplete.
+async function sugerirCategoriaIA(chave, exemplo, valor, tipo) {
+  const el = document.getElementById(`cat-sel-${chave}`);
+  const motivoEl = document.getElementById(`ia-motivo-${chave}`);
+  if (!el) return;
+  let descricao = (el.value || '').trim();
+  // Se input está vazio ou tem categoria pré-existente da lista, pede uma descrição livre
+  const jaCategoria = _catLista.some(c => c.label.toLowerCase() === descricao.toLowerCase());
+  if (!descricao || jaCategoria) {
+    const r = await promptModal({
+      titulo: 'Descreve o que foi essa transação',
+      campos: [{ name: 'desc', label: 'Ex: "ração do meu cachorro", "conta de luz", "corrida de uber"', placeholder: escapeHtml(exemplo || '') }]
+    });
+    if (!r) return;
+    descricao = (r.desc || '').trim();
+    if (!descricao) return;
+  }
+  const btn = el.parentElement.querySelector('button[title*="Sugerir"]');
+  const btnOld = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '…'; }
+  if (motivoEl) { motivoEl.style.display = 'none'; motivoEl.textContent = ''; }
+  try {
+    const res = await fetch('/api/ia/categorizar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ descricao, exemplo, valor, tipo })
+    });
+    const d = await res.json();
+    if (!res.ok) {
+      toast(d.erro || 'Erro na IA', 'error');
+      if (motivoEl) { motivoEl.textContent = d.erro || 'Erro'; motivoEl.style.display = 'block'; motivoEl.style.color = '#f85149'; }
+      return;
+    }
+    el.value = d.label || '';
+    if (motivoEl) {
+      const conf = d.confianca || 0;
+      const emoji = conf >= 80 ? '✓' : conf >= 50 ? '~' : '?';
+      motivoEl.textContent = `${emoji} ${d.label} (${conf}%) — ${d.motivo}`;
+      motivoEl.style.color = conf >= 80 ? 'var(--accent, #26e0c8)' : 'var(--text-muted)';
+      motivoEl.style.display = 'block';
+    }
+    toast(`IA sugeriu: ${d.label}`, 'success');
+  } catch (e) {
+    toast('Erro: ' + (e.message || 'sem conexão'), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = btnOld; }
+  }
 }
 
 async function aplicarCategoria(chave, exemplo) {

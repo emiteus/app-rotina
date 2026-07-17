@@ -55,6 +55,7 @@ const metasRouter = require('./routes/metas');
 const pjRouter = require('./routes/pj');
 const relatoriosRouter = require('./routes/relatorios');
 const pushRouter = require('./routes/push');
+const iaRouter = require('./routes/ia');
 const { enviarPush } = require('./lib/push');
 
 // Passar wsServer para as rotas
@@ -79,6 +80,7 @@ app.use('/api/metas', requireAuth, metasRouter);
 app.use('/api/pj', requireAuth, pjRouter);
 app.use('/api/relatorios', requireAuth, relatoriosRouter);
 app.use('/api/push', requireAuth, pushRouter);
+app.use('/api/ia', requireAuth, iaRouter);
 
 // Arquivos estaticos (index.html nao requer auth, auth.js vai verificar)
 app.use(express.static('public'));
