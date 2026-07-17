@@ -1901,6 +1901,7 @@ function _catOptions(sel) {
 
 // Autocomplete de categoria: input com datalist. Retorna { id } quando confirmado.
 // Se digitar um label que ainda não existe, chama /lista pra criar (com deduplicação).
+// O placeholder também sugere descrição livre (usada pelo botão IA).
 function _catAutocompleteHtml(inputId, sel) {
   const listId = inputId + '-list';
   const label = sel && _catLista.find(c => c.id === sel);
@@ -1908,7 +1909,7 @@ function _catAutocompleteHtml(inputId, sel) {
   const opts = _catLista.map(c => `<option value="${c.label}"></option>`).join('');
   return `
     <input type="text" id="${inputId}" list="${listId}" value="${escapeHtml(valor)}"
-      placeholder="Digite ou escolha uma categoria"
+      placeholder="Categoria ou descreva pra IA (ex: 'ração cachorro')"
       style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text); border-radius:6px; padding:6px 8px; font-size:12px;">
     <datalist id="${listId}">${opts}</datalist>`;
 }
@@ -2092,22 +2093,16 @@ function renderCategorizar() {
 }
 
 // Chama IA pra sugerir categoria com base numa descrição em linguagem natural.
-// Pega a descrição do próprio input (ou pede pro user digitar) e preenche o autocomplete.
+// Pega a descrição do próprio input inline e substitui pelo label da categoria escolhida.
 async function sugerirCategoriaIA(chave, exemplo, valor, tipo) {
   const el = document.getElementById(`cat-sel-${chave}`);
   const motivoEl = document.getElementById(`ia-motivo-${chave}`);
   if (!el) return;
-  let descricao = (el.value || '').trim();
-  // Se input está vazio ou tem categoria pré-existente da lista, pede uma descrição livre
-  const jaCategoria = _catLista.some(c => c.label.toLowerCase() === descricao.toLowerCase());
-  if (!descricao || jaCategoria) {
-    const r = await promptModal({
-      titulo: 'Descreve o que foi essa transação',
-      campos: [{ name: 'desc', label: 'Ex: "ração do meu cachorro", "conta de luz", "corrida de uber"', placeholder: escapeHtml(exemplo || '') }]
-    });
-    if (!r) return;
-    descricao = (r.desc || '').trim();
-    if (!descricao) return;
+  const descricao = (el.value || '').trim();
+  if (!descricao) {
+    toast('Digita uma descrição no campo primeiro (ex: "ração cachorro")', 'error');
+    el.focus();
+    return;
   }
   const btn = el.parentElement.querySelector('button[title*="Sugerir"]');
   const btnOld = btn ? btn.innerHTML : '';
