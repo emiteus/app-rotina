@@ -40,13 +40,23 @@
     "appId": "com.approtina.app",
     "productName": "App Rotina",
     "asar": true,
+    "extraResources": [
+      {
+        "from": "public/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "public/icon-512.png",
+        "to": "icon-512.png"
+      },
+      {
+        "from": "public/icon-192.png",
+        "to": "icon-192.png"
+      }
+    ],
     "files": [
       "electron-main.js",
       "electron-preload.js",
-      "public/icon.ico",
-      "public/icon-512.png",
-      "public/icon-192.png",
-      "public/icon.png",
       "node_modules/**/*",
       "package.json",
       "!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE,license,*.d.ts,*.map}",

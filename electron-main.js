@@ -16,19 +16,23 @@ if (process.platform === 'win32') {
 // após ?v=X mudar — ele confia no ETag e nem reavalia até o disk cache expirar)
 app.commandLine.appendSwitch('disable-http-cache');
 
-// Ícone: usa PNG 512 (Electron/Windows lida com PNG melhor que .ico pra
-// atualizações — o Explorer cacheia .ico por hash, PNG não).
+// Ícone: em prod, os ícones ficam em resources/ (extraResources) — fora do asar.
+// Em dev, ficam em public/. Sem essa distinção, createFromPath falha silenciosamente
+// quando aponta pra dentro do asar e o Windows cai no ícone padrão do Electron.
 function carregarIcone() {
-  const candidatos = [
-    path.join(__dirname, 'public', 'icon-512.png'),
-    path.join(__dirname, 'public', 'icon-192.png'),
-    path.join(__dirname, 'public', 'icon.png'),
-    path.join(__dirname, 'public', 'icon.ico')
-  ];
-  for (const p of candidatos) {
+  const base = app.isPackaged
+    ? process.resourcesPath
+    : path.join(__dirname, 'public');
+  const candidatos = ['icon.ico', 'icon-512.png', 'icon-192.png', 'icon.png'];
+  for (const nome of candidatos) {
+    const p = path.join(base, nome);
     const img = nativeImage.createFromPath(p);
-    if (!img.isEmpty()) return img;
+    if (!img.isEmpty()) {
+      console.log('[icon] carregado:', p);
+      return img;
+    }
   }
+  console.log('[icon] nenhum encontrado em', base);
   return null;
 }
 const APP_ICON = carregarIcone();
