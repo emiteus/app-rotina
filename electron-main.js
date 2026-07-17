@@ -7,7 +7,22 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('com.approtina.app');
 }
 
-const APP_ICON = nativeImage.createFromPath(path.join(__dirname, 'public', 'icon.ico'));
+// Ícone: tenta o .ico (multi-tamanho do Windows) e cai pro PNG 512 se falhar.
+// Se o Windows ainda mostrar o ícone antigo, é cache: fecha a app, deleta
+// %LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db e reinicia o explorer.
+function carregarIcone() {
+  const candidatos = [
+    path.join(__dirname, 'public', 'icon.ico'),
+    path.join(__dirname, 'public', 'icon-512.png'),
+    path.join(__dirname, 'public', 'icon.png')
+  ];
+  for (const p of candidatos) {
+    const img = nativeImage.createFromPath(p);
+    if (!img.isEmpty()) return img;
+  }
+  return null;
+}
+const APP_ICON = carregarIcone();
 
 let mainWindow;
 
@@ -32,6 +47,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    autoHideMenuBar: true,          // esconde a barra "App Rotina | Editar | Ver"
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -40,6 +56,8 @@ function createWindow() {
     icon: APP_ICON,
     show: false // Não mostrar até estar pronto
   });
+  mainWindow.setMenuBarVisibility(false);
+  mainWindow.removeMenu();
 
   // Em desenvolvimento, abre localhost:3000
   // Em produção, carrega o arquivo local
@@ -57,7 +75,7 @@ function createWindow() {
   // Abrir maximizado (janela grande por padrão)
   mainWindow.once('ready-to-show', () => {
     // Reforça o ícone (em dev, Windows tende a usar o do electron.exe se não fizer isso)
-    try { mainWindow.setIcon(APP_ICON); } catch (e) {}
+    if (APP_ICON) { try { mainWindow.setIcon(APP_ICON); } catch (e) {} }
     mainWindow.maximize();
     mainWindow.show();
   });
@@ -69,45 +87,9 @@ function createWindow() {
   });
 }
 
-// Cria menu
-const template = [
-  {
-    label: 'App Rotina',
-    submenu: [
-      { role: 'about' },
-      { type: 'separator' },
-      { role: 'quit' }
-    ]
-  },
-  {
-    label: 'Editar',
-    submenu: [
-      { role: 'undo' },
-      { role: 'redo' },
-      { type: 'separator' },
-      { role: 'cut' },
-      { role: 'copy' },
-      { role: 'paste' }
-    ]
-  },
-  {
-    label: 'Ver',
-    submenu: [
-      { role: 'reload' },
-      { role: 'forceReload' },
-      { role: 'toggleDevTools' },
-      { type: 'separator' },
-      { role: 'resetZoom' },
-      { role: 'zoomIn' },
-      { role: 'zoomOut' },
-      { type: 'separator' },
-      { role: 'togglefullscreen' }
-    ]
-  }
-];
-
-const menu = Menu.buildFromTemplate(template);
-Menu.setApplicationMenu(menu);
+// Remove menu global (Windows/Linux mostravam "App Rotina | Editar | Ver" no topo).
+// Atalhos como Ctrl+Shift+I ainda funcionam via BrowserWindow default.
+Menu.setApplicationMenu(null);
 
 app.on('ready', createWindow);
 
