@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, Menu, session, nativeImage } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
 
@@ -7,14 +7,18 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('com.approtina.app');
 }
 
-// Ícone: tenta o .ico (multi-tamanho do Windows) e cai pro PNG 512 se falhar.
-// Se o Windows ainda mostrar o ícone antigo, é cache: fecha a app, deleta
-// %LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db e reinicia o explorer.
+// Desativa cache do Chromium interno (senão o Electron serve CSS/JS velhos mesmo
+// após ?v=X mudar — ele confia no ETag e nem reavalia até o disk cache expirar)
+app.commandLine.appendSwitch('disable-http-cache');
+
+// Ícone: usa PNG 512 (Electron/Windows lida com PNG melhor que .ico pra
+// atualizações — o Explorer cacheia .ico por hash, PNG não).
 function carregarIcone() {
   const candidatos = [
-    path.join(__dirname, 'public', 'icon.ico'),
     path.join(__dirname, 'public', 'icon-512.png'),
-    path.join(__dirname, 'public', 'icon.png')
+    path.join(__dirname, 'public', 'icon-192.png'),
+    path.join(__dirname, 'public', 'icon.png'),
+    path.join(__dirname, 'public', 'icon.ico')
   ];
   for (const p of candidatos) {
     const img = nativeImage.createFromPath(p);
@@ -91,7 +95,12 @@ function createWindow() {
 // Atalhos como Ctrl+Shift+I ainda funcionam via BrowserWindow default.
 Menu.setApplicationMenu(null);
 
-app.on('ready', createWindow);
+app.on('ready', async () => {
+  // Limpa cache HTTP do Chromium interno pra garantir que CSS/JS novos entrem.
+  // Sem isso, o Electron reusa disk cache mesmo quando o servidor manda arquivo novo.
+  try { await session.defaultSession.clearCache(); } catch (e) {}
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
