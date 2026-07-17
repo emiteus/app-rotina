@@ -97,27 +97,30 @@ function createWindow() {
     mainWindow.webContents.setZoomFactor(0.95);
   });
 
+  // Windows: aplica AUMID+ícone nas propriedades da JANELA em cada momento crítico.
+  // Uma chamada só nem sempre pega — Windows Explorer às vezes já cacheou.
+  function aplicarAppDetails() {
+    if (process.platform !== 'win32' || !mainWindow) return;
+    try {
+      // process.execPath aponta pro próprio App Rotina.exe (que tem ícone correto embutido)
+      mainWindow.setAppDetails({
+        appId: 'com.approtina.app',
+        relaunchDisplayName: 'App Rotina',
+        appIconPath: process.execPath,
+        appIconIndex: 0
+      });
+    } catch (e) { console.log('[setAppDetails] falhou:', e.message); }
+    if (APP_ICON) { try { mainWindow.setIcon(APP_ICON); } catch (e) {} }
+  }
+
   // Abrir maximizado (janela grande por padrão)
   mainWindow.once('ready-to-show', () => {
-    // Reforça o ícone (em dev, Windows tende a usar o do electron.exe se não fizer isso)
-    if (APP_ICON) { try { mainWindow.setIcon(APP_ICON); } catch (e) {} }
-    // Windows: seta AUMID + ícone diretamente nas propriedades da JANELA. Sem isso,
-    // Windows Explorer usa o AUMID do processo (que é o Electron default) e mostra
-    // o átomo na taskbar mesmo com setIcon correto. Precisa .ico com caminho ABSOLUTO.
-    if (process.platform === 'win32') {
-      try {
-        const iconPath = app.isPackaged
-          ? path.join(process.resourcesPath, 'icon.ico')
-          : path.join(__dirname, 'public', 'icon.ico');
-        mainWindow.setAppDetails({
-          appId: 'com.approtina.app',
-          appIconPath: iconPath,
-          appIconIndex: 0
-        });
-      } catch (e) { console.log('[setAppDetails] falhou:', e.message); }
-    }
+    aplicarAppDetails();
     mainWindow.maximize();
     mainWindow.show();
+    // Windows às vezes ignora setAppDetails do ready-to-show — reaplica após um tick
+    setTimeout(aplicarAppDetails, 500);
+    setTimeout(aplicarAppDetails, 2000);
   });
 
   // DevTools desativado (pode abrir com Ctrl+Shift+I se precisar)
