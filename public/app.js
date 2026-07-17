@@ -1511,9 +1511,67 @@ function renderMetas() {
     ${painelBase}
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h2 style="font-size:15px; margin:0;">Suas metas</h2>
-      <button onclick="novaMeta()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">+ Nova meta</button>
+      <div style="display:flex; gap:6px;">
+        <button onclick="novaMetaIA()" title="Descreva em uma frase e a IA cria a meta" style="background:rgba(38,224,200,0.12); border:1px solid rgba(38,224,200,0.35); color:var(--accent, #26e0c8); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>Criar com IA
+        </button>
+        <button onclick="novaMeta()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">+ Nova meta</button>
+      </div>
     </div>
     ${listaHtml}`;
+}
+
+async function novaMetaIA() {
+  const r = await promptModal({
+    titulo: 'Descreva sua meta',
+    campos: [{
+      name: 'texto',
+      label: 'Ex: "quero comprar cadeira gamer de R$ 2500 até dezembro", "juntar 10 mil pra viagem"',
+      placeholder: 'Digite em linguagem natural...'
+    }],
+    submitLabel: 'Analisar com IA'
+  });
+  if (!r) return;
+  const texto = (r.texto || '').trim();
+  if (!texto) return;
+
+  toast('IA processando...', 'success');
+  try {
+    const res = await fetch('/api/ia/metas/parse', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto })
+    });
+    const d = await res.json();
+    if (!res.ok) { toast(d.erro || 'IA falhou', 'error'); return; }
+
+    // Preview + confirmação: user pode editar antes de salvar
+    const prazoTxt = d.prazo ? new Date(d.prazo + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+    const confirmar = await promptModal({
+      titulo: '✦ IA extraiu:',
+      campos: [
+        { name: 'nome', label: 'Nome', valor: d.nome },
+        { name: 'valor', label: 'Valor total (R$)', tipo: 'number', valor: d.valor_total != null ? Number(d.valor_total).toFixed(2) : '', placeholder: 'defina o valor' },
+        { name: 'prazo', label: `Prazo (IA sugeriu: ${prazoTxt})`, tipo: 'date', valor: d.prazo || '' }
+      ],
+      submitLabel: 'Criar meta'
+    });
+    if (!confirmar) return;
+
+    const nome = (confirmar.nome || '').trim();
+    const valor = parseFloat(String(confirmar.valor).replace(',', '.'));
+    if (!nome) { toast('Informe o nome', 'error'); return; }
+    if (isNaN(valor) || valor <= 0) { toast('Valor inválido', 'error'); return; }
+    const body = { nome, valorTotal: valor, prioridade: d.prioridade };
+    if (confirmar.prazo) body.prazo = confirmar.prazo;
+
+    const criaRes = await fetch('/api/metas', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!criaRes.ok) { const e = await criaRes.json(); toast(e.erro || 'Erro', 'error'); return; }
+    toast('Meta criada pela IA', 'success');
+    carregarMetas();
+  } catch (e) { toast('Erro: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function novaMeta() {
