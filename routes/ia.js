@@ -7,10 +7,9 @@ const router = express.Router();
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
-// gemini-2.5-flash: free tier 10 RPM / 250 RPD / 250k TPM. Boa qualidade pra pt-BR
-// e responseMimeType=json. Modelos anteriores (2.0-flash, 2.5-flash-lite) sem free tier
-// no projeto do user.
-const GEMINI_MODEL = 'gemini-2.5-flash';
+// Alias que sempre aponta pro modelo lite mais recente — quando o Google descontinua
+// (2.5-flash-lite → 3.1-flash-lite → ...), migra sozinho sem precisar mudar código.
+const GEMINI_MODEL = 'gemini-flash-lite-latest';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 function providerAtivo() {
