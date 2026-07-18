@@ -82,6 +82,20 @@ router.get('/status', (req, res) => {
   });
 });
 
+// Debug: lista modelos disponíveis no projeto Gemini
+router.get('/gemini-models', async (req, res) => {
+  if (!process.env.GEMINI_API_KEY) return res.status(400).json({ erro: 'GEMINI_API_KEY não configurada' });
+  try {
+    const resp = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, { timeout: 10000 });
+    const nomes = (resp.data?.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => ({ nome: m.name, versao: m.version, displayName: m.displayName }));
+    res.json({ total: nomes.length, modelos: nomes });
+  } catch (e) {
+    res.status(500).json({ erro: e.response?.data?.error?.message || e.message });
+  }
+});
+
 // POST /api/ia/categorizar
 router.post('/categorizar', async (req, res) => {
   if (!providerAtivo()) return res.status(400).json({ erro: 'IA não configurada.' });
