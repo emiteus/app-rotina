@@ -7,7 +7,9 @@ const router = express.Router();
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
-const GEMINI_MODEL = 'gemini-2.0-flash';
+// gemini-2.5-flash-lite tem free tier mais amplo (15 RPM / 1k RPD / 250k TPM).
+// Pra este uso (classificar + parse + resumir), a qualidade é equivalente ao 2.0-flash.
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 function providerAtivo() {
