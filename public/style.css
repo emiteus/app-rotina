@@ -2966,6 +2966,7 @@ input[type="datetime-local"]::before {
     flex-direction: row;
     padding: 0;
     position: fixed;
+    top: auto;
     bottom: 0;
     left: 0;
     right: 0;
