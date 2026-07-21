@@ -100,10 +100,15 @@ router.get('/stats', async (req, res) => {
       if (total >= 3 && taxa < piorDia.taxa) piorDia = { data: h.data, taxa, total };
     });
 
-    // Streak: dias seguidos (do mais recente pra trás) com ao menos 1 tarefa concluída
+    // Streak: dias seguidos (do mais recente pra trás) com ao menos 1 tarefa concluída.
+    // Se hoje ainda tem 0 concluídas (dia em andamento), pula pra não zerar streak indevidamente.
     let streak = 0;
     const historicoDesc = [...historico].reverse();
-    for (const h of historicoDesc) {
+    const hojeStr = new Date().toISOString().slice(0, 10);
+    for (let i = 0; i < historicoDesc.length; i++) {
+      const h = historicoDesc[i];
+      const hStr = (h.data instanceof Date ? h.data.toISOString().slice(0,10) : String(h.data).slice(0,10));
+      if (i === 0 && hStr === hojeStr && h.concluidas === 0) continue;
       if (h.concluidas > 0) streak++;
       else break;
     }

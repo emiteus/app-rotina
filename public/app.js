@@ -4050,7 +4050,7 @@ function renderStats(data) {
   if (r.melhorDia?.data) {
     const d = new Date(r.melhorDia.data);
     document.getElementById('stats-melhor-dia').textContent =
-      `Melhor: ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`;
+      `Melhor: ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' })}`;
   }
 
   // Gráfico de barras (30 dias)
@@ -4087,9 +4087,10 @@ function renderChartBars(historicoFull) {
   }
 
   // Preparar dados para o gráfico
+  // h.data vem como "2026-07-20T00:00:00.000Z" (DATE do Postgres UTC); interpretar sem shift.
   const labels = historico.map(h => {
     const data = new Date(h.data);
-    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' });
   });
 
   const concluidas = historico.map(h => parseInt(h.concluidas) || 0);
