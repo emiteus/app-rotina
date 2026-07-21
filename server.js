@@ -111,8 +111,17 @@ function runCron(nome, fn) {
   };
 }
 
+// Gate global de crons — set CRONS_ENABLED=false no Railway pra pausar TUDO
+// (usado quando o Neon Postgres estoura quota mensal e queries são recusadas)
+const CRONS_ENABLED = process.env.CRONS_ENABLED !== 'false';
+if (!CRONS_ENABLED) console.log('[cron] CRONS_ENABLED=false — todos os jobs desligados');
+function sched(cron, fn) {
+  if (!CRONS_ENABLED) return;
+  return schedule.scheduleJob(cron, fn);
+}
+
 // Agendador de alarmes (verifica a cada minuto)
-schedule.scheduleJob('*/1 * * * *', runCron('alarmes', async () => {
+sched('*/1 * * * *', runCron('alarmes', async () => {
   const { all } = require('./lib/db');
   const now = new Date();
   const horaAtual = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -159,8 +168,8 @@ async function gerarRecorrentesHoje() {
     console.error('[Recorrentes] Erro:', err.message);
   }
 }
-schedule.scheduleJob('5 0 * * *', runCron('recorrentes', gerarRecorrentesHoje));
-setTimeout(gerarRecorrentesHoje, 3000); // Executa 3s apos servidor iniciar
+sched('5 0 * * *', runCron('recorrentes', gerarRecorrentesHoje));
+if (CRONS_ENABLED) setTimeout(gerarRecorrentesHoje, 3000); // Executa 3s apos servidor iniciar
 
 // Sync automático diário do Open Finance (após o auto-refresh do Pluggy ~14h)
 async function syncOpenFinanceDiario() {
@@ -192,12 +201,12 @@ async function syncOpenFinanceDiario() {
 }
 // 3x/dia: 6h, 14h30 (pós-refresh do Pluggy), 20h — pra pegar Nubank cedo
 // (Inter PF/PJ só sincronizam manualmente no meu.pluggy.ai enquanto Meu Pluggy)
-schedule.scheduleJob('0 6 * * *', runCron('of-sync-6h', syncOpenFinanceDiario));
-schedule.scheduleJob('30 14 * * *', runCron('of-sync-14h30', syncOpenFinanceDiario));
-schedule.scheduleJob('0 20 * * *', runCron('of-sync-20h', syncOpenFinanceDiario));
+sched('0 6 * * *', runCron('of-sync-6h', syncOpenFinanceDiario));
+sched('30 14 * * *', runCron('of-sync-14h30', syncOpenFinanceDiario));
+sched('0 20 * * *', runCron('of-sync-20h', syncOpenFinanceDiario));
 
 // 9h30 — alerta pra reconectar itens sem sync há > 48h (Meu Pluggy só)
-schedule.scheduleJob('30 9 * * *', runCron('reconectar-alerta', async () => {
+sched('30 9 * * *', runCron('reconectar-alerta', async () => {
   try {
     const { all } = require('./lib/db');
     const stales = await all(`
@@ -225,7 +234,7 @@ schedule.scheduleJob('30 9 * * *', runCron('reconectar-alerta', async () => {
 }));
 
 // Alertas diários de gasto incomum (10h) — só dispara push se tiver alerta relevante
-schedule.scheduleJob('0 10 * * *', runCron('alertas-gasto', async () => {
+sched('0 10 * * *', runCron('alertas-gasto', async () => {
   try {
     const { all } = require('./lib/db');
     const rows = await all(`
@@ -267,7 +276,7 @@ schedule.scheduleJob('0 10 * * *', runCron('alertas-gasto', async () => {
 }));
 
 // Orçamento estourado — 21h, checa cada limite do app_estado.orcamentos
-schedule.scheduleJob('0 21 * * *', runCron('orcamento-estourado', async () => {
+sched('0 21 * * *', runCron('orcamento-estourado', async () => {
   try {
     const { get, all } = require('./lib/db');
     const row = await get(`SELECT valor FROM app_estado WHERE chave = 'orcamentos'`);
@@ -301,7 +310,7 @@ schedule.scheduleJob('0 21 * * *', runCron('orcamento-estourado', async () => {
 }));
 
 // Resumo diário 20h — tarefas do dia + saldo movimentado
-schedule.scheduleJob('0 20 * * *', runCron('resumo-diario', async () => {
+sched('0 20 * * *', runCron('resumo-diario', async () => {
   try {
     const { get } = require('./lib/db');
     const hoje = new Date().toISOString().slice(0, 10);
@@ -331,7 +340,7 @@ schedule.scheduleJob('0 20 * * *', runCron('resumo-diario', async () => {
 }));
 
 // DAS do MEI — se estiver entre dia 17 e 19 e não pago, lembra às 9h
-schedule.scheduleJob('0 9 * * *', runCron('das-reminder', async () => {
+sched('0 9 * * *', runCron('das-reminder', async () => {
   try {
     const hoje = new Date();
     const dia = hoje.getDate();
