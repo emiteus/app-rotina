@@ -3633,20 +3633,7 @@ input[type="submit"] {
    REDESIGN v4 — dashboard minimalista real (só 3 blocos)
    ============================================================ */
 
-/* Paleta Kirvano — BG mais claro (era preto puro) + cards com contraste real */
-:root {
-  --bg-primary: #0d0f13;
-  --bg-secondary: #12151b;
-  --bg-tertiary: #1a1d24;
-  --bg-card: #181b21;
-  --bg-card-hover: #1e222a;
-  --card-bg: #181b21;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.1);
-  --text-primary: #f2f4f8;
-  --text-secondary: #8b9099;
-  --text-muted: #5a5f68;
-}
+/* Vars antigas do redesign Kirvano REMOVIDAS — agora vem do :root do topo (light Multicap) */
 
 /* Cards do dashboard: espaço interno maior, borda praticamente ausente */
 .dashboard-kpi-grid {
@@ -3904,7 +3891,7 @@ body { overflow-x: hidden !important; }
 }
 .dashboard-kpi-grid .card-label {
   font-size: 13px !important;
-  color: #a0a3aa !important;
+  color: var(--text-secondary) !important;
   font-weight: 400 !important;
   margin-bottom: 0 !important;
 }
@@ -3914,10 +3901,10 @@ body { overflow-x: hidden !important; }
   letter-spacing: -0.015em !important;
   margin: 0 !important;
   line-height: 1.2;
-  color: #ffffff !important;
+  color: var(--text-primary) !important;
 }
 .dashboard-kpi-grid .card-mini {
-  color: #55555c !important;
+  color: var(--text-muted) !important;
   font-size: 12px !important;
   margin: 0 !important;
   font-weight: 400 !important;
@@ -3925,7 +3912,7 @@ body { overflow-x: hidden !important; }
 .dashboard-kpi-grid .card-bar {
   margin: 0 !important;
   height: 3px !important;
-  background: rgba(255,255,255,0.04) !important;
+  background: rgba(15,23,42,0.06) !important;
   border-radius: 100px !important;
 }
 
@@ -3946,7 +3933,7 @@ body { overflow-x: hidden !important; }
 }
 .dashboard-chart-hero .card-label {
   font-size: 13px !important;
-  color: #a0a3aa !important;
+  color: var(--text-secondary) !important;
 }
 .dashboard-chart-hero .chart-container {
   height: 240px !important;
@@ -4708,7 +4695,7 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
 #dashboard .panel-header h3 {
   font-size: 14px !important;
   font-weight: 500 !important;
-  color: #a0a3aa !important;
+  color: var(--text-secondary) !important;
   text-transform: none !important;
   letter-spacing: -0.005em !important;
 }
@@ -4734,7 +4721,7 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   margin-bottom: 4px !important;
 }
 #dashboard .page-subtitle {
-  color: #55555c !important;
+  color: var(--text-muted) !important;
   font-size: 14px !important;
 }
 
