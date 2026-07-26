@@ -6,26 +6,26 @@
 }
 
 :root {
-  /* Light mode estilo Multicap — bg cinza-clarinho, cards brancos, azul-escuro como acento */
-  --bg-primary: #f5f6fa;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #eef0f5;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f8f9fc;
-  --card-bg: #ffffff;
+  /* Dark Multicap — escuro azulado elegante, cards levemente mais claros, azul vibrante como acento */
+  --bg-primary: #0f1218;
+  --bg-secondary: #14171f;
+  --bg-tertiary: #1e2230;
+  --bg-card: #171a24;
+  --bg-card-hover: #1e2230;
+  --card-bg: #171a24;
 
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --text: #0f172a;
+  --text-primary: #f5f7fa;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text: #f5f7fa;
 
-  /* Acento: azul escuro Multicap (nav ativo, botão principal, links) */
-  --accent: #1a1b3e;
-  --accent-hover: #262852;
-  --accent-dim: rgba(26, 27, 62, 0.08);
+  /* Acento: azul vibrante Multicap dark */
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-dim: rgba(59, 130, 246, 0.14);
   --accent-blue: #3b82f6;
 
   --success: #10b981;
@@ -33,22 +33,22 @@
   --warning: #f59e0b;
   --info: #06b6d4;
 
-  /* Gradientes decorativos zerados — sem multicolor gratuito */
+  /* Gradientes decorativos zerados */
   --grad-blue: transparent;
   --grad-green: transparent;
   --grad-orange: transparent;
   --grad-purple: transparent;
   --grad-red: transparent;
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06);
-  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.10);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.50);
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  /* Transições mais serenas: mais rápidas e sem overshoot */
+  /* Transições sem overshoot */
   --transition: 0.15s ease-out;
 }
 
@@ -858,18 +858,14 @@ body { padding-left: 240px; }
 }
 
 .saldo-box {
-  background: var(--accent);
-  border: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
 }
-
-.saldo-box .box-label {
-  color: rgba(255, 255, 255, 0.8);
-}
-
+.saldo-box .box-label { color: var(--text-secondary); }
 .saldo-box h2 {
   font-size: 32px;
   font-weight: 700;
-  color: white;
+  color: var(--text-primary);
   margin-top: 8px;
   font-variant-numeric: tabular-nums;
 }
@@ -4780,15 +4776,15 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   white-space: nowrap;
 }
 #financeiro .finance-box.saldo-box .box-icon {
-  background: rgba(26, 27, 62, 0.08);
+  background: rgba(59, 130, 246, 0.15);
   color: var(--accent);
 }
 #financeiro .finance-box.entrada-box .box-icon {
-  background: rgba(16, 185, 129, 0.10);
+  background: rgba(16, 185, 129, 0.15);
   color: var(--success);
 }
 #financeiro .finance-box.saida-box .box-icon {
-  background: rgba(239, 68, 68, 0.10);
+  background: rgba(239, 68, 68, 0.15);
   color: var(--danger);
 }
 

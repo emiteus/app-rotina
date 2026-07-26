@@ -1308,7 +1308,7 @@ function renderRelatorios() {
   if (!lista || !r) { painel.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Sem dados suficientes ainda.</p>'; return; }
 
   // Estilo helper pros chips
-  const chipStyle = ativo => `background:${ativo ? 'rgba(38,224,200,0.14)' : 'rgba(15,23,42,0.05)'}; border:1px solid ${ativo ? 'rgba(38,224,200,0.35)' : 'rgba(15,23,42,0.1)'}; color:${ativo ? 'var(--accent, #26e0c8)' : 'var(--text-secondary)'}; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap;`;
+  const chipStyle = ativo => `background:${ativo ? 'rgba(59,130,246,0.14)' : 'rgba(15,23,42,0.05)'}; border:1px solid ${ativo ? 'rgba(59,130,246,0.35)' : 'rgba(15,23,42,0.1)'}; color:${ativo ? 'var(--accent, var(--accent))' : 'var(--text-secondary)'}; border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; white-space:nowrap;`;
 
   // Chips de período custom (7d / 30d / 90d / ano)
   const chipsPeriodo = ['7d','30d','90d','ano'].map(p => {
@@ -1343,7 +1343,7 @@ function renderRelatorios() {
               <span style="color:var(--text-muted); font-size:11px;">${c.entradas > 0 ? '<span style="color:#3fb950;">+'+formatBRL(c.entradas)+'</span> ' : ''}${c.saidas > 0 ? '<span style="color:#f85149;">−'+formatBRL(c.saidas)+'</span>' : ''}</span>
             </div>
             <div style="height:6px; background:rgba(15,23,42,0.06); border-radius:4px; overflow:hidden;">
-              <div style="height:100%; width:${pct}%; background:var(--accent, #26e0c8); opacity:0.85;"></div>
+              <div style="height:100%; width:${pct}%; background:var(--accent, var(--accent)); opacity:0.85;"></div>
             </div>
           </div>`;
       }).join('')
@@ -1437,7 +1437,7 @@ function renderMetas() {
 
   const cards = (d.metas || []).map(m => {
     const pct = m.pct || 0;
-    const cor = 'var(--accent, #26e0c8)';
+    const cor = 'var(--accent, var(--accent))';
     const prazoTxt = m.prazo
       ? `até ${new Date(m.prazo).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' })}${m.mesesRest != null ? ` · ${m.mesesRest} mês(es)` : ''}`
       : (m.eta ? `sem prazo · ETA ${m.eta} mês(es)` : 'sem prazo');
@@ -1482,7 +1482,7 @@ function renderMetas() {
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
       <h2 style="font-size:15px; margin:0;">Suas metas</h2>
       <div style="display:flex; gap:6px;">
-        <button onclick="novaMetaIA()" title="Descreva em uma frase e a IA cria a meta" style="background:rgba(38,224,200,0.12); border:1px solid rgba(38,224,200,0.35); color:var(--accent, #26e0c8); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+        <button onclick="novaMetaIA()" title="Descreva em uma frase e a IA cria a meta" style="background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.35); color:var(--accent, var(--accent)); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>Criar com IA
         </button>
         <button onclick="novaMeta()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">+ Nova meta</button>
@@ -1514,7 +1514,7 @@ async function analisarDiaIA() {
     const paragrafos = String(d.analise || '').split(/\n\n+/).map(p => `<p style="margin:0 0 10px;">${escapeHtml(p).replace(/\n/g, '<br>')}</p>`).join('');
     box.innerHTML = `
       <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); margin-bottom:10px;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent, #26e0c8);"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--accent, var(--accent));"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
         Análise gerada pela IA
         <button onclick="document.getElementById('analise-ia-box').style.display='none'" style="margin-left:auto; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px;">✕</button>
       </div>
@@ -1713,13 +1713,26 @@ function renderApostas() {
   }
   const pendSaidas = (d.pendentes || []).filter(p => p.tipo === 'saida');
   const pendEntradas = (d.pendentes || []).filter(p => p.tipo === 'entrada');
+  const LIMITE = 8;
+  const mostrarTodasApostas = window._apostasMostrarTodas === true;
+  const saidasVisiveis = mostrarTodasApostas ? pendSaidas : pendSaidas.slice(0, LIMITE);
+  const entradasVisiveis = mostrarTodasApostas ? pendEntradas : pendEntradas.slice(0, LIMITE);
+  const saidasEscondidas = pendSaidas.length - saidasVisiveis.length;
+  const entradasEscondidas = pendEntradas.length - entradasVisiveis.length;
+  const totalEscondidas = saidasEscondidas + entradasEscondidas;
+
   let pendHtml;
   if (d.pendentes.length === 0) {
     pendHtml = '<p style="color:var(--text-muted); font-size:13px; margin-bottom:20px;">Nenhuma aposta pra classificar. 🎯</p>';
   } else {
     pendHtml = '<h2 style="font-size:15px; margin:0 0 4px;">Apostas pra classificar</h2><p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Quem apostou? Em conjunto = parte sua + parte do amigo.</p>';
-    if (pendSaidas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:var(--text-muted); margin:6px 0;">Saídas — apostas feitas (${pendSaidas.length})</div>` + pendSaidas.map(cardPend).join('');
-    if (pendEntradas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:var(--text-muted); margin:14px 0 6px;">Entradas — recebido / ganho (${pendEntradas.length})</div>` + pendEntradas.map(cardPend).join('');
+    if (pendSaidas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:var(--text-muted); margin:6px 0;">Saídas — apostas feitas (${pendSaidas.length})</div>` + saidasVisiveis.map(cardPend).join('');
+    if (pendEntradas.length) pendHtml += `<div style="font-size:12px; font-weight:600; color:var(--text-muted); margin:14px 0 6px;">Entradas — recebido / ganho (${pendEntradas.length})</div>` + entradasVisiveis.map(cardPend).join('');
+    if (totalEscondidas > 0) {
+      pendHtml += `<button onclick="window._apostasMostrarTodas = true; renderApostas();" style="width:100%; background:transparent; border:1px dashed var(--border-strong); color:var(--text-secondary); border-radius:8px; padding:10px; font-size:13px; cursor:pointer; margin-top:8px;">Ver todas as ${d.pendentes.length} pendentes (+${totalEscondidas} escondidas)</button>`;
+    } else if (mostrarTodasApostas && d.pendentes.length > LIMITE * 2) {
+      pendHtml += `<button onclick="window._apostasMostrarTodas = false; renderApostas();" style="width:100%; background:transparent; border:1px dashed var(--border-strong); color:var(--text-secondary); border-radius:8px; padding:10px; font-size:13px; cursor:pointer; margin-top:8px;">Mostrar só as primeiras ${LIMITE}</button>`;
+    }
   }
 
   // Acerto de contas por amigo
@@ -2096,13 +2109,23 @@ async function atualizarBadgeCategorizar() {
   } catch (e) { /* silencioso */ }
 }
 
+let _catMostrarTodos = false;
+function toggleCatMostrarTodos() {
+  _catMostrarTodos = !_catMostrarTodos;
+  renderCategorizar();
+}
 function renderCategorizar() {
   const painel = document.getElementById('painel-categorizar');
   if (!painel) return;
 
-  const filaHtml = _catPendentes.length === 0
+  const TOP = 5;
+  const total = _catPendentes.length;
+  const visiveis = _catMostrarTodos ? _catPendentes : _catPendentes.slice(0, TOP);
+  const escondidos = total - visiveis.length;
+
+  const filaHtml = total === 0
     ? '<p style="color:var(--text-muted); font-size:13px;">Tudo categorizado! 🎉 Nada pendente.</p>'
-    : _catPendentes.map(p => {
+    : visiveis.map(p => {
         const simbolo = p.tipo === 'entrada' ? '+' : '−';
         const sug = p.sugestao && _catLista.find(c => c.id === p.sugestao) ? p.sugestao : 'outros';
         const txs = p.transacoes || [];
@@ -2129,7 +2152,7 @@ function renderCategorizar() {
             <div style="background:rgba(15,23,42,0.02); border-radius:6px; padding:6px 10px; margin-bottom:8px;">${txHtml}${maisTxt}</div>
             <div style="display:flex; gap:8px; align-items:stretch;">
               ${_catAutocompleteHtml(`cat-sel-${p.chave}`, sug)}
-              <button onclick="sugerirCategoriaIA('${p.chave}', ${exemploEsc}, ${valorEsc}, '${tipoEsc}')" title="Sugerir com IA (Claude)" style="background:rgba(38,224,200,0.12); border:1px solid rgba(38,224,200,0.35); color:var(--accent, #26e0c8); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+              <button onclick="sugerirCategoriaIA('${p.chave}', ${exemploEsc}, ${valorEsc}, '${tipoEsc}')" title="Sugerir com IA (Claude)" style="background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.35); color:var(--accent, var(--accent)); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>IA
               </button>
               <button onclick="aplicarCategoria('${p.chave}', ${exemploEsc})" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:6px; padding:6px 14px; font-size:12px; cursor:pointer;">Aplicar</button>
@@ -2148,14 +2171,21 @@ function renderCategorizar() {
           <span onclick="removerRegra('${r.chave}')" style="cursor:pointer; color:#f81d13; font-size:13px;">✕</span>
         </div>`).join('');
 
+  const toggleBtn = escondidos > 0
+    ? `<button onclick="toggleCatMostrarTodos()" style="width:100%; background:transparent; border:1px dashed var(--border-strong); color:var(--text-secondary); border-radius:8px; padding:10px; font-size:13px; cursor:pointer; margin-top:8px;">Ver todos os ${total} estabelecimentos</button>`
+    : (_catMostrarTodos && total > 5
+        ? `<button onclick="toggleCatMostrarTodos()" style="width:100%; background:transparent; border:1px dashed var(--border-strong); color:var(--text-secondary); border-radius:8px; padding:10px; font-size:13px; cursor:pointer; margin-top:8px;">Mostrar só os 5 maiores</button>`
+        : '');
+
   painel.innerHTML = `
     <div style="margin-bottom:24px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
         <h2 style="font-size:15px; margin:0;">Pra categorizar</h2>
-        <span style="font-size:11px; color:var(--text-muted);">${_catPendentes.length} estabelecimento(s) · ordenados por valor</span>
+        <span style="font-size:11px; color:var(--text-muted);">${total} estabelecimento(s) · ordenados por valor</span>
       </div>
       <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Categorize uma vez e o app aprende — as próximas transações do mesmo lugar entram sozinhas.</p>
       ${filaHtml}
+      ${toggleBtn}
     </div>
     <div>
       <h2 style="font-size:15px; margin:0 0 12px;">Regras aprendidas (${_catRegras.length})</h2>
@@ -2195,7 +2225,7 @@ async function sugerirCategoriaIA(chave, exemplo, valor, tipo) {
       const conf = d.confianca || 0;
       const emoji = conf >= 80 ? '✓' : conf >= 50 ? '~' : '?';
       motivoEl.textContent = `${emoji} ${d.label} (${conf}%) — ${d.motivo}`;
-      motivoEl.style.color = conf >= 80 ? 'var(--accent, #26e0c8)' : 'var(--text-muted)';
+      motivoEl.style.color = conf >= 80 ? 'var(--accent, var(--accent))' : 'var(--text-muted)';
       motivoEl.style.display = 'block';
     }
     toast(`IA sugeriu: ${d.label}`, 'success');
@@ -2703,7 +2733,7 @@ function abrirRelatorioMensal() {
         <span style="color:var(--text-muted);">${formatBRL(v)}</span>
       </div>
       <div style="height:6px; background:rgba(15,23,42,0.08); border-radius:4px; overflow:hidden;">
-        <div style="height:100%; width:${(v / maxCat) * 100}%; background:var(--accent, #26e0c8); opacity:0.85;"></div>
+        <div style="height:100%; width:${(v / maxCat) * 100}%; background:var(--accent, var(--accent)); opacity:0.85;"></div>
       </div>
     </div>`).join('') : '<p style="color:var(--text-muted); font-size:13px;">Sem saídas registradas este mês.</p>';
 
@@ -3917,6 +3947,25 @@ function renderTransacoes() {
       `;
     }).join('');
   }
+}
+
+/* === Modal Nova Transação === */
+function abrirModalNovaTransacao() {
+  const m = document.getElementById('modal-nova-transacao');
+  if (m) { m.style.display = 'flex'; setTimeout(() => document.getElementById('valor-transacao')?.focus(), 100); }
+}
+function fecharModalNovaTransacao() {
+  const m = document.getElementById('modal-nova-transacao');
+  if (m) m.style.display = 'none';
+}
+/* === Toggle Filtros avançados === */
+function toggleFinFiltros() {
+  const el = document.getElementById('fin-filtros');
+  const btn = document.getElementById('btn-toggle-filtros');
+  if (!el) return;
+  const aberto = el.style.display === 'flex';
+  el.style.display = aberto ? 'none' : 'flex';
+  if (btn) btn.textContent = aberto ? 'Filtros' : 'Fechar filtros';
 }
 
 async function adicionarTransacao() {
@@ -5645,10 +5694,10 @@ function renderHeatmap(porDia) {
 
     // Escala monocromática verde-turquesa (só uma cor com opacidade variável)
     let cor = 'rgba(15,23,42,0.03)'; // sem dados
-    if (taxa >= 90) cor = 'rgba(38,224,200,0.95)';
-    else if (taxa >= 70) cor = 'rgba(38,224,200,0.7)';
-    else if (taxa >= 50) cor = 'rgba(38,224,200,0.45)';
-    else if (taxa > 0) cor = 'rgba(38,224,200,0.22)';
+    if (taxa >= 90) cor = 'rgba(59,130,246,0.95)';
+    else if (taxa >= 70) cor = 'rgba(59,130,246,0.7)';
+    else if (taxa >= 50) cor = 'rgba(59,130,246,0.45)';
+    else if (taxa > 0) cor = 'rgba(59,130,246,0.22)';
     else if (info) cor = 'rgba(15,23,42,0.06)'; // dia sem conclusão
 
     const dataFormatada = new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
@@ -5665,10 +5714,10 @@ function renderHeatmap(porDia) {
   html += `
     <div class="heatmap-legend" style="margin-top: 16px; display: flex; gap: 12px; font-size: 12px; justify-content: center; flex-wrap: wrap;">
       <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(15,23,42,0.03); border-radius: 2px; margin-right: 4px;"></span>Sem dados</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.22); border-radius: 2px; margin-right: 4px;"></span>0-49%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.45); border-radius: 2px; margin-right: 4px;"></span>50-69%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.7); border-radius: 2px; margin-right: 4px;"></span>70-89%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(38,224,200,0.95); border-radius: 2px; margin-right: 4px;"></span>90%+</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.22); border-radius: 2px; margin-right: 4px;"></span>0-49%</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.45); border-radius: 2px; margin-right: 4px;"></span>50-69%</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.7); border-radius: 2px; margin-right: 4px;"></span>70-89%</span>
+      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.95); border-radius: 2px; margin-right: 4px;"></span>90%+</span>
     </div>
   `;
 

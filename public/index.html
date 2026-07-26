@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=34">
+  <link rel="stylesheet" href="style.css?v=35">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -88,7 +88,7 @@
           <h1><span id="saudacao">Boa noite</span></h1>
           <p class="page-subtitle">Últimos 30 dias</p>
         </div>
-        <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(38,224,200,0.12); border:1px solid rgba(38,224,200,0.35); color:var(--accent, #26e0c8); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+        <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
           Analisar meu dia
         </button>
@@ -492,41 +492,22 @@
           </div>
         </div>
 
-        <!-- Adicionar transação -->
-        <div class="form-card">
-          <div class="form-row">
-            <select id="tipo-transacao">
-              <option value="entrada">↑ Entrada</option>
-              <option value="saida">↓ Saída</option>
-            </select>
-            <input type="number" id="valor-transacao" placeholder="R$ 0,00" step="0.01" />
-            <input type="text" id="desc-transacao" placeholder="Descrição" />
-            <select id="categoria-transacao">
-              <option value="alimentacao">🍔 Alimentação</option>
-              <option value="transporte">🚗 Transporte</option>
-              <option value="moradia">🏠 Moradia</option>
-              <option value="lazer">🎮 Lazer</option>
-              <option value="saude">💊 Saúde</option>
-              <option value="salario">💼 Salário</option>
-              <option value="freelance">💻 Freelance</option>
-              <option value="outros" selected>📦 Outros</option>
-            </select>
-            <button class="btn-primary" onclick="adicionarTransacao()">+ Adicionar</button>
-          </div>
-        </div>
-
-        <!-- Transações (conteúdo principal) -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+        <!-- Barra principal: pills + ações (nova transação, filtros, relatório) -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
           <div class="filter-bar" style="margin:0;">
             <button class="filter-btn active" data-fin-filter="todas">Todas</button>
             <button class="filter-btn" data-fin-filter="entrada">Entradas</button>
             <button class="filter-btn" data-fin-filter="saida">Saídas</button>
           </div>
-          <button class="btn-secondary" onclick="abrirRelatorioMensal()" style="font-size:13px;">Relatório do mês</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn-secondary" onclick="toggleFinFiltros()" id="btn-toggle-filtros" style="font-size:13px;">Filtros</button>
+            <button class="btn-secondary" onclick="abrirRelatorioMensal()" style="font-size:13px;">Relatório do mês</button>
+            <button class="btn-primary" onclick="abrirModalNovaTransacao()" style="font-size:13px;">+ Nova transação</button>
+          </div>
         </div>
 
-        <!-- Busca e filtros avançados -->
-        <div class="fin-filtros" style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+        <!-- Busca e filtros avançados (colapsável, padrão fechado) -->
+        <div class="fin-filtros" id="fin-filtros" style="display:none; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
           <input type="text" id="fin-busca" placeholder="🔍 Buscar por descrição..." oninput="atualizarFinFiltros()"
             style="flex:1; min-width:180px; background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:8px 10px; font-size:13px;">
           <select id="fin-periodo" onchange="atualizarFinFiltros()"
@@ -547,6 +528,40 @@
             <option value="todas">Qualquer categoria</option>
           </select>
           <button class="fin-filtros-limpar" onclick="limparFinFiltros()" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:8px 12px; font-size:12px; cursor:pointer;">Limpar</button>
+        </div>
+
+        <!-- Modal Nova Transação (aparece ao clicar em + Nova transação) -->
+        <div id="modal-nova-transacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+          <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+              <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova transação</h3>
+              <button onclick="fecharModalNovaTransacao()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <select id="tipo-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
+                <option value="entrada">↑ Entrada</option>
+                <option value="saida">↓ Saída</option>
+              </select>
+              <input type="number" id="valor-transacao" placeholder="R$ 0,00" step="0.01"
+                style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
+              <input type="text" id="desc-transacao" placeholder="Descrição"
+                style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
+              <select id="categoria-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
+                <option value="alimentacao">🍔 Alimentação</option>
+                <option value="transporte">🚗 Transporte</option>
+                <option value="moradia">🏠 Moradia</option>
+                <option value="lazer">🎮 Lazer</option>
+                <option value="saude">💊 Saúde</option>
+                <option value="salario">💼 Salário</option>
+                <option value="freelance">💻 Freelance</option>
+                <option value="outros" selected>📦 Outros</option>
+              </select>
+              <div style="display:flex; gap:8px; margin-top:6px;">
+                <button onclick="fecharModalNovaTransacao()" style="flex:1; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:999px; padding:10px; font-size:13px; font-weight:500; cursor:pointer;">Cancelar</button>
+                <button class="btn-primary" onclick="adicionarTransacao(); fecharModalNovaTransacao();" style="flex:1; background:var(--accent); border:none; color:#fff; border-radius:999px; padding:10px; font-size:13px; font-weight:600; cursor:pointer;">Adicionar</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <ul id="lista-transacoes" class="transaction-list"></ul>
@@ -810,7 +825,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=34"></script>
+  <script src="app.js?v=35"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
