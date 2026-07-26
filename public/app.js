@@ -176,8 +176,7 @@ function ganharXP(quantidade) {
   // Verificar level up
   while (userLevel < XP_POR_LEVEL.length && userXP >= XP_POR_LEVEL[userLevel]) {
     userLevel++;
-    toast(`🎉 LEVEL UP! Você agora é nível ${userLevel}! 🚀`, 'success');
-    confetti({ particleCount: 80, spread: 70 });
+    toast(`LEVEL UP! Nível ${userLevel}`, 'success');
   }
 
   salvarDadosJogador();
@@ -549,46 +548,17 @@ function fecharPomodoro(e) {
 }
 
 // =====================
-//  CELEBRAÇÃO & CONFETE
+//  CELEBRAÇÃO (sem confete — feedback discreto)
 // =====================
 function celebrarTarefa() {
-  // Confete no centro
-  confetti({
-    particleCount: 50,
-    spread: 60,
-    origin: { x: 0.5, y: 0.3 },
-    colors: ['#31a24c', '#10b981', '#5b7cfa', '#f5a623']
-  });
-
   toast(obterFraseMotivacional('fim_tarefa'), 'success');
 }
 
 function celebrarMeta() {
-  // Confete grande
-  confetti({
-    particleCount: 100,
-    spread: 90,
-    origin: { x: 0.5, y: 0.3 },
-    colors: ['#fbbf24', '#f5a623', '#10b981', '#5b7cfa']
-  });
-
-  // Animar background momentaneamente
-  document.body.style.filter = 'brightness(1.2)';
-  setTimeout(() => {
-    document.body.style.filter = 'brightness(1)';
-  }, 500);
-
   toast(obterFraseMotivacional('meta_atingida'), 'success');
 }
 
 function celebrarPomodoro() {
-  // Confete pequeno
-  confetti({
-    particleCount: 30,
-    spread: 45,
-    origin: { x: 0.5, y: 0.3 }
-  });
-
   toast('Pomodoro completado! ' + obterFraseMotivacional('pausa_pomodoro'), 'success');
 }
 
@@ -4095,7 +4065,8 @@ function renderChartBars(historicoFull) {
 
   const concluidas = historico.map(h => parseInt(h.concluidas) || 0);
 
-  const accent = '#26e0c8';
+  // Azul escuro Multicap — lê CSS var pra respeitar tema
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1a1b3e';
 
   // Destruir gráfico anterior se existir
   if (performanceChart) {
@@ -4104,10 +4075,10 @@ function renderChartBars(historicoFull) {
 
   const ctx = document.getElementById('chart-bars').getContext('2d');
 
-  // Gradient verde → transparente pra área embaixo da linha (estilo Kirvano)
+  // Área sob a curva: azul escuro fade
   const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient.addColorStop(0, 'rgba(38, 224, 200, 0.25)');
-  gradient.addColorStop(1, 'rgba(38, 224, 200, 0.0)');
+  gradient.addColorStop(0, 'rgba(26, 27, 62, 0.18)');
+  gradient.addColorStop(1, 'rgba(26, 27, 62, 0.0)');
 
   performanceChart = new Chart(ctx, {
     type: 'line',
@@ -4124,7 +4095,7 @@ function renderChartBars(historicoFull) {
         pointRadius: 0,
         pointHoverRadius: 5,
         pointBackgroundColor: accent,
-        pointBorderColor: '#0a0c10',
+        pointBorderColor: '#ffffff',
         pointBorderWidth: 2
       }]
     },
@@ -4136,12 +4107,12 @@ function renderChartBars(historicoFull) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(10, 12, 16, 0.95)',
-          borderColor: 'rgba(255,255,255,0.08)',
+          backgroundColor: '#0f172a',
+          borderColor: 'rgba(15,23,42,0.08)',
           borderWidth: 1,
           titleColor: '#ffffff',
           titleFont: { size: 12, weight: '600' },
-          bodyColor: accent,
+          bodyColor: '#ffffff',
           bodyFont: { size: 13, weight: '600' },
           padding: 10,
           displayColors: false,
@@ -4155,7 +4126,7 @@ function renderChartBars(historicoFull) {
           beginAtZero: true,
           ticks: { display: false },
           grid: {
-            color: 'rgba(255, 255, 255, 0.08)',
+            color: 'rgba(15, 23, 42, 0.06)',
             drawBorder: false,
             lineWidth: 1,
             drawTicks: false
@@ -4173,7 +4144,7 @@ function renderChartBars(historicoFull) {
         },
         x: {
           ticks: {
-            color: '#55555c',
+            color: '#94a3b8',
             font: { size: 11, weight: '400' },
             maxRotation: 0,
             padding: 6,
