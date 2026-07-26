@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=35">
+  <link rel="stylesheet" href="style.css?v=36">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -403,7 +403,8 @@
 
       <!-- Sub-abas do Financeiro -->
       <div class="fin-subtabs" style="display:flex; gap:8px; margin-bottom:18px; border-bottom:1px solid var(--border); padding-bottom:2px;">
-        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')" style="background:none; border:none; color:var(--text); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid #5b7cfa;">Visão Geral</button>
+        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')" style="background:none; border:none; color:var(--text); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid var(--accent);">Visão Geral</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-transacoes" onclick="trocarSubAbaFin('fin-transacoes')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Transações</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-contas" onclick="trocarSubAbaFin('fin-contas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Contas</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-categorizar" onclick="trocarSubAbaFin('fin-categorizar')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Categorizar <span id="badge-pendentes" style="display:none; background:#e8950c; color:#fff; font-size:10px; padding:1px 6px; border-radius:8px; margin-left:2px;">0</span></button>
         <button class="fin-subtab-btn" data-fin-tab="fin-apostas" onclick="trocarSubAbaFin('fin-apostas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Apostas</button>
@@ -476,23 +477,68 @@
           </div>
         </div>
 
-        <!-- Donut chart de categorias (últimos 30d) -->
-        <div class="fin-donut-card" id="fin-donut-card" style="display:none;">
-          <h3>Gastos por categoria</h3>
-          <p class="donut-subtitle">Este mês</p>
-          <div class="fin-donut-body">
-            <div class="fin-donut-canvas-wrap">
-              <canvas id="fin-donut-canvas" width="200" height="200"></canvas>
-              <div class="fin-donut-center">
-                <div class="donut-total" id="fin-donut-total">R$ 0</div>
-                <div class="donut-total-label">Total</div>
-              </div>
+        <!-- Grid: Categorias (esquerda) + Donut (direita) — estilo Multicap Orçamento -->
+        <div class="fin-visao-grid" id="fin-visao-grid" style="display:none;">
+          <div class="fin-cat-list-card">
+            <div class="fin-cat-list-header">
+              <h3>Gastos por categoria</h3>
+              <span class="subtitle" id="fin-cat-list-mes">Este mês</span>
             </div>
-            <div class="fin-donut-legend" id="fin-donut-legend"></div>
+            <div id="fin-cat-list"></div>
+            <div class="fin-cat-list-total" id="fin-cat-list-total" style="display:none;">
+              <span>Total</span><span class="valor" id="fin-cat-list-total-valor">R$ 0</span>
+            </div>
+          </div>
+
+          <div class="fin-donut-card" id="fin-donut-card" style="margin-bottom:0;">
+            <h3>Distribuição</h3>
+            <p class="donut-subtitle">Este mês</p>
+            <div class="fin-donut-body">
+              <div class="fin-donut-canvas-wrap">
+                <canvas id="fin-donut-canvas" width="200" height="200"></canvas>
+                <div class="fin-donut-center">
+                  <div class="donut-total" id="fin-donut-total">R$ 0</div>
+                  <div class="donut-total-label">Total</div>
+                </div>
+              </div>
+              <div class="fin-donut-legend" id="fin-donut-legend"></div>
+            </div>
           </div>
         </div>
 
-        <!-- Barra principal: pills + ações (nova transação, filtros, relatório) -->
+        <div id="fin-cat-empty" class="empty-state" style="display:none;">
+          <div class="empty-icon">📊</div>
+          <h3>Sem despesas neste mês</h3>
+          <p>As categorias aparecem aqui quando você tiver gastos.</p>
+        </div>
+
+        <!-- Seções recolhíveis (expanda só o que quiser) -->
+        <div style="margin-top:24px;">
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">Orçamentos por categoria</summary>
+            <div id="painel-orcamentos-cat" style="margin-top:8px;"></div>
+          </details>
+
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🏦 Bancos &amp; saldos detalhados</summary>
+            <div id="painel-bancos" style="margin-top:8px;"></div>
+          </details>
+
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">✅ Contas fixas &amp; empréstimo</summary>
+            <div id="painel-organizacao" style="margin-top:8px;"></div>
+          </details>
+
+          <details style="margin-bottom:6px;">
+            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🧠 Análise do dia</summary>
+            <div id="painel-analise-fin" style="margin-top:8px;"></div>
+          </details>
+        </div>
+      </div>
+
+      <!-- SUB-ABA: Transações (feed completo) -->
+      <div id="fin-transacoes" class="fin-subtab" style="display:none;">
+        <!-- Barra principal: pills + ações -->
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
           <div class="filter-bar" style="margin:0;">
             <button class="filter-btn active" data-fin-filter="todas">Todas</button>
@@ -530,40 +576,6 @@
           <button class="fin-filtros-limpar" onclick="limparFinFiltros()" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:8px 12px; font-size:12px; cursor:pointer;">Limpar</button>
         </div>
 
-        <!-- Modal Nova Transação (aparece ao clicar em + Nova transação) -->
-        <div id="modal-nova-transacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
-          <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-              <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova transação</h3>
-              <button onclick="fecharModalNovaTransacao()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-              <select id="tipo-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
-                <option value="entrada">↑ Entrada</option>
-                <option value="saida">↓ Saída</option>
-              </select>
-              <input type="number" id="valor-transacao" placeholder="R$ 0,00" step="0.01"
-                style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
-              <input type="text" id="desc-transacao" placeholder="Descrição"
-                style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
-              <select id="categoria-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
-                <option value="alimentacao">🍔 Alimentação</option>
-                <option value="transporte">🚗 Transporte</option>
-                <option value="moradia">🏠 Moradia</option>
-                <option value="lazer">🎮 Lazer</option>
-                <option value="saude">💊 Saúde</option>
-                <option value="salario">💼 Salário</option>
-                <option value="freelance">💻 Freelance</option>
-                <option value="outros" selected>📦 Outros</option>
-              </select>
-              <div style="display:flex; gap:8px; margin-top:6px;">
-                <button onclick="fecharModalNovaTransacao()" style="flex:1; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:999px; padding:10px; font-size:13px; font-weight:500; cursor:pointer;">Cancelar</button>
-                <button class="btn-primary" onclick="adicionarTransacao(); fecharModalNovaTransacao();" style="flex:1; background:var(--accent); border:none; color:#fff; border-radius:999px; padding:10px; font-size:13px; font-weight:600; cursor:pointer;">Adicionar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <ul id="lista-transacoes" class="transaction-list"></ul>
 
         <div id="empty-financeiro" class="empty-state" style="display: none;">
@@ -571,28 +583,39 @@
           <h3>Sem transações</h3>
           <p>Comece registrando suas movimentações</p>
         </div>
+      </div>
 
-        <!-- Seções recolhíveis (expanda só o que quiser) -->
-        <div style="margin-top:24px;">
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">Orçamentos por categoria</summary>
-            <div id="painel-orcamentos-cat" style="margin-top:8px;"></div>
-          </details>
-
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🏦 Bancos &amp; saldos detalhados</summary>
-            <div id="painel-bancos" style="margin-top:8px;"></div>
-          </details>
-
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">✅ Contas fixas &amp; empréstimo</summary>
-            <div id="painel-organizacao" style="margin-top:8px;"></div>
-          </details>
-
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🧠 Análise do dia</summary>
-            <div id="painel-analise-fin" style="margin-top:8px;"></div>
-          </details>
+      <!-- Modal Nova Transação (compartilhado — visível em qualquer sub-aba) -->
+      <div id="modal-nova-transacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova transação</h3>
+            <button onclick="fecharModalNovaTransacao()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <select id="tipo-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
+              <option value="entrada">↑ Entrada</option>
+              <option value="saida">↓ Saída</option>
+            </select>
+            <input type="number" id="valor-transacao" placeholder="R$ 0,00" step="0.01"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
+            <input type="text" id="desc-transacao" placeholder="Descrição"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
+            <select id="categoria-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
+              <option value="alimentacao">🍔 Alimentação</option>
+              <option value="transporte">🚗 Transporte</option>
+              <option value="moradia">🏠 Moradia</option>
+              <option value="lazer">🎮 Lazer</option>
+              <option value="saude">💊 Saúde</option>
+              <option value="salario">💼 Salário</option>
+              <option value="freelance">💻 Freelance</option>
+              <option value="outros" selected>📦 Outros</option>
+            </select>
+            <div style="display:flex; gap:8px; margin-top:6px;">
+              <button onclick="fecharModalNovaTransacao()" style="flex:1; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:999px; padding:10px; font-size:13px; font-weight:500; cursor:pointer;">Cancelar</button>
+              <button class="btn-primary" onclick="adicionarTransacao(); fecharModalNovaTransacao();" style="flex:1; background:var(--accent); border:none; color:#fff; border-radius:999px; padding:10px; font-size:13px; font-weight:600; cursor:pointer;">Adicionar</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -825,7 +848,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=35"></script>
+  <script src="app.js?v=36"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

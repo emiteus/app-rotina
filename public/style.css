@@ -6,32 +6,32 @@
 }
 
 :root {
-  /* Dark Multicap — escuro azulado elegante, cards levemente mais claros, azul vibrante como acento */
-  --bg-primary: #0f1218;
-  --bg-secondary: #14171f;
-  --bg-tertiary: #1e2230;
-  --bg-card: #171a24;
-  --bg-card-hover: #1e2230;
-  --card-bg: #171a24;
+  /* Dark Kirvano — preto puro, cards escuros, verde-turquesa como acento */
+  --bg-primary: #0a0a0b;
+  --bg-secondary: #0f0f11;
+  --bg-tertiary: #16161a;
+  --bg-card: #111114;
+  --bg-card-hover: #16161a;
+  --card-bg: #111114;
 
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.10);
+  --border: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.09);
 
-  --text-primary: #f5f7fa;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --text: #f5f7fa;
+  --text-primary: #f5f5f7;
+  --text-secondary: #8b8b93;
+  --text-muted: #55555c;
+  --text: #f5f5f7;
 
-  /* Acento: azul vibrante Multicap dark */
-  --accent: #3b82f6;
-  --accent-hover: #60a5fa;
-  --accent-dim: rgba(59, 130, 246, 0.14);
-  --accent-blue: #3b82f6;
+  /* Acento: verde-turquesa Kirvano */
+  --accent: #26e0c8;
+  --accent-hover: #3fe8d3;
+  --accent-dim: rgba(38, 224, 200, 0.12);
+  --accent-blue: #6ab7ff;
 
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --info: #06b6d4;
+  --success: #26e0c8;
+  --danger: #ff5c68;
+  --warning: #ffb547;
+  --info: #6ab7ff;
 
   /* Gradientes decorativos zerados */
   --grad-blue: transparent;
@@ -40,16 +40,15 @@
   --grad-purple: transparent;
   --grad-red: transparent;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.50);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.60);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
 
-  /* Transições sem overshoot */
-  --transition: 0.15s ease-out;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html, body {
@@ -4776,16 +4775,93 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   white-space: nowrap;
 }
 #financeiro .finance-box.saldo-box .box-icon {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(38, 224, 200, 0.14);
   color: var(--accent);
 }
 #financeiro .finance-box.entrada-box .box-icon {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--success);
+  background: rgba(38, 224, 200, 0.14);
+  color: var(--accent);
 }
 #financeiro .finance-box.saida-box .box-icon {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(255, 92, 104, 0.14);
   color: var(--danger);
+}
+
+/* Categorias-lista Multicap-style na Visão Geral do financeiro */
+.fin-visao-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 22px;
+  align-items: start;
+}
+.fin-cat-list-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.fin-cat-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.fin-cat-list-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.fin-cat-list-header .subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.fin-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.fin-cat-row:last-child { border-bottom: none; }
+.fin-cat-row .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.fin-cat-row .name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-cat-row .valor {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--danger);
+}
+.fin-cat-list-total {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 14px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border-strong);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.fin-cat-list-total .valor { color: var(--danger); }
+@media (max-width: 768px) {
+  .fin-visao-grid { grid-template-columns: 1fr; }
 }
 
 /* ----- Donut card de categorias ----- */
@@ -4902,7 +4978,7 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
 /* ----- Filter pills (Todas / Entradas / Saídas) ----- */
 #financeiro .filter-bar { display: flex; gap: 6px; }
 #financeiro .filter-btn {
-  background: transparent;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   border-radius: 999px;
@@ -4913,20 +4989,20 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   transition: all var(--transition);
 }
 #financeiro .filter-btn:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-card-hover);
   color: var(--text-primary);
 }
 #financeiro .filter-btn.active {
-  background: var(--accent);
+  background: var(--accent-dim);
   border-color: var(--accent);
-  color: #ffffff;
+  color: var(--accent);
 }
 
-/* ----- Botão primário Multicap (azul escuro) ----- */
+/* ----- Botão primário (verde-turquesa Kirvano) ----- */
 #financeiro .btn-primary,
 #financeiro button.btn-primary {
   background: var(--accent);
-  color: #ffffff;
+  color: #0a0a0b;
   border: none;
   border-radius: 999px;
   padding: 10px 20px;
@@ -4939,7 +5015,7 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   background: var(--accent-hover);
 }
 #financeiro .btn-secondary {
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -4950,7 +5026,7 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   transition: all var(--transition);
 }
 #financeiro .btn-secondary:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-card-hover);
   border-color: var(--border-strong);
 }
 

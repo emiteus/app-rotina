@@ -1111,7 +1111,7 @@ function trocarSubAbaFin(id) {
     const ativo = btn.getAttribute('data-fin-tab') === id;
     btn.classList.toggle('active', ativo);
     btn.style.color = ativo ? 'var(--text)' : 'var(--text-muted)';
-    btn.style.borderBottom = ativo ? '2px solid #5b7cfa' : '2px solid transparent';
+    btn.style.borderBottom = ativo ? '2px solid var(--accent)' : '2px solid transparent';
   });
   if (id === 'fin-ir') renderIR();
   if (id === 'fin-contas') carregarContas();
@@ -3734,23 +3734,38 @@ async function carregarTransacoes() {
   }
 }
 
-/* === Donut de gastos por categoria (estilo Multicap) === */
+/* === Donut + Lista de categorias na Visão Geral (Multicap-style) === */
 let _finDonutChart = null;
 async function renderFinDonut() {
+  const grid = document.getElementById('fin-visao-grid');
+  const emptyEl = document.getElementById('fin-cat-empty');
   const card = document.getElementById('fin-donut-card');
   const canvas = document.getElementById('fin-donut-canvas');
   const legend = document.getElementById('fin-donut-legend');
   const totalEl = document.getElementById('fin-donut-total');
-  if (!card || !canvas || !legend || !totalEl) return;
+  const catList = document.getElementById('fin-cat-list');
+  const catTotal = document.getElementById('fin-cat-list-total');
+  const catTotalValor = document.getElementById('fin-cat-list-total-valor');
+  const mesLabel = document.getElementById('fin-cat-list-mes');
+  if (!grid || !card || !canvas || !legend || !totalEl || !catList) return;
+
+  // Rótulo do mês corrente ("julho de 2026")
+  if (mesLabel) {
+    mesLabel.textContent = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  }
+
   try {
     const res = await fetch('/api/financeiro/stats');
     if (!res.ok) return;
     const data = await res.json();
-    // Só saídas do mês corrente
     const saidas = (data.porCategoria || []).filter(r => r.tipo === 'saida');
-    if (!saidas.length) { card.style.display = 'none'; return; }
+    if (!saidas.length) {
+      grid.style.display = 'none';
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
 
-    // Agrupa por categoria (soma se aparecer 2x)
+    // Agrupa por categoria
     const agrupado = {};
     saidas.forEach(r => {
       const k = r.categoria || 'outros';
@@ -3758,13 +3773,17 @@ async function renderFinDonut() {
     });
     const entries = Object.entries(agrupado).sort((a,b) => b[1] - a[1]);
     const total = entries.reduce((s, [,v]) => s + v, 0);
-    if (!total) { card.style.display = 'none'; return; }
+    if (!total) {
+      grid.style.display = 'none';
+      if (emptyEl) emptyEl.style.display = 'block';
+      return;
+    }
 
-    // Paleta Multicap: vermelho, azul, amarelo, verde, ciano, roxo, cinza
-    const palette = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#06b6d4', '#8b5cf6', '#94a3b8', '#ec4899', '#14b8a6'];
+    // Paleta consistente entre donut e lista
+    const palette = ['#ff5c68', '#6ab7ff', '#ffb547', '#26e0c8', '#3fe8d3', '#c084fc', '#ec4899', '#94a3b8', '#14b8a6'];
     const catLabels = _catLista.length ? Object.fromEntries(_catLista.map(c => [c.id || c.chave, c.label])) : {};
 
-    // Top 6 + "Outros" pra não ficar poluído
+    // Donut: top 6 + Outros agrupado
     const TOP = 6;
     let dataset = entries.slice(0, TOP);
     if (entries.length > TOP) {
@@ -3776,10 +3795,26 @@ async function renderFinDonut() {
     const values = dataset.map(([,v]) => v);
     const colors = dataset.map((_, i) => palette[i % palette.length]);
 
-    card.style.display = 'block';
+    grid.style.display = 'grid';
+    if (emptyEl) emptyEl.style.display = 'none';
     totalEl.textContent = formatBRL(total);
 
-    // Legend
+    // Lista de categorias (todas, não só top 6 — o donut é resumo, a lista é detalhe)
+    catList.innerHTML = entries.map(([k, v], i) => {
+      const cor = palette[Math.min(i, palette.length - 1)];
+      const nome = catLabels[k] || k;
+      return `<div class="fin-cat-row">
+        <span class="dot" style="background:${cor}"></span>
+        <span class="name">${escapeHtml(nome)}</span>
+        <span class="valor">− ${formatBRL(v)}</span>
+      </div>`;
+    }).join('');
+    if (catTotal && catTotalValor) {
+      catTotalValor.textContent = '− ' + formatBRL(total);
+      catTotal.style.display = 'flex';
+    }
+
+    // Legenda do donut
     legend.innerHTML = dataset.map(([, v], i) => {
       const pct = Math.round((v / total) * 100);
       return `<div class="fin-donut-legend-item">
@@ -3808,9 +3843,11 @@ async function renderFinDonut() {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#0f172a',
+            backgroundColor: '#111114',
             titleColor: '#fff',
             bodyColor: '#fff',
+            borderColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1,
             padding: 8,
             displayColors: false,
             callbacks: {
