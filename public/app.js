@@ -3698,8 +3698,100 @@ async function carregarTransacoes() {
     atualizarBadgeCategorizar();
     carregarAlertas();
     atualizarDashboard();
+    renderFinDonut();
   } catch (err) {
     console.error('Erro transações:', err);
+  }
+}
+
+/* === Donut de gastos por categoria (estilo Multicap) === */
+let _finDonutChart = null;
+async function renderFinDonut() {
+  const card = document.getElementById('fin-donut-card');
+  const canvas = document.getElementById('fin-donut-canvas');
+  const legend = document.getElementById('fin-donut-legend');
+  const totalEl = document.getElementById('fin-donut-total');
+  if (!card || !canvas || !legend || !totalEl) return;
+  try {
+    const res = await fetch('/api/financeiro/stats');
+    if (!res.ok) return;
+    const data = await res.json();
+    // Só saídas do mês corrente
+    const saidas = (data.porCategoria || []).filter(r => r.tipo === 'saida');
+    if (!saidas.length) { card.style.display = 'none'; return; }
+
+    // Agrupa por categoria (soma se aparecer 2x)
+    const agrupado = {};
+    saidas.forEach(r => {
+      const k = r.categoria || 'outros';
+      agrupado[k] = (agrupado[k] || 0) + Number(r.total || 0);
+    });
+    const entries = Object.entries(agrupado).sort((a,b) => b[1] - a[1]);
+    const total = entries.reduce((s, [,v]) => s + v, 0);
+    if (!total) { card.style.display = 'none'; return; }
+
+    // Paleta Multicap: vermelho, azul, amarelo, verde, ciano, roxo, cinza
+    const palette = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#06b6d4', '#8b5cf6', '#94a3b8', '#ec4899', '#14b8a6'];
+    const catLabels = _catLista.length ? Object.fromEntries(_catLista.map(c => [c.id || c.chave, c.label])) : {};
+
+    // Top 6 + "Outros" pra não ficar poluído
+    const TOP = 6;
+    let dataset = entries.slice(0, TOP);
+    if (entries.length > TOP) {
+      const outrosTotal = entries.slice(TOP).reduce((s, [,v]) => s + v, 0);
+      dataset.push(['outros_agrup', outrosTotal]);
+    }
+
+    const labels = dataset.map(([k]) => k === 'outros_agrup' ? 'Outros' : (catLabels[k] || k));
+    const values = dataset.map(([,v]) => v);
+    const colors = dataset.map((_, i) => palette[i % palette.length]);
+
+    card.style.display = 'block';
+    totalEl.textContent = formatBRL(total);
+
+    // Legend
+    legend.innerHTML = dataset.map(([, v], i) => {
+      const pct = Math.round((v / total) * 100);
+      return `<div class="fin-donut-legend-item">
+        <span class="dot" style="background:${colors[i]}"></span>
+        <span class="lbl">${escapeHtml(labels[i])}</span>
+        <span class="pct">${pct}%</span>
+      </div>`;
+    }).join('');
+
+    // Chart
+    if (_finDonutChart) _finDonutChart.destroy();
+    _finDonutChart = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: false,
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0f172a',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            padding: 8,
+            displayColors: false,
+            callbacks: {
+              label: (ctx) => `${ctx.label}: ${formatBRL(ctx.parsed)}`
+            }
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error('Erro donut fin:', e);
   }
 }
 

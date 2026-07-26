@@ -4725,3 +4725,290 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   font-size: 14px !important;
 }
 
+/* ============================================================
+   REDESIGN MULTICAP — Fase 2 (financeiro)
+   ============================================================ */
+
+/* ----- KPIs do financeiro estilo Multicap (ícone + valor) ----- */
+#financeiro .finance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+#financeiro .finance-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+#financeiro .finance-box .box-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+#financeiro .finance-box .box-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 2;
+}
+#financeiro .finance-box .box-body { min-width: 0; }
+#financeiro .finance-box .box-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 4px 0;
+}
+#financeiro .finance-box h2,
+#financeiro .finance-box h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+#financeiro .finance-box.saldo-box .box-icon {
+  background: rgba(26, 27, 62, 0.08);
+  color: var(--accent);
+}
+#financeiro .finance-box.entrada-box .box-icon {
+  background: rgba(16, 185, 129, 0.10);
+  color: var(--success);
+}
+#financeiro .finance-box.saida-box .box-icon {
+  background: rgba(239, 68, 68, 0.10);
+  color: var(--danger);
+}
+
+/* ----- Donut card de categorias ----- */
+.fin-donut-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 22px;
+}
+.fin-donut-card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+.fin-donut-card .donut-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 18px 0;
+}
+.fin-donut-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: center;
+}
+.fin-donut-canvas-wrap {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+.fin-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.fin-donut-center .donut-total {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.fin-donut-center .donut-total-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+.fin-donut-legend {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 20px;
+}
+.fin-donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.fin-donut-legend-item .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.fin-donut-legend-item .pct {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.fin-donut-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 28px 0;
+}
+
+@media (max-width: 768px) {
+  #financeiro .finance-grid { grid-template-columns: 1fr; }
+  .fin-donut-body {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 18px;
+  }
+  .fin-donut-legend { grid-template-columns: 1fr; width: 100%; }
+}
+
+/* ----- Sub-abas financeiro: cor da borda ativa vira azul-escuro ----- */
+#financeiro .fin-subtabs {
+  border-bottom-color: var(--border) !important;
+}
+#financeiro .fin-subtab-btn {
+  color: var(--text-muted) !important;
+  transition: color var(--transition);
+}
+#financeiro .fin-subtab-btn.active {
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--accent) !important;
+}
+#financeiro .fin-subtab-btn:hover {
+  color: var(--text-secondary) !important;
+}
+
+/* ----- Filter pills (Todas / Entradas / Saídas) ----- */
+#financeiro .filter-bar { display: flex; gap: 6px; }
+#financeiro .filter-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+#financeiro .filter-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+#financeiro .filter-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+/* ----- Botão primário Multicap (azul escuro) ----- */
+#financeiro .btn-primary,
+#financeiro button.btn-primary {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+#financeiro .btn-primary:hover {
+  background: var(--accent-hover);
+}
+#financeiro .btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+#financeiro .btn-secondary:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-strong);
+}
+
+/* ----- Filtros avançados: inputs/selects em light ----- */
+#financeiro .fin-filtros input[type="text"],
+#financeiro .fin-filtros select,
+#financeiro .fin-filtros-limpar {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+}
+#financeiro .fin-filtros input[type="text"]:focus,
+#financeiro .fin-filtros select:focus {
+  outline: none;
+  border-color: var(--accent) !important;
+}
+
+/* ----- Form-card de adicionar transação ----- */
+#financeiro .form-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 18px;
+}
+#financeiro .form-card select,
+#financeiro .form-card input {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+#financeiro .form-card input:focus,
+#financeiro .form-card select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ----- Lista de transações ----- */
+#financeiro .transaction-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+#financeiro .transaction-list li {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 6px;
+}
+

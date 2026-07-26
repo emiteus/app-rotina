@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=32">
+  <link rel="stylesheet" href="style.css?v=33">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -445,19 +445,50 @@
 
       <!-- SUB-ABA: Visão Geral -->
       <div id="fin-visao" class="fin-subtab">
-        <!-- Saldos no topo (o que importa de cara) -->
+        <!-- KPIs no topo estilo Multicap: ícone colorido + valor -->
         <div class="finance-grid">
           <div class="finance-box saldo-box">
-            <p class="box-label">Em conta</p>
-            <h2 id="saldo-total">R$ 0,00</h2>
+            <div class="box-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="box-body">
+              <p class="box-label">Em conta</p>
+              <h2 id="saldo-total">R$ 0,00</h2>
+            </div>
           </div>
           <div class="finance-box entrada-box">
-            <p class="box-label">Entradas (30d)</p>
-            <h3 id="total-entradas">R$ 0,00</h3>
+            <div class="box-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M7 17l10-10M7 7h10v10" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="box-body">
+              <p class="box-label">Entradas (30d)</p>
+              <h3 id="total-entradas">R$ 0,00</h3>
+            </div>
           </div>
           <div class="finance-box saida-box">
-            <p class="box-label">Saídas (30d)</p>
-            <h3 id="total-saidas">R$ 0,00</h3>
+            <div class="box-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 7L7 17M17 17H7V7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="box-body">
+              <p class="box-label">Saídas (30d)</p>
+              <h3 id="total-saidas">R$ 0,00</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- Donut chart de categorias (últimos 30d) -->
+        <div class="fin-donut-card" id="fin-donut-card" style="display:none;">
+          <h3>Gastos por categoria</h3>
+          <p class="donut-subtitle">Este mês</p>
+          <div class="fin-donut-body">
+            <div class="fin-donut-canvas-wrap">
+              <canvas id="fin-donut-canvas" width="200" height="200"></canvas>
+              <div class="fin-donut-center">
+                <div class="donut-total" id="fin-donut-total">R$ 0</div>
+                <div class="donut-total-label">Total</div>
+              </div>
+            </div>
+            <div class="fin-donut-legend" id="fin-donut-legend"></div>
           </div>
         </div>
 
@@ -779,7 +810,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=32"></script>
+  <script src="app.js?v=33"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
