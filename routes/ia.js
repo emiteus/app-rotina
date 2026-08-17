@@ -2,8 +2,9 @@ const express = require('express');
 const axios = require('axios');
 const { v4: uuid } = require('uuid');
 const { all, run, get } = require('../lib/db');
-const { checkinHabito } = require('../lib/habitos');
+const { checkinHabito, listarHabitos } = require('../lib/habitos');
 const { hojeStr, ymAtual, addDias, dataResetSql } = require('../lib/datas');
+const { persistirHistoricoDia } = require('../lib/historico');
 
 const router = express.Router();
 
@@ -372,7 +373,7 @@ async function snapshotAssistente() {
     despesas,
     metas,
     alarmes,
-    habitosMes
+    habitosLista
   ] = await Promise.all([
     all(
       `SELECT titulo, concluida, prioridade, hora
@@ -413,20 +414,7 @@ async function snapshotAssistente() {
        LIMIT 15`
     ).catch(() => []),
     all(`SELECT hora, mensagem FROM alarmes WHERE ativo = true ORDER BY hora LIMIT 10`).catch(() => []),
-    all(
-      `SELECT
-         COUNT(*) FILTER (WHERE concluida)::int AS concluidas,
-         COUNT(*)::int AS total,
-         ARRAY_AGG(TO_CHAR(data_reset::date, 'YYYY-MM-DD') ORDER BY data_reset)
-           FILTER (WHERE concluida) AS dias
-       FROM tasks
-       WHERE data_reset IS NOT NULL
-         AND DATE(data_reset) >= DATE_TRUNC('month', CURRENT_DATE)
-         AND (
-           titulo ILIKE '%academia%' OR titulo ILIKE '%treino%' OR titulo ILIKE '%pilates%'
-           OR categoria ILIKE '%academia%' OR categoria ILIKE '%treino%'
-         )`
-    ).catch(() => [{ concluidas: 0, total: 0, dias: [] }])
+    listarHabitos().catch(() => ({ habitos: [] }))
   ]);
 
   const tHoje = tarefasHoje || [];
@@ -492,14 +480,13 @@ async function snapshotAssistente() {
       prazo: m.prazo
     })),
     alarmes: (alarmes || []).map(a => ({ hora: a.hora, msg: a.mensagem })),
-    habitos_mes: {
-      academia_treino: {
-        concluidas: Number((habitosMes[0] || {}).concluidas || 0),
-        total: Number((habitosMes[0] || {}).total || 0),
-        dias: (habitosMes[0] && habitosMes[0].dias) || []
-      },
-      nota: 'Só conta tarefas deste mês cujo título/categoria contém academia, treino ou pilates. Se total=0, o app não registrou idas — não invente um número.'
-    }
+    habitos_hoje: ((habitosLista && habitosLista.habitos) || []).map((h) => ({
+      titulo: h.titulo,
+      feito_hoje: !!(h.hoje && h.hoje.concluida),
+      mes_concluidas: (h.mes && h.mes.concluidas) || 0,
+      mes_total: (h.mes && h.mes.total) || 0
+    })),
+    nota_habitos: 'Hábitos padrão: Academia, Beber água, Sono. Use marcar_habito com esses títulos.'
   };
 }
 
@@ -557,10 +544,11 @@ async function executarAcoes(acoes) {
       } else if (tipo === 'marcar_habito') {
         const titulo = String(acao.titulo || 'Academia').trim() || 'Academia';
         const r = await checkinHabito(titulo);
+        persistirHistoricoDia(hojeStr()).catch(() => {});
         feitos.push({
           tipo,
           ok: true,
-          titulo: (r.task && r.task.titulo) || titulo,
+          titulo: r.titulo || (r.task && r.task.titulo) || titulo,
           ja: r.ja,
           criada: r.criada
         });
@@ -595,7 +583,7 @@ Como usar o contexto:
 - Tarefas: comente pendentes de hoje e a taxa de conclusão dos 30 dias. Se a taxa estiver baixa, seja honesto.
 - Metas: diga se o ritmo cabe na sobra.
 
-Ações: se o usuário pedir pra registrar pendência, dívida, despesa, tarefa ou meta, inclua no JSON. Se disser que foi à academia / treinou hoje, use marcar_habito. Não peça confirmação extra se os dados essenciais já vieram na frase. Se faltar valor, pergunte na resposta e NÃO emita a ação.
+Ações: se o usuário pedir pra registrar pendência, dívida, despesa, tarefa ou meta, inclua no JSON. Se disser que foi à academia / treinou / bebeu água / dormiu bem hoje, use marcar_habito com o título certo (Academia, Beber água ou Sono). Não peça confirmação extra se os dados essenciais já vieram na frase. Se faltar valor, pergunte na resposta e NÃO emita a ação.
 
 Responda APENAS JSON válido:
 {"resposta":"texto em markdown simples, no máximo 180 palavras","acoes":[]}
@@ -604,7 +592,7 @@ Tipos de ação:
 - {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|assinaturas|transporte|saude|outros"}
 - {"tipo":"criar_tarefa","titulo":"...","prioridade":"alta|media|baixa","data_reset":"YYYY-MM-DD"}
 - {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
-- {"tipo":"marcar_habito","titulo":"Academia"}
+- {"tipo":"marcar_habito","titulo":"Academia|Beber água|Sono"}
 
 Regras:
 - acoes pode ser [].

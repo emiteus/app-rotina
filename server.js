@@ -58,9 +58,10 @@ const relatoriosRouter = require('./routes/relatorios');
 const despesasRouter = require('./routes/despesas');
 const pushRouter = require('./routes/push');
 const iaRouter = require('./routes/ia');
-const { garantirRecorrenteAcademia } = require('./lib/habitos');
+const { garantirRecorrentesHabitos } = require('./lib/habitos');
 const { enviarPush } = require('./lib/push');
-const { TZ, hojeStr, ymAtual, diaDoMes, diaSemana, ymdDe, dataResetSql, horaAtual } = require('./lib/datas');
+const { TZ, hojeStr, ymAtual, diaDoMes, diaSemana, ymdDe, dataResetSql, horaAtual, addDias } = require('./lib/datas');
+const { persistirHistoricoDia, backfillHistorico } = require('./lib/historico');
 
 // Passar wsServer para as rotas
 tasksRouter.setWsServer(wsServer);
@@ -94,9 +95,20 @@ app.use(express.static('public'));
 if (!fs.existsSync('./data')) fs.mkdirSync('./data');
 
 // Inicializa BD
-initDB().then(() =>
-  garantirRecorrenteAcademia().catch(err => console.error('[Habitos]', err.message))
-);
+initDB().then(async () => {
+  try {
+    const h = await garantirRecorrentesHabitos();
+    if (h.criadas) console.log(`[Habitos] ${h.criadas} recorrente(s) criada(s)`);
+  } catch (err) {
+    console.error('[Habitos]', err.message);
+  }
+  try {
+    const bf = await backfillHistorico(90);
+    console.log(`[Historico] backfill ${bf.salvos}/${bf.dias} dia(s)`);
+  } catch (err) {
+    console.error('[Historico]', err.message);
+  }
+});
 
 // HTML principal
 app.get('/', (req, res) => {
@@ -148,7 +160,7 @@ async function gerarRecorrentesHoje() {
   try {
     const { run, get, all } = require('./lib/db');
     const { v4: uuid } = require('uuid');
-    await garantirRecorrenteAcademia();
+    await garantirRecorrentesHabitos();
     const hoje = hojeStr();
     const dow = String(diaSemana());
     const recorrentes = await all(`SELECT * FROM tarefas_recorrentes WHERE ativa = true`);
@@ -175,6 +187,14 @@ async function gerarRecorrentesHoje() {
 }
 sched('5 0 * * *', runCron('recorrentes', gerarRecorrentesHoje));
 if (CRONS_ENABLED) setTimeout(gerarRecorrentesHoje, 3000); // Executa 3s apos servidor iniciar
+
+// Persiste agregados do dia em task_historico (23:55 BRT) + reforço de ontem às 0:10
+async function persistirHistoricoCron(dia) {
+  const r = await persistirHistoricoDia(dia);
+  if (r.salvo) console.log(`[Historico] ${r.data}: ${r.concluidas}/${r.total}`);
+}
+sched('55 23 * * *', runCron('historico-hoje', () => persistirHistoricoCron(hojeStr())));
+sched('10 0 * * *', runCron('historico-ontem', () => persistirHistoricoCron(addDias(-1))));
 
 // Sync automático diário do Open Finance (após o auto-refresh do Pluggy ~14h)
 async function syncOpenFinanceDiario() {

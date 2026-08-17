@@ -4814,6 +4814,48 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
 .mini-panel-body .mini-warn { color: var(--danger); }
 .mini-panel-body .mini-ok { color: var(--accent); }
 
+.habit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.habit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color var(--transition), background var(--transition);
+}
+.habit-row:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-card-hover);
+}
+.habit-row.done {
+  border-color: rgba(228, 228, 231, 0.22);
+}
+.habit-row .habit-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+.habit-row .habit-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.habit-row.done .habit-meta {
+  color: var(--accent);
+}
+
 @media (max-width: 900px) {
   .dashboard-extra-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
 }

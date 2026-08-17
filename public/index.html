@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=42">
+  <link rel="stylesheet" href="style.css?v=43">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -181,11 +181,11 @@
           </div>
         </div>
 
-        <div class="panel dashboard-mini-card" onclick="checkinAcademia({ fromAssist: false })" style="cursor:pointer;" title="Clique pra marcar academia hoje">
+        <div class="panel dashboard-mini-card" title="Toque em cada hábito pra marcar hoje">
           <div class="panel-header">
-            <h3>Academia</h3>
+            <h3>Hábitos</h3>
           </div>
-          <div id="dash-academia" class="mini-panel-body">
+          <div id="dash-habitos" class="mini-panel-body">
             <p class="mini-empty">—</p>
           </div>
         </div>
@@ -789,7 +789,9 @@
     </div>
     <div class="assist-msgs" id="assist-msgs"></div>
     <div class="assist-chips">
-      <button type="button" onclick="checkinAcademia()">Fui à academia</button>
+      <button type="button" onclick="checkinHabitoUI('Academia')">Academia</button>
+      <button type="button" onclick="checkinHabitoUI('Beber água')">Água</button>
+      <button type="button" onclick="checkinHabitoUI('Sono')">Sono</button>
     </div>
     <form class="assist-form" id="assist-form" onsubmit="enviarAssistente(event)">
       <input id="assist-input" type="text" placeholder="Ex: registrar aluguel de 1800 no dia 10" autocomplete="off" maxlength="800" />
@@ -826,7 +828,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=40"></script>
+  <script src="app.js?v=41"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

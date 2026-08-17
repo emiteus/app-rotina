@@ -1,7 +1,8 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
-const { checkinHabito, resumoHabito } = require('../lib/habitos');
+const { checkinHabito, resumoHabito, listarHabitos } = require('../lib/habitos');
+const { persistirHistoricoDia } = require('../lib/historico');
 const { hojeStr, dataResetSql, ymdDe } = require('../lib/datas');
 
 let wsServer;
@@ -38,6 +39,16 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET lista de hábitos padrão + status do dia/mês
+router.get('/habitos', async (req, res) => {
+  try {
+    const data = await listarHabitos();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // GET resumo do hábito no mês
 router.get('/habito', async (req, res) => {
   try {
@@ -49,15 +60,30 @@ router.get('/habito', async (req, res) => {
   }
 });
 
-// GET histórico de tarefas (últimos 30 dias)
+// GET histórico de tarefas (últimos 30 dias) — tabela + fallback live
 router.get('/historico', async (req, res) => {
   try {
-    const historico = await all(`
+    let historico = await all(`
       SELECT data, total, concluidas, por_categoria, por_prioridade
       FROM task_historico
       WHERE data >= CURRENT_DATE - INTERVAL '30 days'
       ORDER BY data ASC
     `);
+    if (!historico.length) {
+      historico = await all(`
+        SELECT
+          DATE(data_reset) AS data,
+          COUNT(*)::int AS total,
+          SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas,
+          '{}'::jsonb AS por_categoria,
+          '{}'::jsonb AS por_prioridade
+        FROM tasks
+        WHERE data_reset IS NOT NULL
+          AND DATE(data_reset) >= CURRENT_DATE - INTERVAL '30 days'
+        GROUP BY DATE(data_reset)
+        ORDER BY DATE(data_reset) ASC
+      `);
+    }
     res.json(historico);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -177,6 +203,7 @@ router.post('/checkin', async (req, res) => {
     if (result.task) {
       emitTaskUpdate(result.criada ? 'criada' : 'atualizada', result.task);
     }
+    persistirHistoricoDia(hojeStr()).catch(() => {});
     res.json(result);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -201,6 +228,7 @@ router.post('/', async (req, res) => {
     );
     const task = await get(`SELECT * FROM tasks WHERE id = $1`, [id]);
     emitTaskUpdate('criada', task);
+    persistirHistoricoDia(ymdDe(task.data_reset) || hojeStr()).catch(() => {});
     res.status(201).json(task);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -228,6 +256,9 @@ router.patch('/:id', async (req, res) => {
     }
     const task = await get(`SELECT * FROM tasks WHERE id = $1`, [req.params.id]);
     emitTaskUpdate('atualizada', task);
+    if (concluida !== undefined) {
+      persistirHistoricoDia(ymdDe(task && task.data_reset) || hojeStr()).catch(() => {});
+    }
     res.json(task);
   } catch (err) {
     res.status(500).json({ erro: err.message });

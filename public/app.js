@@ -5179,16 +5179,16 @@ function encontrarProximoAlarme() {
 // =====================
 // ==================== Dashboard: 4 cards mini (Kirvano-style) ====================
 async function carregarDashboardExtras() {
-  const [alertas, metas, pj, academia] = await Promise.all([
+  const [alertas, metas, pj, habitos] = await Promise.all([
     fetch('/api/financeiro/alertas').then(r => r.ok ? r.json() : {}).catch(() => ({})),
     fetch('/api/metas').then(r => r.ok ? r.json() : {}).catch(() => ({})),
     fetch('/api/pj').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-    fetch('/api/tasks/habito?titulo=Academia').then(r => r.ok ? r.json() : {}).catch(() => ({}))
+    fetch('/api/tasks/habitos').then(r => r.ok ? r.json() : {}).catch(() => ({}))
   ]);
   _renderAlertasCard(alertas);
   _renderMetasCard(metas);
   _renderDasCard(pj);
-  _renderAcademiaCard(academia);
+  _renderHabitosCard(habitos);
 }
 
 function _renderAlertasCard(d) {
@@ -5251,24 +5251,24 @@ function _renderDasCard(d) {
   `;
 }
 
-function _renderAcademiaCard(d) {
-  const el = document.getElementById('dash-academia');
+function _renderHabitosCard(d) {
+  const el = document.getElementById('dash-habitos');
   if (!el) return;
-  const concluidas = Number((d && d.mes && d.mes.concluidas) || 0);
-  const hoje = (d && d.hoje) || {};
-  let msg = 'Toque pra marcar hoje';
-  let cls = '';
-  if (hoje.concluida) {
-    msg = 'Feito hoje';
-    cls = 'mini-ok';
-  } else if (hoje.existe) {
-    msg = 'Pendente hoje';
-    cls = 'mini-warn';
+  const lista = (d && d.habitos) || [];
+  if (!lista.length) {
+    el.innerHTML = '<p class="mini-empty">Sem hábitos</p>';
+    return;
   }
-  el.innerHTML = `
-    <p class="mini-metric ${cls}">${concluidas}</p>
-    <p class="mini-caption">${concluidas === 1 ? 'ida este mês' : 'idas este mês'} · ${msg}</p>
-  `;
+  el.innerHTML = `<div class="habit-list">${lista.map(h => {
+    const feito = !!(h.hoje && h.hoje.concluida);
+    const mes = Number((h.mes && h.mes.concluidas) || 0);
+    const titulo = escapeHtml(h.titulo);
+    const tituloAttr = String(h.titulo || '').replace(/'/g, "\\'");
+    return `<button type="button" class="habit-row ${feito ? 'done' : ''}" onclick="event.stopPropagation(); checkinHabitoUI('${tituloAttr}', { fromAssist: false })">
+      <span class="habit-name">${titulo}</span>
+      <span class="habit-meta">${feito ? 'hoje ✓' : mes + ' no mês'}</span>
+    </button>`;
+  }).join('')}</div>`;
 }
 
 function formatBRL(v) {
@@ -6223,15 +6223,15 @@ async function enviarAssistente(e) {
 
     const feitos = (data.acoes || []).filter(a => a.ok);
     if (feitos.length) {
-      const labels = {
-        criar_despesa: 'Despesa registrada',
-        criar_tarefa: 'Tarefa criada',
-        criar_meta: 'Meta criada',
-        marcar_habito: 'Academia marcada'
-      };
       feitos.forEach(a => {
-        let txt = labels[a.tipo] || a.tipo;
-        if (a.tipo === 'marcar_habito' && a.ja) txt = 'Academia já estava marcada hoje';
+        let txt = a.tipo;
+        if (a.tipo === 'criar_despesa') txt = 'Despesa registrada';
+        else if (a.tipo === 'criar_tarefa') txt = 'Tarefa criada';
+        else if (a.tipo === 'criar_meta') txt = 'Meta criada';
+        else if (a.tipo === 'marcar_habito') {
+          const nome = a.titulo || 'Hábito';
+          txt = a.ja ? `${nome} já estava marcado hoje` : `${nome} marcado`;
+        }
         assistAddBubble('acao', txt);
       });
       if (feitos.some(a => a.tipo === 'criar_despesa') && typeof carregarDespesasMes === 'function') {
@@ -6239,6 +6239,9 @@ async function enviarAssistente(e) {
       }
       if (feitos.some(a => a.tipo === 'criar_tarefa' || a.tipo === 'marcar_habito') && typeof carregarTarefas === 'function') {
         carregarTarefas();
+      }
+      if (feitos.some(a => a.tipo === 'marcar_habito') && typeof carregarDashboardExtras === 'function') {
+        carregarDashboardExtras();
       }
       if (feitos.some(a => a.tipo === 'criar_meta') && typeof carregarMetas === 'function') {
         carregarMetas();
@@ -6254,28 +6257,35 @@ async function enviarAssistente(e) {
   }
 }
 
-async function checkinAcademia(opts) {
+async function checkinHabitoUI(titulo, opts) {
+  const nome = String(titulo || 'Academia').trim() || 'Academia';
   const fromAssist = !opts || opts.fromAssist !== false;
   if (fromAssist && !_assistOpen && typeof toggleAssistente === 'function') toggleAssistente();
   try {
     const res = await fetch('/api/tasks/checkin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ titulo: 'Academia' })
+      body: JSON.stringify({ titulo: nome })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.erro || 'Falha no check-in');
+    const marcado = data.titulo || nome;
     if (fromAssist) {
-      if (data.ja) assistAddBubble('acao', 'Academia já estava marcada hoje');
-      else assistAddBubble('acao', 'Academia marcada');
+      if (data.ja) assistAddBubble('acao', `${marcado} já estava marcado hoje`);
+      else assistAddBubble('acao', `${marcado} marcado`);
     }
     if (typeof carregarTarefas === 'function') carregarTarefas();
     if (typeof carregarDashboardExtras === 'function') carregarDashboardExtras();
-    if (typeof toast === 'function') toast(data.ja ? 'Já estava marcada hoje' : 'Academia marcada', 'success');
+    if (typeof carregarStats === 'function') carregarStats();
+    if (typeof toast === 'function') toast(data.ja ? `${marcado}: já marcado hoje` : `${marcado} marcado`, 'success');
   } catch (e) {
     if (fromAssist) assistAddBubble('bot erro', e.message);
     else if (typeof toast === 'function') toast(e.message, 'error');
   }
+}
+
+function checkinAcademia(opts) {
+  return checkinHabitoUI('Academia', opts);
 }
 
 // =====================
