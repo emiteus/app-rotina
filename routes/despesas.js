@@ -2,29 +2,127 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 const { ymAtual, hojeStr, diaDoMes } = require('../lib/datas');
+const plano = require('../lib/plano-financeiro');
 
 const router = express.Router();
 
-// Espelho do plano usado no frontend (seed de despesas do mês)
-const PLANO_FINANCEIRO = {
-  boletos: [
-    { nome: 'Academia', valor: 85.0, dia: 5, categoria: 'saude' },
-    { nome: 'Água (média)', valor: 80.0, dia: 8, categoria: 'contas_fixas' },
-    { nome: 'Internet', valor: 70.0, dia: 11, categoria: 'contas_fixas' },
-    { nome: 'Consórcio', valor: 410.04, dia: 10, categoria: 'contas_fixas' }
-  ],
-  emprestimo: { nome: 'Empréstimo', valor: 1188.65, dia: 23, categoria: 'contas_fixas' },
-  assinaturas: { nome: 'Assinaturas', valor: 175.08, dia: 1, categoria: 'assinaturas' },
-  projetos: { nome: 'Projetos (hospedagem)', valor: 38.99, dia: 5, categoria: 'assinaturas' }
-};
+function chaveTitulo(s) {
+  return normalizaTexto(s);
+}
+
+function matchItem(row, item) {
+  const nomes = [item.titulo, ...(item.aliases || [])].map(chaveTitulo);
+  return nomes.includes(chaveTitulo(row.titulo));
+}
+
+function statusInicial(ym, dia) {
+  const hojeYm = ymAtual();
+  const hojeDia = diaDoMes();
+  if (ym < hojeYm) return 'atrasado';
+  if (ym === hojeYm && dia && dia < hojeDia) return 'atrasado';
+  return 'pendente';
+}
+
+async function inserirDespesa(ym, item, statusOverride) {
+  const dia = item.dia != null ? Number(item.dia) : null;
+  const status = statusOverride || (item.pago ? 'pago' : statusInicial(ym, dia));
+  const pagoEm = status === 'pago' ? hojeStr() : null;
+  await run(
+    `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem, pago_em, confirmado_por)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'plano',$8,$9)`,
+    [
+      uuid(),
+      ym,
+      item.titulo,
+      item.valor,
+      dia,
+      item.categoria || 'outros',
+      status,
+      pagoEm,
+      status === 'pago' ? 'manual' : null
+    ]
+  );
+}
+
+async function seedMesSeVazio(ym) {
+  const count = await get(`SELECT COUNT(*)::int AS n FROM despesas_mes WHERE ym = $1`, [ym]);
+  if (count && count.n > 0) return { seeded: false, count: count.n };
+
+  const itens = plano.itensDoMes(ym);
+  const pagos = new Set((plano.pagosPorMes[ym] || []).map(chaveTitulo));
+  for (const item of itens) {
+    const pago = item.pago || pagos.has(chaveTitulo(item.titulo));
+    await inserirDespesa(ym, item, pago ? 'pago' : null);
+  }
+  return { seeded: true, count: itens.length };
+}
+
+async function syncPlanoMes(ym) {
+  const rows = await all(`SELECT * FROM despesas_mes WHERE ym = $1`, [ym]);
+  let criadas = 0;
+  let atualizadas = 0;
+  let ignoradas = 0;
+
+  for (const nome of plano.cancelados) {
+    const hit = rows.find((r) => chaveTitulo(r.titulo) === chaveTitulo(nome));
+    if (hit && hit.status !== 'ignorado' && hit.status !== 'pago') {
+      await run(`UPDATE despesas_mes SET status = 'ignorado' WHERE id = $1`, [hit.id]);
+      hit.status = 'ignorado';
+      ignoradas++;
+    }
+  }
+
+  const itens = plano.itensDoMes(ym);
+  const pagos = new Set((plano.pagosPorMes[ym] || []).map(chaveTitulo));
+
+  for (const item of itens) {
+    const existente = rows.find((r) => matchItem(r, item));
+    const devePagar = item.pago || pagos.has(chaveTitulo(item.titulo));
+    if (!existente) {
+      await inserirDespesa(ym, item, devePagar ? 'pago' : null);
+      criadas++;
+      continue;
+    }
+    const dia = item.dia != null ? Number(item.dia) : null;
+    const campos = [];
+    const vals = [];
+    let i = 1;
+    if (existente.titulo !== item.titulo) {
+      campos.push(`titulo = $${i++}`);
+      vals.push(item.titulo);
+    }
+    if (Math.round(Number(existente.valor_esperado) * 100) !== Math.round(Number(item.valor) * 100)) {
+      campos.push(`valor_esperado = $${i++}`);
+      vals.push(item.valor);
+    }
+    if (Number(existente.dia_vencimento || 0) !== Number(dia || 0)) {
+      campos.push(`dia_vencimento = $${i++}`);
+      vals.push(dia);
+    }
+    if ((existente.categoria || 'outros') !== (item.categoria || 'outros')) {
+      campos.push(`categoria = $${i++}`);
+      vals.push(item.categoria || 'outros');
+    }
+    if (devePagar && existente.status !== 'pago') {
+      campos.push(`status = $${i++}`);
+      vals.push('pago');
+      campos.push(`pago_em = $${i++}`);
+      vals.push(hojeStr());
+      campos.push(`confirmado_por = $${i++}`);
+      vals.push('manual');
+    }
+    if (campos.length) {
+      vals.push(existente.id);
+      await run(`UPDATE despesas_mes SET ${campos.join(', ')} WHERE id = $${i}`, vals);
+      atualizadas++;
+    }
+  }
+
+  return { criadas, atualizadas, ignoradas };
+}
 
 function ymValido(ym) {
   return typeof ym === 'string' && /^\d{4}-\d{2}$/.test(ym);
-}
-
-function diasNoMes(ym) {
-  const [y, m] = ym.split('-').map(Number);
-  return new Date(y, m, 0).getDate();
 }
 
 function normalizaTexto(s) {
@@ -63,60 +161,6 @@ function dataDentroJanela(dataStr, ym, diaVenc, janela = 3) {
   return Math.abs(d.getDate() - Number(diaVenc)) <= janela;
 }
 
-async function seedMesSeVazio(ym) {
-  const count = await get(`SELECT COUNT(*)::int AS n FROM despesas_mes WHERE ym = $1`, [ym]);
-  if (count && count.n > 0) return { seeded: false, count: count.n };
-
-  const itens = [
-    ...PLANO_FINANCEIRO.boletos.map((b) => ({
-      titulo: b.nome,
-      valor: b.valor,
-      dia: b.dia,
-      categoria: b.categoria,
-      origem: 'plano'
-    })),
-    {
-      titulo: PLANO_FINANCEIRO.emprestimo.nome,
-      valor: PLANO_FINANCEIRO.emprestimo.valor,
-      dia: PLANO_FINANCEIRO.emprestimo.dia,
-      categoria: PLANO_FINANCEIRO.emprestimo.categoria,
-      origem: 'plano'
-    },
-    {
-      titulo: PLANO_FINANCEIRO.assinaturas.nome,
-      valor: PLANO_FINANCEIRO.assinaturas.valor,
-      dia: PLANO_FINANCEIRO.assinaturas.dia,
-      categoria: PLANO_FINANCEIRO.assinaturas.categoria,
-      origem: 'plano'
-    },
-    {
-      titulo: PLANO_FINANCEIRO.projetos.nome,
-      valor: PLANO_FINANCEIRO.projetos.valor,
-      dia: PLANO_FINANCEIRO.projetos.dia,
-      categoria: PLANO_FINANCEIRO.projetos.categoria,
-      origem: 'plano'
-    }
-  ];
-
-  const maxDia = diasNoMes(ym);
-  const hojeYm = ymAtual();
-  const hojeDia = diaDoMes();
-
-  for (const item of itens) {
-    const dia = Math.min(item.dia || 1, maxDia);
-    let status = 'pendente';
-    if (ym < hojeYm) status = 'atrasado';
-    else if (ym === hojeYm && dia < hojeDia) status = 'atrasado';
-
-    await run(
-      `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [uuid(), ym, item.titulo, item.valor, dia, item.categoria || 'outros', status, item.origem]
-    );
-  }
-  return { seeded: true, count: itens.length };
-}
-
 function enriquecerStatus(row, ym) {
   const hojeYm = ymAtual();
   const hojeDia = diaDoMes();
@@ -132,10 +176,13 @@ function resumo(lista) {
   const r = { esperado: 0, pago: 0, pendente: 0, atrasado: 0, ignorado: 0, qtd: lista.length };
   for (const d of lista) {
     const v = Number(d.valor_esperado) || 0;
+    if (d.status === 'ignorado') {
+      r.ignorado += v;
+      continue;
+    }
     r.esperado += v;
     if (d.status === 'pago') r.pago += v;
     else if (d.status === 'atrasado') r.atrasado += v;
-    else if (d.status === 'ignorado') r.ignorado += v;
     else r.pendente += v;
   }
   for (const k of ['esperado', 'pago', 'pendente', 'atrasado', 'ignorado']) {
@@ -149,6 +196,7 @@ router.get('/', async (req, res) => {
   try {
     const ym = ymValido(req.query.ym) ? req.query.ym : ymAtual();
     const seed = await seedMesSeVazio(ym);
+    const sync = await syncPlanoMes(ym);
     const rows = await all(
       `SELECT * FROM despesas_mes WHERE ym = $1 ORDER BY
         CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'pago' THEN 2 ELSE 3 END,
@@ -162,7 +210,7 @@ router.get('/', async (req, res) => {
         await run(`UPDATE despesas_mes SET status = 'atrasado' WHERE id = $1 AND status = 'pendente'`, [d.id]);
       }
     }
-    res.json({ ym, seed, despesas, resumo: resumo(despesas) });
+    res.json({ ym, seed, sync, despesas, resumo: resumo(despesas) });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -205,6 +253,7 @@ router.post('/reconciliar', async (req, res) => {
   try {
     const ym = ymValido(req.query.ym || req.body?.ym) ? (req.query.ym || req.body.ym) : ymAtual();
     await seedMesSeVazio(ym);
+    await syncPlanoMes(ym);
 
     const pendentes = await all(
       `SELECT * FROM despesas_mes WHERE ym = $1 AND status IN ('pendente','atrasado')`,

@@ -834,28 +834,48 @@ function renderOrcamentosVisual() {
 // =====================
 //  PLANO FINANCEIRO + ANÁLISE DIÁRIA
 // =====================
-// Plano real do Mateus (jun/2026). Renda é PISO — meses melhores viram excedente.
+// Plano real (ago/2026). Renda é PISO — cortes/infoproduto são extra, não entram no comprometido.
 const PLANO_FINANCEIRO = {
-  rendaPiso: 3500,
-  boletos: [
-    { nome: 'Academia', valor: 85.00, dia: 5 },
-    { nome: 'Água (média)', valor: 80.00, dia: 8 },
-    { nome: 'Internet', valor: 70.00, dia: 11 },
-    { nome: 'Consórcio', valor: 410.04, dia: 10 }
+  rendaPiso: 4500,
+  rendaFixa: [
+    { nome: 'Laranjeira', valor: 3500, dia: 5 },
+    { nome: 'Lucas Tylty', valor: 1000, dia: 10 }
   ],
-  emprestimo: { nome: 'Empréstimo', valor: 1188.65, dia: 23, parcelasRestantes: 12 },
-  assinaturas: 175.08, // TIM, Netflix, HBO, Spotify, Discord, Meli+, 2x GDrive (sem Crunchyroll)
-  projetos: 38.99,     // Discloud + Railway
+  despesas: [
+    { nome: 'Academia', valor: 85.00, dia: 5 },
+    { nome: 'Internet', valor: 75.00, dia: 10 },
+    { nome: 'Consórcio', valor: 410.04, dia: 10 },
+    { nome: 'TIM', valor: 43.00, dia: null },
+    { nome: 'Discord', valor: 24.99, dia: null },
+    { nome: 'Twitch', valor: 9.99, dia: null },
+    { nome: 'Crunchyroll', valor: 19.90, dia: null },
+    { nome: 'Netflix', valor: 20.90, dia: null },
+    { nome: 'Spotify', valor: 23.90, dia: null },
+    { nome: 'MrPoubel', valor: 53.90, dia: null },
+    { nome: 'DAS', valor: 85.00, dia: 20 },
+    { nome: 'Railway', valor: 50.00, dia: null },
+    { nome: 'Supabase', valor: 180.00, dia: null },
+    { nome: 'Cursor', valor: 120.00, dia: null },
+    { nome: 'Google Drive', valor: 9.90, dia: null },
+    { nome: 'Google Drive adicional', valor: 12.50, dia: null },
+    { nome: 'Hetzner', valor: 103.38, dia: null },
+    { nome: 'Empréstimo 10k', valor: 1188.65, dia: 24 },
+    { nome: 'Empréstimo 1.5k', valor: 585.30, dia: 27 }
+  ],
+  emprestimos: [
+    { nome: 'Empréstimo 10k', valor: 1188.65, dia: 24, total: 12, pagas: 2, chave: 'emp10k' },
+    { nome: 'Empréstimo 1.5k', valor: 585.30, dia: 27, total: 3, pagas: 0, chave: 'emp15k' }
+  ],
   potes: {
     comida:  { limite: 800, semanal: 200 },
     reserva: { meta: 250 },
     folga:   { limite: 217 }
   }
 };
+PLANO_FINANCEIRO.emprestimo = PLANO_FINANCEIRO.emprestimos[0];
 
 function _planoComprometidoMensal() {
-  const b = PLANO_FINANCEIRO.boletos.reduce((s, x) => s + x.valor, 0);
-  return b + PLANO_FINANCEIRO.emprestimo.valor + PLANO_FINANCEIRO.assinaturas + PLANO_FINANCEIRO.projetos;
+  return PLANO_FINANCEIRO.despesas.reduce((s, x) => s + x.valor, 0);
 }
 
 // ---- Reserva (rastreamento manual via localStorage) ----
@@ -924,7 +944,7 @@ function analisarFinancas() {
   const podePorDia = restanteSemana > 0 ? restanteSemana / diasRestantesSemana : 0;
 
   // Próximos vencimentos (7 dias)
-  const compromissos = [...PLANO_FINANCEIRO.boletos, PLANO_FINANCEIRO.emprestimo].filter(c => c.dia);
+  const compromissos = PLANO_FINANCEIRO.despesas.filter(c => c.dia);
   const proximos = compromissos
     .filter(c => c.dia >= diaDoMes && c.dia <= diaDoMes + 7)
     .sort((a, b) => a.dia - b.dia);
@@ -953,10 +973,11 @@ function analisarFinancas() {
     sugestoes.push({ tipo: 'atencao', texto: `Vence nos próximos 7 dias: ${lista}. Separa ${formatBRL(totalProximos)} agora pra não ser pego de surpresa.` });
   }
 
-  // 3. Empréstimo (a âncora)
-  const e = PLANO_FINANCEIRO.emprestimo;
-  if (e.dia >= diaDoMes && e.dia <= diaDoMes + 7) {
-    sugestoes.push({ tipo: 'alerta', texto: `Parcela do empréstimo (${formatBRL(e.valor)}) vence dia ${e.dia}. É a maior saída do mês — garante que está reservada.` });
+  // 3. Empréstimos (âncoras)
+  for (const e of PLANO_FINANCEIRO.emprestimos) {
+    if (e.dia >= diaDoMes && e.dia <= diaDoMes + 7) {
+      sugestoes.push({ tipo: 'alerta', texto: `${e.nome} (${formatBRL(e.valor)}) vence dia ${e.dia}. Não usa crédito pra cobrir isso.` });
+    }
   }
 
   // 4. Excedente do mês (regra de ouro)
@@ -1040,12 +1061,12 @@ function renderAnaliseFinanceira() {
         <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:12px;">
           <div style="font-size:11px; color:var(--text-muted);">Renda do mês</div>
           <div style="font-size:18px; font-weight:700;">${formatBRL(a.rendaRef)}</div>
-          ${a.excedente > 50 ? `<div style="font-size:11px; color:#31a24c;">+${formatBRL(a.excedente)} acima do piso</div>` : ''}
+          <div style="font-size:11px; color:var(--text-muted);">piso ${formatBRL(PLANO_FINANCEIRO.rendaPiso)} (Laranjeira + Tylty)</div>
         </div>
         <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:12px;">
           <div style="font-size:11px; color:var(--text-muted);">Comprometido (fixos)</div>
           <div style="font-size:18px; font-weight:700; color:#f5a623;">${formatBRL(a.comprometido)}</div>
-          <div style="font-size:11px; color:var(--text-muted);">boletos + assinaturas + empréstimo</div>
+          <div style="font-size:11px; color:var(--text-muted);">fixos + 2 empréstimos · Meli+ fora</div>
         </div>
         <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:12px;">
           <div style="font-size:11px; color:var(--text-muted);">Sobra pro mês</div>
@@ -2850,11 +2871,13 @@ function _mesAtualLocal() {
 }
 
 function getContasFixas() {
-  const lista = [...PLANO_FINANCEIRO.boletos.map(b => ({ ...b, grupo: 'boleto' }))];
-  lista.push({ nome: 'Assinaturas (cartão)', valor: PLANO_FINANCEIRO.assinaturas, dia: null, grupo: 'cartao' });
-  lista.push({ nome: 'Projetos (Discloud/Railway)', valor: PLANO_FINANCEIRO.projetos, dia: null, grupo: 'cartao' });
-  lista.push({ ...PLANO_FINANCEIRO.emprestimo, grupo: 'emprestimo' });
-  return lista.sort((a, b) => (a.dia || 99) - (b.dia || 99));
+  return PLANO_FINANCEIRO.despesas
+    .filter(b => !String(b.nome).startsWith('Empréstimo'))
+    .map(b => ({
+      ...b,
+      grupo: b.dia ? 'boleto' : 'cartao'
+    }))
+    .sort((a, b) => (a.dia || 99) - (b.dia || 99) || a.nome.localeCompare(b.nome));
 }
 
 function getBoletosPagos() {
@@ -2874,18 +2897,23 @@ function toggleBoletoPago(nome) {
   renderOrganizacaoFinanceira();
 }
 
-function getEmprestimoParcelasPagas() {
-  const v = parseInt(estadoGet('emprestimoParcelasPagas') || '0', 10);
-  return isNaN(v) ? 0 : Math.max(0, Math.min(12, v));
+function getEmprestimoParcelasPagas(chave, fallback) {
+  const k = 'emprestimoParcelasPagas_' + chave;
+  const raw = estadoGet(k);
+  if (raw == null || raw === '') return fallback;
+  const v = parseInt(raw, 10);
+  return isNaN(v) ? fallback : Math.max(0, v);
 }
 
-function ajustarParcelaEmprestimo(delta) {
-  let v = getEmprestimoParcelasPagas() + delta;
-  v = Math.max(0, Math.min(12, v));
-  estadoSet('emprestimoParcelasPagas', String(v));
+function ajustarParcelaEmprestimo(chave, total, delta) {
+  const emp = PLANO_FINANCEIRO.emprestimos.find(e => e.chave === chave);
+  if (!emp) return;
+  let v = getEmprestimoParcelasPagas(chave, emp.pagas) + delta;
+  v = Math.max(0, Math.min(total, v));
+  estadoSet('emprestimoParcelasPagas_' + chave, String(v));
   if (delta > 0) {
-    const restantes = 12 - v;
-    toast(restantes === 0 ? '🎉 Empréstimo QUITADO! Âncora afundada!' : `✅ Parcela paga! Faltam ${restantes} de 12.`, 'success');
+    const restantes = total - v;
+    toast(restantes === 0 ? `🎉 ${emp.nome} quitado!` : `✅ Parcela paga. Faltam ${restantes} de ${total}.`, 'success');
     try { ganharXP(15); } catch (e) {}
   }
   renderOrganizacaoFinanceira();
@@ -2911,15 +2939,33 @@ function renderOrganizacaoFinanceira() {
       </div>`;
   }).join('');
 
-  // Empréstimo
-  const pagas = getEmprestimoParcelasPagas();
-  const restantes = 12 - pagas;
-  const valorParcela = PLANO_FINANCEIRO.emprestimo.valor;
-  const totalRestante = restantes * valorParcela;
-  const pctEmp = (pagas / 12) * 100;
-  const dataQuita = new Date();
-  dataQuita.setMonth(dataQuita.getMonth() + restantes);
-  const quitaTxt = restantes === 0 ? 'QUITADO 🎉' : dataQuita.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const emprestimosHtml = PLANO_FINANCEIRO.emprestimos.map(emp => {
+    const pagas = getEmprestimoParcelasPagas(emp.chave, emp.pagas);
+    const restantes = emp.total - pagas;
+    const totalRestante = restantes * emp.valor;
+    const pctEmp = (pagas / emp.total) * 100;
+    const dataQuita = new Date();
+    dataQuita.setMonth(dataQuita.getMonth() + restantes);
+    const quitaTxt = restantes === 0 ? 'QUITADO' : dataQuita.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return `
+    <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 style="margin:0; font-size:16px;">${emp.nome}</h2>
+        <span style="font-size:12px; color:var(--text-muted);">${quitaTxt}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
+        <span>${pagas} de ${emp.total} parcelas · dia ${emp.dia}</span>
+        <span style="color:var(--text-muted);">restam ${formatBRL(totalRestante)}</span>
+      </div>
+      <div style="height:10px; background:rgba(15,23,42,0.08); border-radius:6px; overflow:hidden; margin-bottom:12px;">
+        <div style="height:100%; width:${pctEmp}%; background:#31a24c;"></div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="ajustarParcelaEmprestimo('${emp.chave}', ${emp.total}, 1)" style="flex:1; background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:8px; cursor:pointer; font-size:13px;">✓ Paguei uma parcela</button>
+        <button onclick="ajustarParcelaEmprestimo('${emp.chave}', ${emp.total}, -1)" style="background:rgba(15,23,42,0.05); border:1px solid rgba(15,23,42,0.1); color:var(--text-muted); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px;">↩</button>
+      </div>
+    </div>`;
+  }).join('');
 
   painel.innerHTML = `
     <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
@@ -2930,24 +2976,7 @@ function renderOrganizacaoFinanceira() {
         <span style="color:#f5a623;">Falta pagar: <b>${formatBRL(totalPendente)}</b></span>
       </div>
     </div>
-
-    <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h2 style="margin:0; font-size:16px;">Empréstimo (a âncora)</h2>
-        <span style="font-size:12px; color:var(--text-muted);">quita em ${quitaTxt}</span>
-      </div>
-      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;">
-        <span>${pagas} de 12 parcelas pagas</span>
-        <span style="color:var(--text-muted);">restam ${formatBRL(totalRestante)}</span>
-      </div>
-      <div style="height:10px; background:rgba(15,23,42,0.08); border-radius:6px; overflow:hidden; margin-bottom:12px;">
-        <div style="height:100%; width:${pctEmp}%; background:#31a24c;"></div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button onclick="ajustarParcelaEmprestimo(1)" style="flex:1; background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:8px; cursor:pointer; font-size:13px;">✓ Paguei uma parcela</button>
-        <button onclick="ajustarParcelaEmprestimo(-1)" style="background:rgba(15,23,42,0.05); border:1px solid rgba(15,23,42,0.1); color:var(--text-muted); border-radius:8px; padding:8px 12px; cursor:pointer; font-size:13px;">↩ desfazer</button>
-      </div>
-    </div>
+    ${emprestimosHtml}
   `;
 }
 
