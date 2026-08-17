@@ -28,11 +28,14 @@ app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 
 app.use(session({
+  name: 'rotina.sid',
   secret: process.env.SESSION_SECRET || 'seu-secret-aqui-mudar-em-producao',
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    // 'auto' + trust proxy: Secure só em HTTPS (Railway). Evita cookie morto no PWA.
+    secure: 'auto',
     httpOnly: true,
     sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dias

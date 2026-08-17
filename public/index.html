@@ -813,14 +813,14 @@
   </div>
 
   <!-- Modal de login (aparece se qualquer fetch retornar 401) -->
-  <div id="login-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.4); backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center; padding:20px;">
-    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:24px; width:100%; max-width:340px; box-shadow:var(--shadow-lg);">
+  <div id="login-overlay" style="display:none; position:fixed; inset:0; background:rgba(9,9,11,0.92); z-index:10050; align-items:center; justify-content:center; padding:20px; padding-bottom:max(20px, env(safe-area-inset-bottom));">
+    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:24px; width:100%; max-width:340px; box-shadow:var(--shadow-lg); position:relative; z-index:1;">
       <h2 style="margin:0 0 6px 0; font-size:20px; color:var(--text-primary);">App Rotina</h2>
       <p style="margin:0 0 16px 0; font-size:13px; color:var(--text-muted);">Entra pra continuar</p>
       <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
-        <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required
-          style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:12px; font-size:15px; width:100%; box-sizing:border-box;">
-        <button type="submit" style="background:var(--accent); border:none; color:var(--accent-on, #09090B); border-radius:8px; padding:12px; font-size:15px; font-weight:600; cursor:pointer;">Entrar</button>
+        <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required enterkeyhint="go"
+          style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
+        <button type="submit" id="login-btn" style="background:var(--accent); border:none; color:var(--accent-on, #09090B); border-radius:8px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; min-height:48px; touch-action:manipulation;">Entrar</button>
         <p id="login-erro" style="margin:0; font-size:12px; color:var(--danger); display:none;"></p>
       </form>
     </div>
@@ -828,7 +828,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=42"></script>
+  <script src="app.js?v=43"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -836,51 +836,27 @@
       const form = document.getElementById('login-form');
       const inputSenha = document.getElementById('login-senha');
       const erroEl = document.getElementById('login-erro');
+      const btn = document.getElementById('login-btn');
+      const fab = document.getElementById('assist-fab');
       let mostrando = false;
 
       function mostrarLogin() {
         if (mostrando) return;
         mostrando = true;
         overlay.style.display = 'flex';
-        setTimeout(() => inputSenha.focus(), 100);
+        if (fab) fab.style.display = 'none';
       }
       function esconderLogin() {
         mostrando = false;
         overlay.style.display = 'none';
+        if (fab) fab.style.display = '';
         erroEl.style.display = 'none';
         inputSenha.value = '';
       }
 
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        erroEl.style.display = 'none';
-        try {
-          const r = await originalFetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ senha: inputSenha.value })
-          });
-          if (r.ok) {
-            esconderLogin();
-            location.reload();
-          } else {
-            const d = await r.json().catch(() => ({}));
-            erroEl.textContent = d.erro || 'Senha incorreta';
-            erroEl.style.display = 'block';
-          }
-        } catch (err) {
-          erroEl.textContent = 'Erro de rede: ' + err.message;
-          erroEl.style.display = 'block';
-        }
-      });
-
-      // Intercepta fetch: se qualquer /api/* retornar 401, abre o modal
-      // e lança erro pro chamador — sem isso, res.json() vira {erro:...} e o
-      // app.js sobrescreve allTasks/allAlarms/etc (que eram []), quebrando
-      // .filter/.map em cascata.
       const originalFetch = window.fetch.bind(window);
       window.fetch = async function (input, init) {
-        const res = await originalFetch(input, init);
+        const res = await originalFetch(input, { credentials: 'same-origin', ...init });
         const url = typeof input === 'string' ? input : (input && input.url) || '';
         if (res.status === 401 && url.includes('/api/') && !url.includes('/api/auth/')) {
           mostrarLogin();
@@ -889,11 +865,48 @@
         return res;
       };
 
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        erroEl.style.display = 'none';
+        const senha = (inputSenha.value || '').trim();
+        if (!senha) {
+          erroEl.textContent = 'Digite a senha';
+          erroEl.style.display = 'block';
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Entrando…';
+        try {
+          const r = await originalFetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ senha })
+          });
+          const d = await r.json().catch(() => ({}));
+          if (r.ok) {
+            esconderLogin();
+            location.reload();
+            return;
+          }
+          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Senha incorreta');
+          erroEl.style.display = 'block';
+        } catch (err) {
+          erroEl.textContent = 'Erro de rede: ' + err.message;
+          erroEl.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Entrar';
+        }
+      });
+
       // Boot: checa sessão antes de deixar o app.js rodar seus fetches
       (async () => {
         try {
-          const r = await originalFetch('/api/auth/check');
-          if (!r.ok) mostrarLogin();
+          const r = await originalFetch('/api/auth/check', { credentials: 'same-origin' });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok || !d.authenticated) mostrarLogin();
         } catch (e) {
           mostrarLogin();
         }

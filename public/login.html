@@ -141,24 +141,26 @@
     async function fazerLogin(event) {
       event.preventDefault();
 
-      const senha = document.getElementById('senha').value;
+      const senha = (document.getElementById('senha').value || '').trim();
       const btn = event.target.querySelector('button');
       const erroEl = document.getElementById('erro-msg');
 
       btn.classList.add('loading');
       btn.disabled = true;
+      erroEl.classList.remove('show');
 
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify({ senha })
         });
 
         const data = await res.json();
 
         if (res.ok) {
-          window.location.href = '/index.html';
+          window.location.href = '/';
         } else {
           erroEl.textContent = data.erro || 'Erro ao fazer login';
           erroEl.classList.add('show');

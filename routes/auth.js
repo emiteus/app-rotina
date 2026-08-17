@@ -55,13 +55,19 @@ router.post('/login', (req, res) => {
     });
   }
 
-  const { senha } = req.body;
-  const senhaCorreta = process.env.APP_PASSWORD || 'senha123';
+  const senha = String(req.body?.senha || '').trim();
+  const senhaCorreta = String(process.env.APP_PASSWORD || 'senha123').trim();
 
-  if (senha === senhaCorreta) {
+  if (senha && senha === senhaCorreta) {
     limparLogin(ip);
     req.session.authenticated = true;
-    return res.json({ ok: true });
+    return req.session.save((err) => {
+      if (err) {
+        console.error('[auth] falha ao salvar sessão:', err.message);
+        return res.status(500).json({ erro: 'Não consegui abrir a sessão. Tenta de novo.' });
+      }
+      res.json({ ok: true });
+    });
   }
 
   registrarFalhaLogin(ip);
