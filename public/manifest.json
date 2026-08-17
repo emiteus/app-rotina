@@ -4,8 +4,8 @@
   "description": "Tarefas e finanças pessoais",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1b1e",
-  "theme_color": "#1a1b1e",
+  "background_color": "#09090B",
+  "theme_color": "#09090B",
   "orientation": "portrait",
   "icons": [
     { "src": "/favicon-16.png", "sizes": "16x16", "type": "image/png" },

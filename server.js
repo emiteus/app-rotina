@@ -20,7 +20,7 @@ app.set('trust proxy', 1);
 const wsServer = new WebSocketServer(httpServer);
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // Health check (Railway usa pra saber se o container tá vivo)
 app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
@@ -54,8 +54,10 @@ const apostasRouter = require('./routes/apostas');
 const metasRouter = require('./routes/metas');
 const pjRouter = require('./routes/pj');
 const relatoriosRouter = require('./routes/relatorios');
+const despesasRouter = require('./routes/despesas');
 const pushRouter = require('./routes/push');
 const iaRouter = require('./routes/ia');
+const { garantirRecorrenteAcademia } = require('./lib/habitos');
 const { enviarPush } = require('./lib/push');
 
 // Passar wsServer para as rotas
@@ -69,6 +71,7 @@ openfinanceRouter.setWsServer(wsServer);
 // Todas as APIs abaixo exigem login (/api/auth é público pra permitir fazer o próprio login)
 app.use('/api/tasks', requireAuth, tasksRouter);
 app.use('/api/financeiro', requireAuth, financeiroRouter);
+app.use('/api/despesas', requireAuth, despesasRouter);
 app.use('/api/alarmes', requireAuth, alarmesRouter);
 app.use('/api/recorrentes', requireAuth, recorrentesRouter);
 app.use('/api/eventos', requireAuth, eventosRouter);
@@ -89,7 +92,9 @@ app.use(express.static('public'));
 if (!fs.existsSync('./data')) fs.mkdirSync('./data');
 
 // Inicializa BD
-initDB();
+initDB().then(() =>
+  garantirRecorrenteAcademia().catch(err => console.error('[Habitos]', err.message))
+);
 
 // HTML principal
 app.get('/', (req, res) => {
@@ -142,6 +147,7 @@ async function gerarRecorrentesHoje() {
   try {
     const { run, get, all } = require('./lib/db');
     const { v4: uuid } = require('uuid');
+    await garantirRecorrenteAcademia();
     const hoje = new Date();
     const diaSemana = hoje.getDay().toString();
     const hojeStr = hoje.toISOString().split('T')[0];

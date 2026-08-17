@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
+const { checkinHabito, resumoHabito } = require('../lib/habitos');
 
 let wsServer;
 
@@ -31,6 +32,17 @@ router.get('/', async (req, res) => {
         data_criacao
     `);
     res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// GET resumo do hábito no mês
+router.get('/habito', async (req, res) => {
+  try {
+    const titulo = String(req.query.titulo || 'Academia').trim() || 'Academia';
+    const data = await resumoHabito(titulo);
+    res.json(data);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -151,6 +163,20 @@ router.post('/seed-historico', async (req, res) => {
       );
     }
     res.json({ msg: 'Histórico salvo', count: dados.length });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST check-in de hábito (academia etc.) — precisa vir ANTES de /:id
+router.post('/checkin', async (req, res) => {
+  try {
+    const titulo = String(req.body?.titulo || 'Academia').trim() || 'Academia';
+    const result = await checkinHabito(titulo);
+    if (result.task) {
+      emitTaskUpdate(result.criada ? 'criada' : 'atualizada', result.task);
+    }
+    res.json(result);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

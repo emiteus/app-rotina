@@ -840,7 +840,6 @@ const PLANO_FINANCEIRO = {
   boletos: [
     { nome: 'Academia', valor: 85.00, dia: 5 },
     { nome: 'Água (média)', valor: 80.00, dia: 8 },
-    { nome: 'Pilates', valor: 185.00, dia: 10 },
     { nome: 'Internet', valor: 70.00, dia: 11 },
     { nome: 'Consórcio', valor: 410.04, dia: 10 }
   ],
@@ -1110,16 +1109,275 @@ function trocarSubAbaFin(id) {
   document.querySelectorAll('.fin-subtab-btn').forEach(btn => {
     const ativo = btn.getAttribute('data-fin-tab') === id;
     btn.classList.toggle('active', ativo);
-    btn.style.color = ativo ? 'var(--text)' : 'var(--text-muted)';
-    btn.style.borderBottom = ativo ? '2px solid var(--accent)' : '2px solid transparent';
   });
-  if (id === 'fin-ir') renderIR();
-  if (id === 'fin-contas') carregarContas();
-  if (id === 'fin-categorizar') carregarCategorizar();
-  if (id === 'fin-apostas') carregarApostas();
+  if (id === 'fin-despesas') carregarDespesasMes();
   if (id === 'fin-metas') carregarMetas();
   if (id === 'fin-pj') carregarPJ();
-  if (id === 'fin-relatorios') carregarRelatorios();
+  if (id === 'fin-visao') {
+    carregarTransacoes();
+  }
+}
+
+// =====================
+//  DESPESAS DO MÊS
+// =====================
+let _despesasYm = null;
+let _despesasData = null;
+
+function _ymAgora() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function _shiftYm(ym, delta) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function _labelYm(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+function despesasMesAnterior() {
+  _despesasYm = _shiftYm(_despesasYm || _ymAgora(), -1);
+  carregarDespesasMes();
+}
+
+function despesasMesProximo() {
+  _despesasYm = _shiftYm(_despesasYm || _ymAgora(), 1);
+  carregarDespesasMes();
+}
+
+async function atualizarStatusBancoDespesas() {
+  const el = document.getElementById('despesas-banco-status');
+  if (!el) return;
+  try {
+    const st = await fetch('/api/openfinance/items-status').then(r => r.json());
+    const items = st.items || st || [];
+    if (!Array.isArray(items) || items.length === 0) {
+      el.textContent = 'Banco: nenhum conectado';
+      return;
+    }
+    const precisa = items.filter(i => i.precisa_reconectar).length;
+    const ultimo = items
+      .map(i => i.ultima_sync)
+      .filter(Boolean)
+      .sort()
+      .reverse()[0];
+    const quando = ultimo
+      ? new Date(ultimo).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '—';
+    el.textContent = precisa
+      ? `Banco: ${items.length} conta(s) · ${precisa} pra reconectar`
+      : `Banco: sync ${quando}`;
+  } catch (e) {
+    el.textContent = 'Banco: —';
+  }
+}
+
+async function carregarDespesasMes() {
+  if (!_despesasYm) _despesasYm = _ymAgora();
+  const label = document.getElementById('despesas-mes-label');
+  if (label) label.textContent = _labelYm(_despesasYm);
+  const painel = document.getElementById('painel-despesas');
+  if (painel) painel.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando...</p>';
+  atualizarStatusBancoDespesas();
+  try {
+    const data = await fetch(`/api/despesas?ym=${encodeURIComponent(_despesasYm)}`).then(r => r.json());
+    if (data.erro) throw new Error(data.erro);
+    _despesasData = data;
+    renderDespesasMes();
+  } catch (e) {
+    if (painel) painel.innerHTML = `<p style="color:var(--danger);">Erro: ${e.message}</p>`;
+  }
+}
+
+function renderDespesasMes() {
+  const data = _despesasData;
+  const painel = document.getElementById('painel-despesas');
+  const resumoEl = document.getElementById('despesas-resumo');
+  if (!painel || !data) return;
+
+  const r = data.resumo || {};
+  if (resumoEl) {
+    resumoEl.innerHTML = `
+      <div class="despesas-kpi"><span class="label">Esperado</span><span class="valor">${formatBRL(r.esperado || 0)}</span></div>
+      <div class="despesas-kpi ok"><span class="label">Pago</span><span class="valor">${formatBRL(r.pago || 0)}</span></div>
+      <div class="despesas-kpi pendente"><span class="label">Pendente</span><span class="valor">${formatBRL(r.pendente || 0)}</span></div>
+      <div class="despesas-kpi atrasado"><span class="label">Atrasado</span><span class="valor">${formatBRL(r.atrasado || 0)}</span></div>
+    `;
+  }
+
+  const grupos = {
+    atrasado: data.despesas.filter(d => d.status === 'atrasado'),
+    pendente: data.despesas.filter(d => d.status === 'pendente'),
+    pago: data.despesas.filter(d => d.status === 'pago'),
+    ignorado: data.despesas.filter(d => d.status === 'ignorado')
+  };
+
+  const titulos = {
+    atrasado: 'Atrasadas',
+    pendente: 'Pendentes',
+    pago: 'Pagas',
+    ignorado: 'Ignoradas'
+  };
+
+  let html = '';
+  for (const key of ['atrasado', 'pendente', 'pago', 'ignorado']) {
+    const lista = grupos[key];
+    if (!lista.length) continue;
+    html += `<div class="despesas-grupo"><h3>${titulos[key]} (${lista.length})</h3>`;
+    html += lista.map(d => {
+      const dia = d.dia_vencimento ? `dia ${d.dia_vencimento}` : 'sem vencimento';
+      const conf = d.confirmado_por === 'banco' ? ' · banco' : (d.confirmado_por === 'manual' ? ' · manual' : '');
+      const pagoInfo = d.pago_em ? ` · pago ${new Date(d.pago_em).toLocaleDateString('pt-BR')}` : '';
+      let acoes = '';
+      if (d.status === 'pago') {
+        acoes = `<button type="button" onclick="desvincularDespesa('${d.id}')">Desvincular</button>`;
+      } else if (d.status !== 'ignorado') {
+        acoes = `
+          <button type="button" class="primary" onclick="confirmarDespesa('${d.id}')">Confirmar</button>
+          <button type="button" onclick="ignorarDespesa('${d.id}')">Ignorar</button>`;
+      } else {
+        acoes = `<button type="button" onclick="desvincularDespesa('${d.id}')">Reabrir</button>`;
+      }
+      return `
+        <div class="despesa-item" id="despesa-${d.id}">
+          <div class="info">
+            <div class="titulo">${escapeHtml(d.titulo)}</div>
+            <div class="meta">${dia}${conf}${pagoInfo} · ${escapeHtml(d.categoria || 'outros')}</div>
+          </div>
+          <span class="badge-status ${d.status}">${d.status}</span>
+          <div class="valor">${formatBRL(d.valor_esperado)}</div>
+          <div class="acoes">${acoes}</div>
+        </div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  if (!html) {
+    html = '<p style="color:var(--text-muted); font-size:13px;">Nenhuma despesa neste mês. Clique em + Nova despesa.</p>';
+  }
+  painel.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function abrirModalNovaDespesa() {
+  const m = document.getElementById('modal-nova-despesa');
+  if (m) m.style.display = 'flex';
+}
+
+function fecharModalNovaDespesa() {
+  const m = document.getElementById('modal-nova-despesa');
+  if (m) m.style.display = 'none';
+}
+
+async function criarDespesaManual() {
+  const titulo = document.getElementById('despesa-titulo')?.value?.trim();
+  const valor = parseFloat(document.getElementById('despesa-valor')?.value);
+  const dia = parseInt(document.getElementById('despesa-dia')?.value, 10);
+  const categoria = document.getElementById('despesa-categoria')?.value || 'outros';
+  if (!titulo || !valor) {
+    toast('Informe título e valor', 'error');
+    return;
+  }
+  try {
+    const res = await fetch('/api/despesas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ym: _despesasYm || _ymAgora(),
+        titulo,
+        valor_esperado: valor,
+        dia_vencimento: Number.isFinite(dia) ? dia : null,
+        categoria
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro');
+    fecharModalNovaDespesa();
+    document.getElementById('despesa-titulo').value = '';
+    document.getElementById('despesa-valor').value = '';
+    document.getElementById('despesa-dia').value = '';
+    toast('Despesa adicionada', 'success');
+    await carregarDespesasMes();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function confirmarDespesa(id) {
+  const el = document.getElementById(`despesa-${id}`);
+  if (el) el.classList.add('confirmando');
+  try {
+    const res = await fetch(`/api/despesas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'confirmar', confirmado_por: 'manual' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro');
+    toast('Pagamento confirmado', 'success');
+    await carregarDespesasMes();
+  } catch (e) {
+    toast(e.message, 'error');
+    if (el) el.classList.remove('confirmando');
+  }
+}
+
+async function desvincularDespesa(id) {
+  try {
+    const res = await fetch(`/api/despesas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'desvincular' })
+    });
+    if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
+    toast('Despesa reaberta', 'success');
+    await carregarDespesasMes();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function ignorarDespesa(id) {
+  try {
+    const res = await fetch(`/api/despesas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'ignorar' })
+    });
+    if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
+    await carregarDespesasMes();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function reconciliarDespesas(opts = {}) {
+  const ym = _despesasYm || _ymAgora();
+  try {
+    if (!opts.silencioso) toast('Reconciliando com o extrato...', 'info');
+    const res = await fetch(`/api/despesas/reconciliar?ym=${encodeURIComponent(ym)}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro');
+    _despesasData = data;
+    renderDespesasMes();
+    if (!opts.silencioso || data.matched > 0) {
+      toast(data.matched ? `${data.matched} despesa(s) confirmada(s) pelo banco` : 'Nenhum match novo', data.matched ? 'success' : 'info');
+    }
+  } catch (e) {
+    if (!opts.silencioso) toast(e.message, 'error');
+  }
 }
 
 // =====================
@@ -3107,7 +3365,7 @@ async function conectarBanco() {
 }
 
 async function sincronizarBancos(itemId) {
-  toast('🔄 Sincronizando transações...', 'info');
+  toast('Sincronizando transações...', 'info');
   try {
     const res = await fetch('/api/openfinance/sync', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3115,11 +3373,18 @@ async function sincronizarBancos(itemId) {
     });
     const data = await res.json();
     if (!res.ok) { toast(data.erro || 'Erro ao sincronizar', 'error'); return; }
-    toast(`✅ ${data.importadas} novas transações importadas!`, 'success');
+    toast(`${data.importadas} novas transações importadas`, 'success');
     if (typeof carregarFinanceiro === 'function') carregarFinanceiro();
+    if (typeof carregarTransacoes === 'function') carregarTransacoes();
+    await reconciliarDespesas({ silencioso: true });
   } catch (e) {
     toast('Erro ao sincronizar: ' + e.message, 'error');
   }
+}
+
+async function sincronizarBancosEReconciliar() {
+  await sincronizarBancos();
+  await carregarDespesasMes();
 }
 
 async function importarPorItemId() {
@@ -3715,17 +3980,23 @@ async function carregarTransacoes() {
     const data = await res.json();
     allTransactions = data.transacoes || [];
 
-    document.getElementById('saldo-total').textContent = formatBRL(data.saldo);
-    document.getElementById('total-entradas').textContent = formatBRL(data.entradas);
-    document.getElementById('total-saidas').textContent = formatBRL(data.saidas);
+    const saldoEl = document.getElementById('saldo-total');
+    const entEl = document.getElementById('total-entradas');
+    const saiEl = document.getElementById('total-saidas');
+    if (saldoEl) saldoEl.textContent = formatBRL(data.saldo);
+    if (entEl) entEl.textContent = formatBRL(data.entradas);
+    if (saiEl) saiEl.textContent = formatBRL(data.saidas);
+
+    const sobraEl = document.getElementById('visao-sobra-valor');
+    if (sobraEl) {
+      const sobra = Number(data.entradas || 0) - Number(data.saidas || 0);
+      sobraEl.textContent = formatBRL(sobra);
+      sobraEl.classList.toggle('positivo', sobra >= 0);
+      sobraEl.classList.toggle('negativo', sobra < 0);
+    }
 
     renderTransacoes();
-    renderOrcamentosVisual();
-    renderOrcamentosCategorias();
     verificarAnaliseDiaria();
-    renderOrganizacaoFinanceira();
-    carregarBancos();
-    atualizarBadgeCategorizar();
     carregarAlertas();
     atualizarDashboard();
     renderFinDonut();
@@ -3919,6 +4190,7 @@ function limparFinFiltros() {
 function renderTransacoes() {
   const lista = document.getElementById('lista-transacoes');
   const empty = document.getElementById('empty-financeiro');
+  if (!lista) return;
 
   _preencherFinSelects();
 
@@ -3941,12 +4213,12 @@ function renderTransacoes() {
 
   if (filtered.length === 0) {
     lista.innerHTML = '';
-    empty.style.display = allTransactions.length === 0 ? 'block' : 'none';
+    if (empty) empty.style.display = allTransactions.length === 0 ? 'block' : 'none';
     if (allTransactions.length > 0) {
       lista.innerHTML = `<div class="mini-item-empty">Nenhuma transação com esses filtros</div>`;
     }
   } else {
-    empty.style.display = 'none';
+    if (empty) empty.style.display = 'none';
     const catIcons = {
       alimentacao: '🍔', transporte: '🚗', moradia: '🏠', lazer: '🎮',
       saude: '💊', salario: '💼', freelance: '💻', outros: '📦'
@@ -4907,16 +5179,16 @@ function encontrarProximoAlarme() {
 // =====================
 // ==================== Dashboard: 4 cards mini (Kirvano-style) ====================
 async function carregarDashboardExtras() {
-  const [alertas, metas, pj, ofStatus] = await Promise.all([
+  const [alertas, metas, pj, academia] = await Promise.all([
     fetch('/api/financeiro/alertas').then(r => r.ok ? r.json() : {}).catch(() => ({})),
     fetch('/api/metas').then(r => r.ok ? r.json() : {}).catch(() => ({})),
     fetch('/api/pj').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-    fetch('/api/openfinance/items-status').then(r => r.ok ? r.json() : {}).catch(() => ({}))
+    fetch('/api/tasks/habito?titulo=Academia').then(r => r.ok ? r.json() : {}).catch(() => ({}))
   ]);
   _renderAlertasCard(alertas);
   _renderMetasCard(metas);
   _renderDasCard(pj);
-  _renderReconectarCard(ofStatus);
+  _renderAcademiaCard(academia);
 }
 
 function _renderAlertasCard(d) {
@@ -4979,22 +5251,23 @@ function _renderDasCard(d) {
   `;
 }
 
-function _renderReconectarCard(d) {
-  const el = document.getElementById('dash-reconectar');
+function _renderAcademiaCard(d) {
+  const el = document.getElementById('dash-academia');
   if (!el) return;
-  const items = (d && d.items) || [];
-  const stales = items.filter(i => i.precisa_reconectar);
-  if (!stales.length) {
-    el.innerHTML = '<p class="mini-empty">Tudo sincronizado</p>';
-    return;
+  const concluidas = Number((d && d.mes && d.mes.concluidas) || 0);
+  const hoje = (d && d.hoje) || {};
+  let msg = 'Toque pra marcar hoje';
+  let cls = '';
+  if (hoje.concluida) {
+    msg = 'Feito hoje';
+    cls = 'mini-ok';
+  } else if (hoje.existe) {
+    msg = 'Pendente hoje';
+    cls = 'mini-warn';
   }
-  const top = stales[0];
-  const dias = top.horas_desde_sync ? Math.floor(top.horas_desde_sync / 24) : null;
-  const quando = dias ? `${dias}d atrás` : `${top.horas_desde_sync}h atrás`;
-  const extra = stales.length > 1 ? ` <span class="mini-caption">+ ${stales.length - 1}</span>` : '';
   el.innerHTML = `
-    <p class="mini-metric mini-warn">${stales.length}</p>
-    <p class="mini-caption">${escapeHtml(top.apelido)}: ${quando}${extra}</p>
+    <p class="mini-metric ${cls}">${concluidas}</p>
+    <p class="mini-caption">${concluidas === 1 ? 'ida este mês' : 'idas este mês'} · ${msg}</p>
   `;
 }
 
@@ -5876,6 +6149,136 @@ function sugerirMelhorHorario() {
 }
 
 // =====================
+//  ASSISTENTE GLOBAL
+// =====================
+let _assistOpen = false;
+let _assistHist = [];
+let _assistBusy = false;
+
+function toggleAssistente() {
+  _assistOpen = !_assistOpen;
+  const panel = document.getElementById('assist-panel');
+  if (!panel) return;
+  panel.classList.toggle('open', _assistOpen);
+  if (_assistOpen) {
+    const msgs = document.getElementById('assist-msgs');
+    if (msgs && msgs.childElementCount === 0) {
+      assistAddBubble('bot', 'Pode perguntar da sua saúde financeira, das tarefas, ou me pedir pra registrar uma pendência — tipo “tenho um boleto de 240 no dia 18”.');
+      verificarStatusIA();
+    }
+    setTimeout(() => document.getElementById('assist-input')?.focus(), 50);
+  }
+}
+
+async function verificarStatusIA() {
+  try {
+    const r = await fetch('/api/ia/status');
+    const d = await r.json();
+    if (!d.disponivel) {
+      assistAddBubble('bot erro', 'IA desligada neste ambiente. Coloca GEMINI_API_KEY no .env (ou no Railway) e reinicia o servidor.');
+    }
+  } catch (e) { /* silencioso */ }
+}
+
+function assistAddBubble(kind, text) {
+  const box = document.getElementById('assist-msgs');
+  if (!box) return;
+  const el = document.createElement('div');
+  el.className = 'assist-bubble ' + kind;
+  el.textContent = text;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function enviarAssistente(e) {
+  e.preventDefault();
+  if (_assistBusy) return;
+  const input = document.getElementById('assist-input');
+  const btn = document.getElementById('assist-send');
+  const msg = (input?.value || '').trim();
+  if (!msg) return;
+
+  assistAddBubble('user', msg);
+  input.value = '';
+  _assistBusy = true;
+  if (btn) btn.disabled = true;
+  assistAddBubble('bot', 'Pensando...');
+  const box = document.getElementById('assist-msgs');
+  const thinking = box && box.lastElementChild;
+
+  try {
+    const res = await fetch('/api/ia/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mensagem: msg, historico: _assistHist })
+    });
+    const data = await res.json();
+    if (thinking) thinking.remove();
+    if (!res.ok) throw new Error(data.erro || 'Falha no assistente');
+
+    assistAddBubble('bot', data.resposta || 'Ok.');
+    _assistHist.push({ role: 'user', content: msg });
+    _assistHist.push({ role: 'assistant', content: data.resposta || '' });
+    if (_assistHist.length > 12) _assistHist = _assistHist.slice(-12);
+
+    const feitos = (data.acoes || []).filter(a => a.ok);
+    if (feitos.length) {
+      const labels = {
+        criar_despesa: 'Despesa registrada',
+        criar_tarefa: 'Tarefa criada',
+        criar_meta: 'Meta criada',
+        marcar_habito: 'Academia marcada'
+      };
+      feitos.forEach(a => {
+        let txt = labels[a.tipo] || a.tipo;
+        if (a.tipo === 'marcar_habito' && a.ja) txt = 'Academia já estava marcada hoje';
+        assistAddBubble('acao', txt);
+      });
+      if (feitos.some(a => a.tipo === 'criar_despesa') && typeof carregarDespesasMes === 'function') {
+        carregarDespesasMes();
+      }
+      if (feitos.some(a => a.tipo === 'criar_tarefa' || a.tipo === 'marcar_habito') && typeof carregarTarefas === 'function') {
+        carregarTarefas();
+      }
+      if (feitos.some(a => a.tipo === 'criar_meta') && typeof carregarMetas === 'function') {
+        carregarMetas();
+      }
+    }
+  } catch (err) {
+    if (thinking) thinking.remove();
+    assistAddBubble('bot erro', err.message || 'Não consegui responder agora.');
+  } finally {
+    _assistBusy = false;
+    if (btn) btn.disabled = false;
+    input?.focus();
+  }
+}
+
+async function checkinAcademia(opts) {
+  const fromAssist = !opts || opts.fromAssist !== false;
+  if (fromAssist && !_assistOpen && typeof toggleAssistente === 'function') toggleAssistente();
+  try {
+    const res = await fetch('/api/tasks/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo: 'Academia' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Falha no check-in');
+    if (fromAssist) {
+      if (data.ja) assistAddBubble('acao', 'Academia já estava marcada hoje');
+      else assistAddBubble('acao', 'Academia marcada');
+    }
+    if (typeof carregarTarefas === 'function') carregarTarefas();
+    if (typeof carregarDashboardExtras === 'function') carregarDashboardExtras();
+    if (typeof toast === 'function') toast(data.ja ? 'Já estava marcada hoje' : 'Academia marcada', 'success');
+  } catch (e) {
+    if (fromAssist) assistAddBubble('bot erro', e.message);
+    else if (typeof toast === 'function') toast(e.message, 'error');
+  }
+}
+
+// =====================
 //  INICIALIZAÇÃO DO APP
 // =====================
 async function inicializarApp() {
@@ -5903,7 +6306,15 @@ async function inicializarApp() {
   carregarStats();
   atualizarDashboard();
   verificarModoNoturno();
-  
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+      e.preventDefault();
+      if (!_assistOpen) toggleAssistente();
+      else document.getElementById('assist-input')?.focus();
+    }
+    if (e.key === 'Escape' && _assistOpen) toggleAssistente();
+  });
+
   // Atualizar hora a cada segundo
   setInterval(atualizarHora, 1000);
   // Detector de procrastinação a cada 1 minuto

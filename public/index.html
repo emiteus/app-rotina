@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#1a1b1e">
+  <meta name="theme-color" content="#09090B">
   <title>App Rotina</title>
 
   <!-- PWA: adicionar como app na tela inicial (sem standalone, iOS cuida das safe areas) -->
@@ -13,10 +13,10 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=36">
+  <link rel="stylesheet" href="style.css?v=42">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- flatpickr: date picker custom com tema dark -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -181,12 +181,12 @@
           </div>
         </div>
 
-        <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro'); setTimeout(()=>trocarSubAbaFin('fin-contas'),100);" style="cursor:pointer;">
+        <div class="panel dashboard-mini-card" onclick="checkinAcademia({ fromAssist: false })" style="cursor:pointer;" title="Clique pra marcar academia hoje">
           <div class="panel-header">
-            <h3>Contas pra reconectar</h3>
+            <h3>Academia</h3>
           </div>
-          <div id="dash-reconectar" class="mini-panel-body">
-            <p class="mini-empty">Tudo sincronizado</p>
+          <div id="dash-academia" class="mini-panel-body">
+            <p class="mini-empty">—</p>
           </div>
         </div>
       </div>
@@ -402,21 +402,11 @@
       </div>
 
       <!-- Sub-abas do Financeiro -->
-      <div class="fin-subtabs" style="display:flex; gap:8px; margin-bottom:18px; border-bottom:1px solid var(--border); padding-bottom:2px;">
-        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')" style="background:none; border:none; color:var(--text); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid var(--accent);">Visão Geral</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-transacoes" onclick="trocarSubAbaFin('fin-transacoes')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Transações</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-contas" onclick="trocarSubAbaFin('fin-contas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Contas</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-categorizar" onclick="trocarSubAbaFin('fin-categorizar')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Categorizar <span id="badge-pendentes" style="display:none; background:#e8950c; color:#fff; font-size:10px; padding:1px 6px; border-radius:8px; margin-left:2px;">0</span></button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-apostas" onclick="trocarSubAbaFin('fin-apostas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Apostas</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-metas" onclick="trocarSubAbaFin('fin-metas')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Metas</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">PJ / MEI</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-relatorios" onclick="trocarSubAbaFin('fin-relatorios')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Relatórios</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-ir" onclick="trocarSubAbaFin('fin-ir')" style="background:none; border:none; color:var(--text-muted); padding:8px 14px; cursor:pointer; font-size:14px; border-bottom:2px solid transparent;">Imposto de Renda</button>
-      </div>
-
-      <!-- SUB-ABA: Apostas (eu vs amigos) -->
-      <div id="fin-apostas" class="fin-subtab" style="display:none;">
-        <div id="painel-apostas"></div>
+      <div class="fin-subtabs">
+        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')">Visão Geral</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-despesas" onclick="trocarSubAbaFin('fin-despesas')">Despesas do mês</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-metas" onclick="trocarSubAbaFin('fin-metas')">Metas</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')">PJ / MEI</button>
       </div>
 
       <!-- SUB-ABA: Metas financeiras -->
@@ -429,24 +419,8 @@
         <div id="painel-pj"></div>
       </div>
 
-      <!-- SUB-ABA: Relatórios mensais -->
-      <div id="fin-relatorios" class="fin-subtab" style="display:none;">
-        <div id="painel-relatorios"></div>
-      </div>
-
-      <!-- SUB-ABA: Contas (multi-conta PF/PJ) -->
-      <div id="fin-contas" class="fin-subtab" style="display:none;">
-        <div id="painel-contas"></div>
-      </div>
-
-      <!-- SUB-ABA: Categorizar (aprendizado) -->
-      <div id="fin-categorizar" class="fin-subtab" style="display:none;">
-        <div id="painel-categorizar"></div>
-      </div>
-
       <!-- SUB-ABA: Visão Geral -->
       <div id="fin-visao" class="fin-subtab">
-        <!-- KPIs no topo estilo Multicap: ícone colorido + valor -->
         <div class="finance-grid">
           <div class="finance-box saldo-box">
             <div class="box-icon">
@@ -477,7 +451,11 @@
           </div>
         </div>
 
-        <!-- Grid: Categorias (esquerda) + Donut (direita) — estilo Multicap Orçamento -->
+        <div class="visao-sobra" id="visao-sobra">
+          <span class="label">Sobra estimada (entradas − saídas, 30d)</span>
+          <span class="valor" id="visao-sobra-valor">R$ 0,00</span>
+        </div>
+
         <div class="fin-visao-grid" id="fin-visao-grid" style="display:none;">
           <div class="fin-cat-list-card">
             <div class="fin-cat-list-header">
@@ -507,85 +485,67 @@
         </div>
 
         <div id="fin-cat-empty" class="empty-state" style="display:none;">
-          <div class="empty-icon">📊</div>
           <h3>Sem despesas neste mês</h3>
           <p>As categorias aparecem aqui quando você tiver gastos.</p>
         </div>
-
-        <!-- Seções recolhíveis (expanda só o que quiser) -->
-        <div style="margin-top:24px;">
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">Orçamentos por categoria</summary>
-            <div id="painel-orcamentos-cat" style="margin-top:8px;"></div>
-          </details>
-
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🏦 Bancos &amp; saldos detalhados</summary>
-            <div id="painel-bancos" style="margin-top:8px;"></div>
-          </details>
-
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">✅ Contas fixas &amp; empréstimo</summary>
-            <div id="painel-organizacao" style="margin-top:8px;"></div>
-          </details>
-
-          <details style="margin-bottom:6px;">
-            <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px;">🧠 Análise do dia</summary>
-            <div id="painel-analise-fin" style="margin-top:8px;"></div>
-          </details>
-        </div>
       </div>
 
-      <!-- SUB-ABA: Transações (feed completo) -->
-      <div id="fin-transacoes" class="fin-subtab" style="display:none;">
-        <!-- Barra principal: pills + ações -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
-          <div class="filter-bar" style="margin:0;">
-            <button class="filter-btn active" data-fin-filter="todas">Todas</button>
-            <button class="filter-btn" data-fin-filter="entrada">Entradas</button>
-            <button class="filter-btn" data-fin-filter="saida">Saídas</button>
+      <!-- SUB-ABA: Despesas do mês -->
+      <div id="fin-despesas" class="fin-subtab" style="display:none;">
+        <div class="despesas-toolbar">
+          <div class="despesas-mes-nav">
+            <button type="button" onclick="despesasMesAnterior()" aria-label="Mês anterior">‹</button>
+            <span class="despesas-mes-label" id="despesas-mes-label">—</span>
+            <button type="button" onclick="despesasMesProximo()" aria-label="Próximo mês">›</button>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn-secondary" onclick="toggleFinFiltros()" id="btn-toggle-filtros" style="font-size:13px;">Filtros</button>
-            <button class="btn-secondary" onclick="abrirRelatorioMensal()" style="font-size:13px;">Relatório do mês</button>
-            <button class="btn-primary" onclick="abrirModalNovaTransacao()" style="font-size:13px;">+ Nova transação</button>
+          <div class="despesas-banco">
+            <span class="despesas-banco-status" id="despesas-banco-status">Banco: —</span>
+            <button class="btn-secondary" type="button" onclick="conectarBanco()" style="font-size:12px;">Conectar</button>
+            <button class="btn-secondary" type="button" onclick="sincronizarBancosEReconciliar()" style="font-size:12px;">Sincronizar</button>
           </div>
         </div>
 
-        <!-- Busca e filtros avançados (colapsável, padrão fechado) -->
-        <div class="fin-filtros" id="fin-filtros" style="display:none; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
-          <input type="text" id="fin-busca" placeholder="🔍 Buscar por descrição..." oninput="atualizarFinFiltros()"
-            style="flex:1; min-width:180px; background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:8px 10px; font-size:13px;">
-          <select id="fin-periodo" onchange="atualizarFinFiltros()"
-            style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:8px 10px; font-size:12px;">
-            <option value="todos">Qualquer período</option>
-            <option value="7d">Últimos 7 dias</option>
-            <option value="30d" selected>Últimos 30 dias</option>
-            <option value="mes">Este mês</option>
-            <option value="mes-passado">Mês passado</option>
-            <option value="ano">Este ano</option>
-          </select>
-          <select id="fin-conta" onchange="atualizarFinFiltros()"
-            style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:8px 10px; font-size:12px;">
-            <option value="todas">Qualquer conta</option>
-          </select>
-          <select id="fin-categoria" onchange="atualizarFinFiltros()"
-            style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; padding:8px 10px; font-size:12px;">
-            <option value="todas">Qualquer categoria</option>
-          </select>
-          <button class="fin-filtros-limpar" onclick="limparFinFiltros()" style="background:var(--bg-card); border:1px solid var(--border); color:var(--text-muted); border-radius:6px; padding:8px 12px; font-size:12px; cursor:pointer;">Limpar</button>
+        <div class="despesas-resumo" id="despesas-resumo"></div>
+
+        <div class="despesas-actions">
+          <button class="btn-primary" type="button" onclick="abrirModalNovaDespesa()" style="font-size:13px;">+ Nova despesa</button>
+          <button class="btn-secondary" type="button" onclick="reconciliarDespesas()" style="font-size:13px;">Reconciliar com banco</button>
         </div>
 
-        <ul id="lista-transacoes" class="transaction-list"></ul>
+        <div id="painel-despesas"></div>
+      </div>
 
-        <div id="empty-financeiro" class="empty-state" style="display: none;">
-          <div class="empty-icon">💰</div>
-          <h3>Sem transações</h3>
-          <p>Comece registrando suas movimentações</p>
+      <!-- Modal Nova Despesa -->
+      <div id="modal-nova-despesa" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova despesa</h3>
+            <button type="button" onclick="fecharModalNovaDespesa()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <input type="text" id="despesa-titulo" placeholder="Título (ex: Aluguel)"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
+            <input type="number" id="despesa-valor" placeholder="Valor esperado" step="0.01"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
+            <input type="number" id="despesa-dia" placeholder="Dia do vencimento (1–31)" min="1" max="31"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
+            <select id="despesa-categoria" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);">
+              <option value="contas_fixas">Contas fixas</option>
+              <option value="moradia">Moradia</option>
+              <option value="assinaturas">Assinaturas</option>
+              <option value="transporte">Transporte</option>
+              <option value="saude">Saúde</option>
+              <option value="outros" selected>Outros</option>
+            </select>
+            <div style="display:flex; gap:8px; margin-top:6px;">
+              <button type="button" onclick="fecharModalNovaDespesa()" style="flex:1; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px; font-size:13px; font-weight:500; cursor:pointer; font-family:var(--font-ui);">Cancelar</button>
+              <button class="btn-primary" type="button" onclick="criarDespesaManual()" style="flex:1; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:600; cursor:pointer;">Adicionar</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Modal Nova Transação (compartilhado — visível em qualquer sub-aba) -->
+      <!-- Modal Nova Transação (legado — ainda usado se necessário) -->
       <div id="modal-nova-transacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
@@ -602,26 +562,21 @@
             <input type="text" id="desc-transacao" placeholder="Descrição"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
             <select id="categoria-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
-              <option value="alimentacao">🍔 Alimentação</option>
-              <option value="transporte">🚗 Transporte</option>
-              <option value="moradia">🏠 Moradia</option>
-              <option value="lazer">🎮 Lazer</option>
-              <option value="saude">💊 Saúde</option>
-              <option value="salario">💼 Salário</option>
-              <option value="freelance">💻 Freelance</option>
-              <option value="outros" selected>📦 Outros</option>
+              <option value="alimentacao">Alimentação</option>
+              <option value="transporte">Transporte</option>
+              <option value="moradia">Moradia</option>
+              <option value="lazer">Lazer</option>
+              <option value="saude">Saúde</option>
+              <option value="salario">Salário</option>
+              <option value="freelance">Freelance</option>
+              <option value="outros" selected>Outros</option>
             </select>
             <div style="display:flex; gap:8px; margin-top:6px;">
-              <button onclick="fecharModalNovaTransacao()" style="flex:1; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:999px; padding:10px; font-size:13px; font-weight:500; cursor:pointer;">Cancelar</button>
-              <button class="btn-primary" onclick="adicionarTransacao(); fecharModalNovaTransacao();" style="flex:1; background:var(--accent); border:none; color:#fff; border-radius:999px; padding:10px; font-size:13px; font-weight:600; cursor:pointer;">Adicionar</button>
+              <button onclick="fecharModalNovaTransacao()" style="flex:1; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px; font-size:13px; font-weight:500; cursor:pointer;">Cancelar</button>
+              <button class="btn-primary" onclick="adicionarTransacao(); fecharModalNovaTransacao();" style="flex:1; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:600; cursor:pointer;">Adicionar</button>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- SUB-ABA: Imposto de Renda -->
-      <div id="fin-ir" class="fin-subtab" style="display:none;">
-        <div id="painel-ir"></div>
       </div>
     </section>
 
@@ -819,6 +774,29 @@
   <!-- Toast Notifications -->
   <div id="toast-container" class="toast-container"></div>
 
+  <button type="button" class="assist-fab" id="assist-fab" onclick="toggleAssistente()" aria-label="Abrir assistente">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  </button>
+  <div class="assist-panel" id="assist-panel" role="dialog" aria-label="Assistente">
+    <div class="assist-header">
+      <div>
+        <h3>Assistente</h3>
+        <span>Finanças, tarefas e pendências</span>
+      </div>
+      <button type="button" class="assist-close" onclick="toggleAssistente()" aria-label="Fechar">×</button>
+    </div>
+    <div class="assist-msgs" id="assist-msgs"></div>
+    <div class="assist-chips">
+      <button type="button" onclick="checkinAcademia()">Fui à academia</button>
+    </div>
+    <form class="assist-form" id="assist-form" onsubmit="enviarAssistente(event)">
+      <input id="assist-input" type="text" placeholder="Ex: registrar aluguel de 1800 no dia 10" autocomplete="off" maxlength="800" />
+      <button type="submit" id="assist-send">Enviar</button>
+    </form>
+  </div>
+
   <!-- Custom Modal -->
   <div id="custom-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card">
@@ -840,7 +818,7 @@
       <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
         <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required
           style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:12px; font-size:15px; width:100%; box-sizing:border-box;">
-        <button type="submit" style="background:var(--accent); border:none; color:#fff; border-radius:8px; padding:12px; font-size:15px; font-weight:600; cursor:pointer;">Entrar</button>
+        <button type="submit" style="background:var(--accent); border:none; color:var(--accent-on, #09090B); border-radius:8px; padding:12px; font-size:15px; font-weight:600; cursor:pointer;">Entrar</button>
         <p id="login-erro" style="margin:0; font-size:12px; color:var(--danger); display:none;"></p>
       </form>
     </div>
@@ -848,7 +826,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=36"></script>
+  <script src="app.js?v=40"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
