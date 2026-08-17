@@ -1,4 +1,5 @@
 require('dotenv').config();
+process.env.TZ = process.env.TZ || 'America/Sao_Paulo';
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -59,6 +60,7 @@ const pushRouter = require('./routes/push');
 const iaRouter = require('./routes/ia');
 const { garantirRecorrenteAcademia } = require('./lib/habitos');
 const { enviarPush } = require('./lib/push');
+const { TZ, hojeStr, ymAtual, diaDoMes, diaSemana, ymdDe, dataResetSql, horaAtual } = require('./lib/datas');
 
 // Passar wsServer para as rotas
 tasksRouter.setWsServer(wsServer);
@@ -122,16 +124,15 @@ const CRONS_ENABLED = process.env.CRONS_ENABLED !== 'false';
 if (!CRONS_ENABLED) console.log('[cron] CRONS_ENABLED=false — todos os jobs desligados');
 function sched(cron, fn) {
   if (!CRONS_ENABLED) return;
-  return schedule.scheduleJob(cron, fn);
+  return schedule.scheduleJob({ tz: TZ, rule: cron }, fn);
 }
 
 // Agendador de alarmes (verifica a cada minuto)
 sched('*/1 * * * *', runCron('alarmes', async () => {
   const { all } = require('./lib/db');
-  const now = new Date();
-  const horaAtual = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const horaAgora = horaAtual();
 
-  const alarmes = await all(`SELECT * FROM alarmes WHERE ativo = true AND hora = $1`, [horaAtual]);
+  const alarmes = await all(`SELECT * FROM alarmes WHERE ativo = true AND hora = $1`, [horaAgora]);
 
   alarmes.forEach(alarme => {
     enviarTelegram(alarme.mensagem);
@@ -148,25 +149,23 @@ async function gerarRecorrentesHoje() {
     const { run, get, all } = require('./lib/db');
     const { v4: uuid } = require('uuid');
     await garantirRecorrenteAcademia();
-    const hoje = new Date();
-    const diaSemana = hoje.getDay().toString();
-    const hojeStr = hoje.toISOString().split('T')[0];
+    const hoje = hojeStr();
+    const dow = String(diaSemana());
     const recorrentes = await all(`SELECT * FROM tarefas_recorrentes WHERE ativa = true`);
     let criadas = 0;
     for (const r of recorrentes) {
       const dias = (r.dias_semana || '0,1,2,3,4,5,6').split(',');
-      if (!dias.includes(diaSemana)) continue;
+      if (!dias.includes(dow)) continue;
       if (r.ultima_criacao) {
-        const ultima = new Date(r.ultima_criacao).toISOString().split('T')[0];
-        if (ultima === hojeStr) continue;
+        if (ymdDe(r.ultima_criacao) === hoje) continue;
       }
       const taskId = uuid();
       await run(
         `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, `${hojeStr} 00:00:00`]
+        [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, dataResetSql(hoje)]
       );
-      await run(`UPDATE tarefas_recorrentes SET ultima_criacao = $1 WHERE id = $2`, [hojeStr, r.id]);
+      await run(`UPDATE tarefas_recorrentes SET ultima_criacao = $1 WHERE id = $2`, [hoje, r.id]);
       criadas++;
     }
     if (criadas > 0) console.log(`[Recorrentes] ${criadas} tarefa(s) gerada(s) hoje`);
@@ -187,7 +186,7 @@ async function syncOpenFinanceDiario() {
     console.log(`[OpenFinance] Sync automático: ${r.importadas} nova(s) transação(ões)`);
     if (r.importadas > 0) {
       const { all } = require('./lib/db');
-      const hoje = new Date().toISOString().slice(0, 10);
+      const hoje = hojeStr();
       const apostas = await all(
         `SELECT COALESCE(SUM(valor),0) AS total, COUNT(*)::int AS qtd
          FROM financeiro WHERE data = $1 AND categoria = 'apostas' AND tipo = 'saida'`,
@@ -249,7 +248,7 @@ sched('0 10 * * *', runCron('alertas-gasto', async () => {
       WHERE tipo = 'saida' AND data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
       GROUP BY mes, categoria
     `);
-    const mesAtual = new Date().toISOString().substring(0, 7);
+    const mesAtual = ymAtual();
     const porCat = {};
     rows.forEach(r => {
       if (!porCat[r.categoria]) porCat[r.categoria] = { atual: 0, anteriores: [] };
@@ -291,7 +290,7 @@ sched('0 21 * * *', runCron('orcamento-estourado', async () => {
     try { limites = JSON.parse(row.valor); } catch { return; }
     const cats = Object.keys(limites || {}).filter(k => Number(limites[k]) > 0);
     if (!cats.length) return;
-    const ym = new Date().toISOString().slice(0, 7);
+    const ym = ymAtual();
     const gastos = await all(
       `SELECT categoria, COALESCE(SUM(valor),0) AS total
        FROM financeiro
@@ -319,7 +318,7 @@ sched('0 21 * * *', runCron('orcamento-estourado', async () => {
 sched('0 20 * * *', runCron('resumo-diario', async () => {
   try {
     const { get } = require('./lib/db');
-    const hoje = new Date().toISOString().slice(0, 10);
+    const hoje = hojeStr();
     const tarefas = await get(
       `SELECT COUNT(*)::int AS total,
               SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
@@ -348,11 +347,10 @@ sched('0 20 * * *', runCron('resumo-diario', async () => {
 // DAS do MEI — se estiver entre dia 17 e 19 e não pago, lembra às 9h
 sched('0 9 * * *', runCron('das-reminder', async () => {
   try {
-    const hoje = new Date();
-    const dia = hoje.getDate();
+    const dia = diaDoMes();
     if (dia < 17 || dia > 19) return;
     const { get } = require('./lib/db');
-    const ym = hoje.toISOString().slice(0, 7);
+    const ym = ymAtual();
     const das = await get(`SELECT pago FROM mei_das WHERE ym = $1`, [ym]);
     if (das && das.pago) return;
     const faltam = 20 - dia;
@@ -385,6 +383,7 @@ function enviarTelegram(mensagem) {
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
   console.log(`WebSocket disponível em ws://0.0.0.0:${PORT}`);
+  console.log(`Timezone ${TZ} · hoje ${hojeStr()} · ${horaAtual()}`);
 });
 
 module.exports = { app, httpServer, wsServer, enviarTelegram };

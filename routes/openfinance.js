@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const axios = require('axios');
 const { run, get, all } = require('../lib/db');
+const { hojeStr, addDias } = require('../lib/datas');
 
 const router = express.Router();
 const PLUGGY_BASE = 'https://api.pluggy.ai';
@@ -325,9 +326,7 @@ async function syncItem(apiKey, itemId) {
   }
 
   // Janela: últimos 90 dias
-  const from = new Date();
-  from.setDate(from.getDate() - 90);
-  const fromStr = from.toISOString().split('T')[0];
+  const fromStr = addDias(-90);
 
   for (const conta of contas) {
     // v2/transactions: paginação por cursor ("next" = URL da próxima página).
@@ -342,7 +341,7 @@ async function syncItem(apiKey, itemId) {
       const results = txResp.data.results || [];
 
       for (const t of results) {
-        const dataUso = (t.date || '').split('T')[0] || new Date().toISOString().split('T')[0];
+        const dataUso = (t.date || '').split('T')[0] || hojeStr();
         if (dataUso < fromStr) { parar = true; continue; } // mais antiga que a janela → para
         // Cartão de crédito (CREDIT): amount+ = compra (saída), amount- = estorno/pagamento (entrada).
         // Conta bancária (BANK): amount+ ou type=CREDIT = entrada, senão saída.

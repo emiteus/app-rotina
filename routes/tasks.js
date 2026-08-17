@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 const { checkinHabito, resumoHabito } = require('../lib/habitos');
+const { hojeStr, dataResetSql, ymdDe } = require('../lib/datas');
 
 let wsServer;
 
@@ -116,11 +117,11 @@ router.get('/stats', async (req, res) => {
     // Se hoje ainda tem 0 concluídas (dia em andamento), pula pra não zerar streak indevidamente.
     let streak = 0;
     const historicoDesc = [...historico].reverse();
-    const hojeStr = new Date().toISOString().slice(0, 10);
+    const hoje = hojeStr();
     for (let i = 0; i < historicoDesc.length; i++) {
       const h = historicoDesc[i];
-      const hStr = (h.data instanceof Date ? h.data.toISOString().slice(0,10) : String(h.data).slice(0,10));
-      if (i === 0 && hStr === hojeStr && h.concluidas === 0) continue;
+      const hStr = ymdDe(h.data);
+      if (i === 0 && hStr === hoje && h.concluidas === 0) continue;
       if (h.concluidas > 0) streak++;
       else break;
     }
@@ -189,18 +190,9 @@ router.post('/', async (req, res) => {
 
   try {
     const id = uuid();
-    // Se data_reset não for fornecida, usa hoje
-    let dataReset;
-    if (data_reset) {
-      // Se receber YYYY-MM-DD, converte para timestamp válido do PostgreSQL
-      if (data_reset.length === 10) {
-        dataReset = new Date(data_reset + 'T00:00:00Z').toISOString();
-      } else {
-        dataReset = data_reset;
-      }
-    } else {
-      dataReset = new Date().toISOString();
-    }
+    const dataReset = data_reset && String(data_reset).length >= 10
+      ? dataResetSql(String(data_reset).slice(0, 10))
+      : dataResetSql(hojeStr());
 
     await run(
       `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, hora)

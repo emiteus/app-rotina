@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
+const { hojeStr, diaSemana, ymdDe, dataResetSql } = require('../lib/datas');
 
 let wsServer;
 const router = express.Router();
@@ -71,9 +72,8 @@ router.delete('/:id', async (req, res) => {
 // POST gerar tarefas de hoje a partir das recorrentes
 router.post('/gerar-hoje', async (req, res) => {
   try {
-    const hoje = new Date();
-    const diaSemana = hoje.getDay().toString();
-    const hojeStr = hoje.toISOString().split('T')[0];
+    const dow = String(diaSemana());
+    const hoje = hojeStr();
     const recorrentes = await all(`SELECT * FROM tarefas_recorrentes WHERE ativa = true`);
 
     let criadas = 0;
@@ -82,16 +82,15 @@ router.post('/gerar-hoje', async (req, res) => {
       let deveCriar = false;
       if (r.frequencia === 'diario') {
         const dias = (r.dias_semana || '0,1,2,3,4,5,6').split(',');
-        deveCriar = dias.includes(diaSemana);
+        deveCriar = dias.includes(dow);
       } else if (r.frequencia === 'semanal') {
         const dias = (r.dias_semana || '1').split(',');
-        deveCriar = dias.includes(diaSemana);
+        deveCriar = dias.includes(dow);
       }
 
       // Já criou hoje?
       if (r.ultima_criacao) {
-        const ultima = new Date(r.ultima_criacao).toISOString().split('T')[0];
-        if (ultima === hojeStr) deveCriar = false;
+        if (ymdDe(r.ultima_criacao) === hoje) deveCriar = false;
       }
 
       if (deveCriar) {
@@ -99,9 +98,9 @@ router.post('/gerar-hoje', async (req, res) => {
         await run(
           `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset)
            VALUES ($1, $2, $3, $4, $5, $6)`,
-          [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, `${hojeStr} 00:00:00`]
+          [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, dataResetSql(hoje)]
         );
-        await run(`UPDATE tarefas_recorrentes SET ultima_criacao = $1 WHERE id = $2`, [hojeStr, r.id]);
+        await run(`UPDATE tarefas_recorrentes SET ultima_criacao = $1 WHERE id = $2`, [hoje, r.id]);
         criadas++;
       }
     }

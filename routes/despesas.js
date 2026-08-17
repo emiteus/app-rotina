@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
+const { ymAtual, hojeStr, diaDoMes } = require('../lib/datas');
 
 const router = express.Router();
 
@@ -21,18 +22,9 @@ function ymValido(ym) {
   return typeof ym === 'string' && /^\d{4}-\d{2}$/.test(ym);
 }
 
-function ymAtual() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
 function diasNoMes(ym) {
   const [y, m] = ym.split('-').map(Number);
   return new Date(y, m, 0).getDate();
-}
-
-function diaHoje() {
-  return new Date().getDate();
 }
 
 function normalizaTexto(s) {
@@ -108,7 +100,7 @@ async function seedMesSeVazio(ym) {
 
   const maxDia = diasNoMes(ym);
   const hojeYm = ymAtual();
-  const hojeDia = diaHoje();
+  const hojeDia = diaDoMes();
 
   for (const item of itens) {
     const dia = Math.min(item.dia || 1, maxDia);
@@ -127,7 +119,7 @@ async function seedMesSeVazio(ym) {
 
 function enriquecerStatus(row, ym) {
   const hojeYm = ymAtual();
-  const hojeDia = diaHoje();
+  const hojeDia = diaDoMes();
   let status = row.status;
   if (status === 'pendente') {
     if (ym < hojeYm) status = 'atrasado';
@@ -192,7 +184,7 @@ router.post('/', async (req, res) => {
 
     let status = 'pendente';
     const hojeYm = ymAtual();
-    const hojeDia = diaHoje();
+    const hojeDia = diaDoMes();
     if (ym < hojeYm) status = 'atrasado';
     else if (ym === hojeYm && dia && dia < hojeDia) status = 'atrasado';
 
@@ -290,7 +282,7 @@ router.patch('/:id', async (req, res) => {
 
     if (req.body.status === 'pago' || req.body.acao === 'confirmar') {
       status = 'pago';
-      pago_em = req.body.pago_em || new Date().toISOString().slice(0, 10);
+      pago_em = req.body.pago_em || hojeStr();
       confirmado_por = req.body.confirmado_por || 'manual';
       if (req.body.tx_id) tx_id = req.body.tx_id;
     } else if (req.body.status === 'pendente' || req.body.acao === 'desvincular') {

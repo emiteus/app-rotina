@@ -1,6 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
+const { hojeStr, ymAtual } = require('../lib/datas');
 
 let wsServer; // Será setado pelo server.js
 
@@ -101,7 +102,7 @@ router.post('/', async (req, res) => {
 
   try {
     const id = uuid();
-    const dataUso = data || new Date().toISOString().split('T')[0];
+    const dataUso = data || hojeStr();
 
     await run(
       `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria)
@@ -156,7 +157,7 @@ router.get('/alertas', async (req, res) => {
       WHERE tipo = 'saida' AND data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
       GROUP BY mes, categoria
     `);
-    const mesAtual = new Date().toISOString().substring(0, 7);
+    const mesAtual = ymAtual();
     const porCat = {};
     rows.forEach(r => {
       if (!porCat[r.categoria]) porCat[r.categoria] = { atual: 0, anteriores: [] };

@@ -3,6 +3,7 @@ const axios = require('axios');
 const { v4: uuid } = require('uuid');
 const { all, run, get } = require('../lib/db');
 const { checkinHabito } = require('../lib/habitos');
+const { hojeStr, ymAtual, addDias, dataResetSql } = require('../lib/datas');
 
 const router = express.Router();
 
@@ -216,7 +217,7 @@ router.post('/metas/parse', async (req, res) => {
   const texto = String(req.body?.texto || '').trim();
   if (!texto) return res.status(400).json({ erro: 'texto é obrigatório' });
 
-  const hoje = new Date().toISOString().slice(0, 10);
+  const hoje = hojeStr();
   const systemPrompt = `Você extrai dados estruturados de descrições de metas financeiras pessoais em português brasileiro. Hoje é ${hoje}.
 
 Regras estritas:
@@ -277,9 +278,9 @@ router.post('/analise/diaria', async (req, res) => {
   if (!providerAtivo()) return res.status(400).json({ erro: 'IA não configurada.' });
 
   try {
-    const hoje = new Date().toISOString().slice(0, 10);
-    const ontem = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const inicio30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const hoje = hojeStr();
+    const ontem = addDias(-1);
+    const inicio30 = addDias(-30);
 
     const tarefasHoje = await all(
       `SELECT COUNT(*)::int AS total, SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
@@ -355,19 +356,14 @@ Regras:
   }
 });
 
-function ymAtualLocal() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
 function brlNum(v) {
   return Math.round(Number(v || 0) * 100) / 100;
 }
 
 async function snapshotAssistente() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  const ym = ymAtualLocal();
-  const inicio30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const hoje = hojeStr();
+  const ym = ymAtual();
+  const inicio30 = addDias(-30);
 
   const [
     tarefasHoje,
@@ -510,7 +506,7 @@ async function snapshotAssistente() {
 async function executarAcoes(acoes) {
   if (!Array.isArray(acoes) || acoes.length === 0) return [];
   const feitos = [];
-  const ym = ymAtualLocal();
+  const ym = ymAtual();
 
   for (const acao of acoes.slice(0, 8)) {
     const tipo = acao && acao.tipo;
@@ -537,9 +533,9 @@ async function executarAcoes(acoes) {
           continue;
         }
         const id = uuid();
-        const dataReset = acao.data_reset && String(acao.data_reset).length === 10
-          ? new Date(acao.data_reset + 'T00:00:00Z').toISOString()
-          : new Date().toISOString();
+        const dataReset = acao.data_reset && String(acao.data_reset).length >= 10
+          ? dataResetSql(String(acao.data_reset).slice(0, 10))
+          : dataResetSql(hojeStr());
         await run(
           `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, hora)
            VALUES ($1,$2,$3,$4,$5,$6,$7)`,
