@@ -54,11 +54,10 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    // Alguém tentou abrir uma segunda instância
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
   });
 }
 
@@ -121,19 +120,24 @@ function createWindow() {
     if (APP_ICON) { try { mainWindow.setIcon(APP_ICON); } catch (e) {} }
   }
 
-  // Abrir maximizado (janela grande por padrão)
+  // Abrir maximizado. Sem hide/show: no Windows isso deixava a janela invisível
+  // e o atalho da área de trabalho parecia morto (segunda instância só dava focus).
   mainWindow.once('ready-to-show', () => {
     aplicarAppDetails();
     mainWindow.maximize();
     mainWindow.show();
-    // Windows Taskbar às vezes cacheia o ícone padrão do Electron no primeiro paint.
-    // Hide+show força a taskbar rerender com o AUMID + ícone corretos.
-    setTimeout(() => {
-      aplicarAppDetails();
-      mainWindow.hide();
-      setTimeout(() => { mainWindow.show(); aplicarAppDetails(); }, 50);
-    }, 300);
+    mainWindow.focus();
+    setTimeout(aplicarAppDetails, 400);
   });
+
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isVisible()) {
+      aplicarAppDetails();
+      mainWindow.maximize();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  }, 4000);
 
   // DevTools desativado (pode abrir com Ctrl+Shift+I se precisar)
 
