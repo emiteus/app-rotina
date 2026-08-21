@@ -348,9 +348,58 @@ router.patch('/:id', async (req, res) => {
     await run(
       `UPDATE despesas_mes SET
         titulo = $1, valor_esperado = $2, dia_vencimento = $3, categoria = $4,
-        status = $5, pago_em = $6, confirmado_por = $7, tx_id = $8
+        status = $5, pago_em = $6::date, confirmado_por = $7, tx_id = $8
        WHERE id = $9`,
       [titulo, valor, dia, categoria, status, pago_em, confirmado_por, tx_id, req.params.id]
+    );
+    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    res.json(enriquecerStatus(updated, updated.ym));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST /api/despesas/:id/confirmar — atalho mais confiável no mobile/PWA
+router.post('/:id/confirmar', async (req, res) => {
+  try {
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    if (!row) return res.status(404).json({ erro: 'Despesa nao encontrada' });
+    await run(
+      `UPDATE despesas_mes SET
+        status = 'pago',
+        pago_em = $1::date,
+        confirmado_por = COALESCE($2, 'manual')
+       WHERE id = $3`,
+      [hojeStr(), req.body?.confirmado_por || 'manual', req.params.id]
+    );
+    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    res.json(enriquecerStatus(updated, updated.ym));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST /api/despesas/:id/ignorar
+router.post('/:id/ignorar', async (req, res) => {
+  try {
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    if (!row) return res.status(404).json({ erro: 'Despesa nao encontrada' });
+    await run(`UPDATE despesas_mes SET status = 'ignorado' WHERE id = $1`, [req.params.id]);
+    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    res.json(enriquecerStatus(updated, updated.ym));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST /api/despesas/:id/desvincular
+router.post('/:id/desvincular', async (req, res) => {
+  try {
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    if (!row) return res.status(404).json({ erro: 'Despesa nao encontrada' });
+    await run(
+      `UPDATE despesas_mes SET status = 'pendente', pago_em = NULL, confirmado_por = NULL, tx_id = NULL WHERE id = $1`,
+      [req.params.id]
     );
     const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
     res.json(enriquecerStatus(updated, updated.ym));

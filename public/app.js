@@ -1259,8 +1259,8 @@ function renderDespesasMes() {
         acoes = `<button type="button" onclick="desvincularDespesa('${d.id}')">Desvincular</button>`;
       } else if (d.status !== 'ignorado') {
         acoes = `
-          <button type="button" class="primary" onclick="confirmarDespesa('${d.id}')">Confirmar</button>
-          <button type="button" onclick="ignorarDespesa('${d.id}')">Ignorar</button>`;
+          <button type="button" class="primary" onclick="event.stopPropagation(); confirmarDespesa('${d.id}')">Confirmar</button>
+          <button type="button" onclick="event.stopPropagation(); ignorarDespesa('${d.id}')">Ignorar</button>`;
       } else {
         acoes = `<button type="button" onclick="desvincularDespesa('${d.id}')">Reabrir</button>`;
       }
@@ -1340,29 +1340,63 @@ async function confirmarDespesa(id) {
   const el = document.getElementById(`despesa-${id}`);
   if (el) el.classList.add('confirmando');
   try {
-    const res = await fetch(`/api/despesas/${id}`, {
-      method: 'PATCH',
+    let res = await fetch(`/api/despesas/${encodeURIComponent(id)}/confirmar`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ acao: 'confirmar', confirmado_por: 'manual' })
+      body: JSON.stringify({ confirmado_por: 'manual' })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.erro || 'Erro');
+    // Fallback pra PATCH antigo se o deploy ainda não tiver a rota nova
+    if (res.status === 404) {
+      res = await fetch(`/api/despesas/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'confirmar', confirmado_por: 'manual' })
+      });
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || `Erro ao confirmar (${res.status})`);
+    if (data.status !== 'pago') throw new Error('Servidor não marcou como pago');
     toast('Pagamento confirmado', 'success');
+    if (_despesasData && Array.isArray(_despesasData.despesas)) {
+      const i = _despesasData.despesas.findIndex(d => d.id === id);
+      if (i >= 0) _despesasData.despesas[i] = { ..._despesasData.despesas[i], ...data, status: 'pago' };
+      const r = { esperado: 0, pago: 0, pendente: 0, atrasado: 0, ignorado: 0 };
+      for (const d of _despesasData.despesas) {
+        const v = Number(d.valor_esperado) || 0;
+        if (d.status === 'ignorado') r.ignorado += v;
+        else {
+          r.esperado += v;
+          if (d.status === 'pago') r.pago += v;
+          else if (d.status === 'atrasado') r.atrasado += v;
+          else r.pendente += v;
+        }
+      }
+      _despesasData.resumo = r;
+      renderDespesasMes();
+    }
     await carregarDespesasMes();
   } catch (e) {
-    toast(e.message, 'error');
+    toast(e.message || 'Não deu pra confirmar', 'error');
     if (el) el.classList.remove('confirmando');
   }
 }
 
 async function desvincularDespesa(id) {
   try {
-    const res = await fetch(`/api/despesas/${id}`, {
-      method: 'PATCH',
+    let res = await fetch(`/api/despesas/${encodeURIComponent(id)}/desvincular`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ acao: 'desvincular' })
+      body: '{}'
     });
-    if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
+    if (res.status === 404) {
+      res = await fetch(`/api/despesas/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'desvincular' })
+      });
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || 'Erro');
     toast('Despesa reaberta', 'success');
     await carregarDespesasMes();
   } catch (e) {
@@ -1372,12 +1406,20 @@ async function desvincularDespesa(id) {
 
 async function ignorarDespesa(id) {
   try {
-    const res = await fetch(`/api/despesas/${id}`, {
-      method: 'PATCH',
+    let res = await fetch(`/api/despesas/${encodeURIComponent(id)}/ignorar`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ acao: 'ignorar' })
+      body: '{}'
     });
-    if (!res.ok) throw new Error((await res.json()).erro || 'Erro');
+    if (res.status === 404) {
+      res = await fetch(`/api/despesas/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'ignorar' })
+      });
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || 'Erro');
     await carregarDespesasMes();
   } catch (e) {
     toast(e.message, 'error');
@@ -3258,7 +3300,7 @@ async function carregarBancos() {
   aplicarSaldosReais();
 }
 
-// Sobrescreve o "Saldo Total" (dashboard + financeiro) com o saldo REAL em conta
+// Sobrescreve o "Saldo Total" / "Em conta" com o saldo REAL em conta (Open Finance)
 function aplicarSaldosReais() {
   if (!_ofSaldos || !_ofSaldos.contas || _ofSaldos.contas.length === 0) return;
   const real = formatBRL(_ofSaldos.totalBanco);
@@ -3266,6 +3308,8 @@ function aplicarSaldosReais() {
   const fin = document.getElementById('saldo-total');
   if (dash) dash.textContent = real;
   if (fin) fin.textContent = real;
+  const labelFin = document.querySelector('.saldo-box .box-label');
+  if (labelFin) labelFin.textContent = 'Em conta';
 }
 
 function renderBancos() {
@@ -4005,14 +4049,14 @@ document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
 // =====================
 async function carregarTransacoes() {
   try {
-    const res = await fetch('/api/financeiro');
+    const res = await fetch('/api/financeiro?dias=30');
     const data = await res.json();
     allTransactions = data.transacoes || [];
 
     const saldoEl = document.getElementById('saldo-total');
     const entEl = document.getElementById('total-entradas');
     const saiEl = document.getElementById('total-saidas');
-    if (saldoEl) saldoEl.textContent = formatBRL(data.saldo);
+    // Entradas/saídas: sempre os últimos 30 dias (bate com o label da UI)
     if (entEl) entEl.textContent = formatBRL(data.entradas);
     if (saiEl) saiEl.textContent = formatBRL(data.saidas);
 
@@ -4024,11 +4068,17 @@ async function carregarTransacoes() {
       sobraEl.classList.toggle('negativo', sobra < 0);
     }
 
+    // "Em conta": prioriza saldo real do Open Finance; senão, sobra 30d com aviso no label
+    if (!_ofSaldos || !_ofSaldos.contas || !_ofSaldos.contas.length) {
+      if (saldoEl) saldoEl.textContent = formatBRL(data.saldo);
+    }
+
     renderTransacoes();
     verificarAnaliseDiaria();
     carregarAlertas();
     atualizarDashboard();
     renderFinDonut();
+    aplicarSaldosReais();
   } catch (err) {
     console.error('Erro transações:', err);
   }
@@ -5067,16 +5117,28 @@ function atualizarDashboard() {
   const pct = total > 0 ? (concluidas / total) * 100 : 0;
   document.getElementById('dash-tarefas-bar').style.width = `${pct}%`;
 
-  // Financeiro
+  // Financeiro — entradas/saídas dos últimos 30 dias (não o histórico inteiro)
+  const corte30 = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toLocaleDateString('en-CA');
+  })();
   let entradas = 0, saidas = 0;
   allTransactions.forEach(t => {
-    if (t.tipo === 'entrada') entradas += parseFloat(t.valor);
-    else saidas += parseFloat(t.valor);
+    const dia = (t.data || '').toString().slice(0, 10);
+    if (dia && dia < corte30) return;
+    if (t.tipo === 'entrada') entradas += parseFloat(t.valor) || 0;
+    else saidas += parseFloat(t.valor) || 0;
   });
-  const saldo = entradas - saidas;
-  document.getElementById('dash-saldo').textContent = formatBRL(saldo);
-  document.getElementById('dash-entradas').textContent = formatBRL(entradas).replace(/^R\$\s*/, '');
-  document.getElementById('dash-saidas').textContent = formatBRL(saidas).replace(/^R\$\s*/, '');
+  const dashSaldo = document.getElementById('dash-saldo');
+  const dashEnt = document.getElementById('dash-entradas');
+  const dashSai = document.getElementById('dash-saidas');
+  // Só preenche saldo do dashboard se ainda não tiver saldo real de banco
+  if (dashSaldo && !(_ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length)) {
+    dashSaldo.textContent = formatBRL(entradas - saidas);
+  }
+  if (dashEnt) dashEnt.textContent = formatBRL(entradas).replace(/^R\$\s*/, '');
+  if (dashSai) dashSai.textContent = formatBRL(saidas).replace(/^R\$\s*/, '');
 
   // Deltas dos KPIs (Kirvano-style)
   _atualizarDeltasKPI(concluidas, total);

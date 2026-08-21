@@ -17,28 +17,33 @@ function emitFinanceiroUpdate(tipo, dados) {
   }
 }
 
-// GET todas transacoes + saldo
+// GET todas transacoes + totais (entradas/saídas = últimos 30 dias)
 router.get('/', async (req, res) => {
   try {
+    const dias = Math.min(Math.max(Number(req.query.dias) || 30, 1), 365);
     const transacoes = await all(`
       SELECT * FROM financeiro
       ORDER BY data DESC, criado_em DESC
     `);
 
-    const saldoRow = await get(`
+    const periodo = await get(`
       SELECT
         COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as entradas,
         COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as saidas
       FROM financeiro
-    `);
+      WHERE data >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
+    `, [dias]);
 
-    const saldo = (saldoRow.entradas || 0) - (saldoRow.saidas || 0);
+    const entradas = Number(periodo?.entradas || 0);
+    const saidas = Number(periodo?.saidas || 0);
 
     res.json({
       transacoes,
-      saldo,
-      entradas: saldoRow.entradas || 0,
-      saidas: saldoRow.saidas || 0
+      dias,
+      entradas,
+      saidas,
+      saldo: entradas - saidas,
+      sobra: entradas - saidas
     });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -73,17 +78,20 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET saldo atual
+// GET saldo do período (padrão: 30 dias)
 router.get('/saldo', async (req, res) => {
   try {
+    const dias = Math.min(Math.max(Number(req.query.dias) || 30, 1), 365);
     const row = await get(`
       SELECT
         COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as entradas,
         COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as saidas
       FROM financeiro
-    `);
-    const saldo = (row.entradas || 0) - (row.saidas || 0);
-    res.json({ saldo, entradas: row.entradas || 0, saidas: row.saidas || 0 });
+      WHERE data >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
+    `, [dias]);
+    const entradas = Number(row?.entradas || 0);
+    const saidas = Number(row?.saidas || 0);
+    res.json({ saldo: entradas - saidas, entradas, saidas, dias });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

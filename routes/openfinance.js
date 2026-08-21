@@ -117,7 +117,9 @@ router.get('/saldos', async (req, res) => {
     let saldoEmMaisAntigo = null;
     contas.forEach(c => {
       const v = Number(c.saldo) || 0;
-      if (c.tipo === 'CREDIT') totalCredito += v; else totalBanco += v;
+      // Pluggy pode mandar fatura de cartão como valor negativo; trata como dívida positiva
+      if (c.tipo === 'CREDIT') totalCredito += Math.abs(v);
+      else totalBanco += v;
       if (c.saldo_em && (!saldoEmMaisAntigo || new Date(c.saldo_em) < new Date(saldoEmMaisAntigo))) {
         saldoEmMaisAntigo = c.saldo_em;
       }
@@ -167,7 +169,7 @@ router.get('/contas', async (req, res) => {
       let saldoBanco = 0, saldoCredito = 0, entradasMes = 0, saidasMes = 0;
       accs.forEach(a => {
         const v = Number(a.saldo) || 0;
-        if (a.tipo === 'CREDIT') saldoCredito += v; else saldoBanco += v;
+        if (a.tipo === 'CREDIT') saldoCredito += Math.abs(v); else saldoBanco += v;
         const f = fluxoPorConta[a.account_id] || { entradas: 0, saidas: 0 };
         entradasMes += f.entradas; saidasMes += f.saidas;
       });
