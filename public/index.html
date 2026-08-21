@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=43">
+  <link rel="stylesheet" href="style.css?v=45">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -783,7 +783,7 @@
     <div class="assist-header">
       <div>
         <h3>Assistente</h3>
-        <span>Finanças, tarefas e pendências</span>
+        <span>Pergunta qualquer coisa dos seus dados</span>
       </div>
       <button type="button" class="assist-close" onclick="toggleAssistente()" aria-label="Fechar">×</button>
     </div>
@@ -794,8 +794,10 @@
       <button type="button" onclick="checkinHabitoUI('Sono')">Sono</button>
     </div>
     <form class="assist-form" id="assist-form" onsubmit="enviarAssistente(event)">
-      <input id="assist-input" type="text" placeholder="Ex: registrar aluguel de 1800 no dia 10" autocomplete="off" maxlength="800" />
-      <button type="submit" id="assist-send">Enviar</button>
+      <input id="assist-input" type="text" placeholder="Ex: quantas vezes fui à academia essa semana?" autocomplete="off" maxlength="800" />
+      <button type="submit" id="assist-send" aria-label="Enviar" title="Enviar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </button>
     </form>
   </div>
 
@@ -828,7 +830,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=43"></script>
+  <script src="app.js?v=45"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

@@ -74,6 +74,7 @@ function createWindow() {
       preload: path.join(__dirname, 'electron-preload.js')
     },
     icon: APP_ICON,
+    backgroundColor: '#09090B',
     show: false // Não mostrar até estar pronto
   });
   mainWindow.setMenuBarVisibility(false);
@@ -97,12 +98,48 @@ function createWindow() {
   // Dev: localhost com server.js rodando local.
   // Prod (empacotado): aponta pra Railway — sem server embutido, sem segredo no .exe.
   const startUrl = isDev ? 'http://localhost:3000' : PROD_URL;
-  mainWindow.loadURL(startUrl);
+  let paginaCarregou = false;
 
-  // Escala global menor (deixa as informações mais compactas)
-  mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow.webContents.setZoomFactor(0.95);
+  function urlOffline(motivo) {
+    const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>App Rotina</title></head>
+<body style="margin:0;background:#09090B;color:#fafafa;font-family:'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;">
+  <div style="max-width:440px;text-align:center;padding:32px;">
+    <h1 style="font-size:20px;margin:0 0 10px;">Sem conexão com o servidor</h1>
+    <p style="color:#a1a1aa;line-height:1.55;margin:0 0 24px;">O app abriu, mas este PC não alcança o servidor agora. A internet está ok — quem não responde é o endereço do App Rotina.</p>
+    <p style="color:#71717a;font-size:12px;margin:0 0 24px;">${motivo}</p>
+    <button onclick="location.href='${PROD_URL}'" style="background:#7c3aed;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;">Tentar de novo</button>
+  </div>
+</body></html>`;
+    return 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+  }
+
+  function mostrarOffline(motivo) {
+    if (!mainWindow || paginaCarregou) return;
+    const atual = mainWindow.webContents.getURL() || '';
+    if (atual.startsWith('http')) {
+      paginaCarregou = true;
+      return;
+    }
+    log.error('[load] offline', motivo);
+    mainWindow.loadURL(urlOffline(motivo));
+    mostrarJanela();
+  }
+
+  mainWindow.webContents.on('did-fail-load', (event, code, desc, url, isMainFrame) => {
+    log.error('[load] fail', code, desc, url, 'main=', isMainFrame);
+    if (isMainFrame && code !== -3) mostrarOffline(desc || String(code));
   });
+  const loadTimeout = setTimeout(() => mostrarOffline('Tempo esgotado ao conectar.'), 20000);
+  mainWindow.webContents.on('did-finish-load', () => {
+    const url = mainWindow.webContents.getURL();
+    log.info('[load] ok', url);
+    if (url.startsWith('http')) {
+      paginaCarregou = true;
+      clearTimeout(loadTimeout);
+      mainWindow.webContents.setZoomFactor(0.95);
+    }
+  });
+  mainWindow.loadURL(startUrl);
 
   // Windows: aplica AUMID+ícone nas propriedades da JANELA em cada momento crítico.
   // Uma chamada só nem sempre pega — Windows Explorer às vezes já cacheou.
@@ -120,23 +157,24 @@ function createWindow() {
     if (APP_ICON) { try { mainWindow.setIcon(APP_ICON); } catch (e) {} }
   }
 
-  // Abrir maximizado. Sem hide/show: no Windows isso deixava a janela invisível
-  // e o atalho da área de trabalho parecia morto (segunda instância só dava focus).
-  mainWindow.once('ready-to-show', () => {
+  // show() ANTES de maximize(): no Windows, maximize com a janela oculta
+  // deixa o Chromium sem pintar (tela branca). hide/show também quebrava o atalho.
+  function mostrarJanela() {
+    if (!mainWindow) return;
     aplicarAppDetails();
-    mainWindow.maximize();
-    mainWindow.show();
+    if (!mainWindow.isVisible()) mainWindow.show();
     mainWindow.focus();
+    if (!mainWindow.isMaximized()) mainWindow.maximize();
+    try { mainWindow.webContents.invalidate(); } catch (e) {}
+  }
+
+  mainWindow.once('ready-to-show', () => {
+    mostrarJanela();
     setTimeout(aplicarAppDetails, 400);
   });
 
   setTimeout(() => {
-    if (mainWindow && !mainWindow.isVisible()) {
-      aplicarAppDetails();
-      mainWindow.maximize();
-      mainWindow.show();
-      mainWindow.focus();
-    }
+    if (mainWindow && !mainWindow.isVisible()) mostrarJanela();
   }, 4000);
 
   // DevTools desativado (pode abrir com Ctrl+Shift+I se precisar)
@@ -154,6 +192,11 @@ app.on('ready', async () => {
   // Limpa cache HTTP do Chromium interno pra garantir que CSS/JS novos entrem.
   // Sem isso, o Electron reusa disk cache mesmo quando o servidor manda arquivo novo.
   try { await session.defaultSession.clearCache(); } catch (e) {}
+  try {
+    await session.defaultSession.clearStorageData({
+      storages: ['serviceworkers', 'cachestorage']
+    });
+  } catch (e) {}
   createWindow();
   // Auto-update: em produção, checa GitHub Releases a cada boot.
   if (!isDev) {

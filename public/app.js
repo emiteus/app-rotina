@@ -5290,12 +5290,14 @@ function _renderHabitosCard(d) {
   }
   el.innerHTML = `<div class="habit-list">${lista.map(h => {
     const feito = !!(h.hoje && h.hoje.concluida);
+    const semana = Number((h.semana && h.semana.concluidas) || 0);
     const mes = Number((h.mes && h.mes.concluidas) || 0);
     const titulo = escapeHtml(h.titulo);
     const tituloAttr = String(h.titulo || '').replace(/'/g, "\\'");
+    const meta = feito ? 'hoje ✓' : `${semana} na semana · ${mes} no mês`;
     return `<button type="button" class="habit-row ${feito ? 'done' : ''}" onclick="event.stopPropagation(); checkinHabitoUI('${tituloAttr}', { fromAssist: false })">
       <span class="habit-name">${titulo}</span>
-      <span class="habit-meta">${feito ? 'hoje ✓' : mes + ' no mês'}</span>
+      <span class="habit-meta">${meta}</span>
     </button>`;
   }).join('')}</div>`;
 }
@@ -6187,12 +6189,14 @@ let _assistBusy = false;
 function toggleAssistente() {
   _assistOpen = !_assistOpen;
   const panel = document.getElementById('assist-panel');
+  const fab = document.getElementById('assist-fab');
   if (!panel) return;
   panel.classList.toggle('open', _assistOpen);
+  if (fab) fab.classList.toggle('hidden', _assistOpen);
   if (_assistOpen) {
     const msgs = document.getElementById('assist-msgs');
     if (msgs && msgs.childElementCount === 0) {
-      assistAddBubble('bot', 'Pode perguntar da sua saúde financeira, das tarefas, ou me pedir pra registrar uma pendência — tipo “tenho um boleto de 240 no dia 18”.');
+      assistAddBubble('bot', 'Pergunta qualquer coisa dos seus dados: tarefas, hábitos, gastos, despesas, metas, agenda… Ou pede pra registrar — tipo “boleto de 240 no dia 18”.');
       verificarStatusIA();
     }
     setTimeout(() => document.getElementById('assist-input')?.focus(), 50);
@@ -6209,14 +6213,43 @@ async function verificarStatusIA() {
   } catch (e) { /* silencioso */ }
 }
 
+function assistSanitizeTexto(text) {
+  let t = String(text || '').trim();
+  if (!t) return 'Ok.';
+  // Se a API vazou JSON cru, extrai só a mensagem
+  if (/^\s*\{/.test(t) && /"resposta"\s*:/.test(t)) {
+    const m = t.match(/"resposta"\s*:\s*"((?:\\.|[^"\\])*)"/);
+    if (m) {
+      try { t = JSON.parse(`"${m[1]}"`); }
+      catch (e) { t = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'); }
+    } else {
+      const parcial = t.match(/"resposta"\s*:\s*"((?:\\.|[^"\\])*)/);
+      if (parcial) t = parcial[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+    }
+  }
+  return String(t).trim() || 'Ok.';
+}
+
+function assistFormatHtml(text) {
+  const safe = escapeHtml(assistSanitizeTexto(text));
+  return safe
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+
 function assistAddBubble(kind, text) {
   const box = document.getElementById('assist-msgs');
   if (!box) return;
   const el = document.createElement('div');
   el.className = 'assist-bubble ' + kind;
-  el.textContent = text;
+  if (kind.includes('bot') || kind === 'acao') {
+    el.innerHTML = assistFormatHtml(text);
+  } else {
+    el.textContent = text;
+  }
   box.appendChild(el);
   box.scrollTop = box.scrollHeight;
+  return el;
 }
 
 async function enviarAssistente(e) {
@@ -6231,9 +6264,7 @@ async function enviarAssistente(e) {
   input.value = '';
   _assistBusy = true;
   if (btn) btn.disabled = true;
-  assistAddBubble('bot', 'Pensando...');
-  const box = document.getElementById('assist-msgs');
-  const thinking = box && box.lastElementChild;
+  const thinking = assistAddBubble('bot thinking', 'Pensando…');
 
   try {
     const res = await fetch('/api/ia/chat', {
@@ -6245,9 +6276,10 @@ async function enviarAssistente(e) {
     if (thinking) thinking.remove();
     if (!res.ok) throw new Error(data.erro || 'Falha no assistente');
 
-    assistAddBubble('bot', data.resposta || 'Ok.');
+    const resposta = assistSanitizeTexto(data.resposta || 'Ok.');
+    assistAddBubble('bot', resposta);
     _assistHist.push({ role: 'user', content: msg });
-    _assistHist.push({ role: 'assistant', content: data.resposta || '' });
+    _assistHist.push({ role: 'assistant', content: resposta });
     if (_assistHist.length > 12) _assistHist = _assistHist.slice(-12);
 
     const feitos = (data.acoes || []).filter(a => a.ok);

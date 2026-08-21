@@ -3,8 +3,9 @@ const axios = require('axios');
 const { v4: uuid } = require('uuid');
 const { all, run, get } = require('../lib/db');
 const { checkinHabito, listarHabitos } = require('../lib/habitos');
-const { hojeStr, ymAtual, addDias, dataResetSql } = require('../lib/datas');
+const { hojeStr, ymAtual, addDias, dataResetSql, horaAtual, diaSemana } = require('../lib/datas');
 const { persistirHistoricoDia } = require('../lib/historico');
+const plano = require('../lib/plano-financeiro');
 
 const router = express.Router();
 
@@ -125,10 +126,52 @@ async function chamarIA({ system, user, historico, maxTokens = 300, jsonMode = f
   return { texto, usage: resp.data?.usage, provider: 'anthropic', model: ANTHROPIC_MODEL };
 }
 
-// Parse JSON tolerante (aceita ```json ... ``` markdown wrapper)
+// Parse JSON tolerante (aceita ```json ... ``` e JSON truncado com "resposta")
+function limparJsonIA(txt) {
+  return String(txt || '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/g, '')
+    .trim();
+}
+
+function extrairCampoResposta(s) {
+  const m = s.match(/"resposta"\s*:\s*"((?:\\.|[^"\\])*)"/);
+  if (m) {
+    try { return JSON.parse(`"${m[1]}"`); } catch (e) { return m[1]; }
+  }
+  // Truncado no meio: {"resposta": "texto cortado...
+  const parcial = s.match(/"resposta"\s*:\s*"((?:\\.|[^"\\])*)/);
+  if (parcial) {
+    return parcial[1]
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+      .trim();
+  }
+  return null;
+}
+
 function parseJSON(txt) {
-  const s = String(txt || '').replace(/^```json\s*|\s*```$/g, '').trim();
-  return JSON.parse(s);
+  const s = limparJsonIA(txt);
+  try {
+    return JSON.parse(s);
+  } catch (e1) {
+    const resposta = extrairCampoResposta(s);
+    if (resposta) return { resposta, acoes: [] };
+    throw e1;
+  }
+}
+
+function textoAssistenteSeguro(textoBruto, parsed) {
+  if (parsed && parsed.resposta != null) {
+    const r = String(parsed.resposta).trim();
+    if (r && !/^\s*\{/.test(r)) return r;
+  }
+  const s = limparJsonIA(textoBruto);
+  const extraido = extrairCampoResposta(s);
+  if (extraido) return extraido;
+  if (s && !/^\s*\{/.test(s)) return s;
+  return 'Beleza — me conta mais um detalhe pra eu agir.';
 }
 
 router.get('/status', (req, res) => {
@@ -361,68 +404,193 @@ function brlNum(v) {
   return Math.round(Number(v || 0) * 100) / 100;
 }
 
+function mapTarefa(t) {
+  return {
+    titulo: t.titulo,
+    concluida: !!t.concluida,
+    prioridade: t.prioridade || 'media',
+    hora: t.hora || null,
+    categoria: t.categoria || null,
+    data: t.data_reset ? String(t.data_reset).slice(0, 10) : null
+  };
+}
+
 async function snapshotAssistente() {
   const hoje = hojeStr();
   const ym = ymAtual();
+  const ontem = addDias(-1);
+  const amanha = addDias(1);
+  const inicio7 = addDias(-7);
   const inicio30 = addDias(-30);
+  const fim14 = addDias(14);
+  const diasSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
   const [
     tarefasHoje,
-    statsTarefas,
+    tarefasOntem,
+    tarefasAmanha,
+    tarefasProx,
+    tarefasAtrasadas,
+    stats7,
+    stats30,
+    fin7,
     fin30,
+    finMes,
+    txsRecentes,
+    gastosCat,
     despesas,
     metas,
     alarmes,
-    habitosLista
+    habitosLista,
+    recorrentes,
+    eventos,
+    historico,
+    saldos,
+    dasLista
   ] = await Promise.all([
     all(
-      `SELECT titulo, concluida, prioridade, hora
+      `SELECT titulo, concluida, prioridade, hora, categoria, data_reset
        FROM tasks WHERE data_reset::date = $1
-       ORDER BY concluida, prioridade, hora NULLS LAST
-       LIMIT 40`,
+       ORDER BY concluida, prioridade, hora NULLS LAST LIMIT 50`,
       [hoje]
-    ),
+    ).catch(() => []),
     all(
-      `SELECT
-         COUNT(*)::int AS total,
-         SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
+      `SELECT titulo, concluida, prioridade, hora, categoria
+       FROM tasks WHERE data_reset::date = $1
+       ORDER BY concluida, prioridade LIMIT 30`,
+      [ontem]
+    ).catch(() => []),
+    all(
+      `SELECT titulo, concluida, prioridade, hora, categoria
+       FROM tasks WHERE data_reset::date = $1
+       ORDER BY prioridade, hora NULLS LAST LIMIT 30`,
+      [amanha]
+    ).catch(() => []),
+    all(
+      `SELECT titulo, concluida, prioridade, hora, categoria, data_reset
        FROM tasks
-       WHERE data_reset IS NOT NULL
-         AND DATE(data_reset) >= CURRENT_DATE - INTERVAL '30 days'`
-    ),
+       WHERE data_reset::date > $1::date AND data_reset::date <= $2::date
+       ORDER BY data_reset, prioridade LIMIT 40`,
+      [hoje, fim14]
+    ).catch(() => []),
     all(
+      `SELECT titulo, prioridade, hora, data_reset
+       FROM tasks
+       WHERE concluida = false
+         AND data_reset IS NOT NULL
+         AND data_reset::date < $1::date
+       ORDER BY data_reset DESC LIMIT 20`,
+      [hoje]
+    ).catch(() => []),
+    get(
+      `SELECT COUNT(*)::int AS total,
+              SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
+       FROM tasks
+       WHERE data_reset IS NOT NULL AND DATE(data_reset) >= $1::date`,
+      [inicio7]
+    ).catch(() => ({ total: 0, concluidas: 0 })),
+    get(
+      `SELECT COUNT(*)::int AS total,
+              SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
+       FROM tasks
+       WHERE data_reset IS NOT NULL AND DATE(data_reset) >= $1::date`,
+      [inicio30]
+    ).catch(() => ({ total: 0, concluidas: 0 })),
+    get(
       `SELECT
          COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
          COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas
-       FROM financeiro
-       WHERE data >= $1`,
+       FROM financeiro WHERE data::date >= $1::date`,
+      [inicio7]
+    ).catch(() => ({ entradas: 0, saidas: 0 })),
+    get(
+      `SELECT
+         COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
+         COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas
+       FROM financeiro WHERE data::date >= $1::date`,
       [inicio30]
-    ),
+    ).catch(() => ({ entradas: 0, saidas: 0 })),
+    get(
+      `SELECT
+         COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
+         COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas
+       FROM financeiro WHERE TO_CHAR(data, 'YYYY-MM') = $1`,
+      [ym]
+    ).catch(() => ({ entradas: 0, saidas: 0 })),
     all(
-      `SELECT titulo, valor_esperado, dia_vencimento, categoria, status
+      `SELECT descricao, valor, tipo, categoria, data, fonte
+       FROM financeiro
+       ORDER BY data DESC
+       LIMIT 25`
+    ).catch(() => []),
+    all(
+      `SELECT COALESCE(NULLIF(categoria,''),'outros') AS categoria,
+              SUM(valor)::float AS total, COUNT(*)::int AS qtd
+       FROM financeiro
+       WHERE tipo = 'saida' AND data::date >= $1::date
+       GROUP BY 1 ORDER BY total DESC LIMIT 12`,
+      [inicio30]
+    ).catch(() => []),
+    all(
+      `SELECT titulo, valor_esperado, dia_vencimento, categoria, status, pago_em, confirmado_por
        FROM despesas_mes WHERE ym = $1
-       ORDER BY CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 ELSE 2 END, dia_vencimento NULLS LAST
-       LIMIT 40`,
+       ORDER BY CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'pago' THEN 2 ELSE 3 END,
+                dia_vencimento NULLS LAST
+       LIMIT 60`,
       [ym]
     ).catch(() => []),
     all(
       `SELECT m.nome, m.valor_total, m.prazo, m.concluida,
               COALESCE((SELECT SUM(valor) FROM metas_depositos d WHERE d.meta_id = m.id),0) AS guardado
        FROM metas m
-       WHERE m.concluida = false
-       ORDER BY m.prazo NULLS LAST
-       LIMIT 15`
+       ORDER BY m.concluida ASC, m.prazo NULLS LAST
+       LIMIT 20`
     ).catch(() => []),
-    all(`SELECT hora, mensagem FROM alarmes WHERE ativo = true ORDER BY hora LIMIT 10`).catch(() => []),
-    listarHabitos().catch(() => ({ habitos: [] }))
+    all(`SELECT hora, mensagem, ativo FROM alarmes ORDER BY ativo DESC, hora LIMIT 20`).catch(() => []),
+    listarHabitos().catch(() => ({ habitos: [] })),
+    all(
+      `SELECT titulo, prioridade, categoria, frequencia, dias_semana, ativa
+       FROM tarefas_recorrentes WHERE ativa = true
+       ORDER BY titulo LIMIT 30`
+    ).catch(() => []),
+    all(
+      `SELECT titulo, tipo, data, hora, cor
+       FROM eventos
+       WHERE data::date >= $1::date AND data::date <= $2::date
+       ORDER BY data, hora NULLS LAST
+       LIMIT 25`,
+      [hoje, fim14]
+    ).catch(() => []),
+    all(
+      `SELECT data, total, concluidas
+       FROM task_historico
+       WHERE data::date >= $1::date
+       ORDER BY data DESC LIMIT 21`,
+      [inicio30]
+    ).catch(() => []),
+    all(
+      `SELECT a.nome, a.tipo, a.saldo, i.pessoa, i.connector_nome
+       FROM openfinance_accounts a
+       JOIN openfinance_items i ON i.item_id = a.item_id
+       ORDER BY i.pessoa, a.tipo, a.nome
+       LIMIT 20`
+    ).catch(() => []),
+    all(
+      `SELECT ym, valor, pago, data_pagamento
+       FROM mei_das
+       ORDER BY ym DESC
+       LIMIT 6`
+    ).catch(() => [])
   ]);
 
   const tHoje = tarefasHoje || [];
-  const st = statsTarefas[0] || { total: 0, concluidas: 0 };
-  const f = fin30[0] || { entradas: 0, saidas: 0 };
-  const entradas = brlNum(f.entradas);
-  const saidas = brlNum(f.saidas);
+  const st7 = stats7 || { total: 0, concluidas: 0 };
+  const st30 = stats30 || { total: 0, concluidas: 0 };
+  const f7 = fin7 || { entradas: 0, saidas: 0 };
+  const f30 = fin30 || { entradas: 0, saidas: 0 };
+  const fMes = finMes || { entradas: 0, saidas: 0 };
   const desp = despesas || [];
+
   const resumoDesp = desp.reduce((acc, d) => {
     const v = brlNum(d.valor_esperado);
     acc.esperado += v;
@@ -432,31 +600,90 @@ async function snapshotAssistente() {
     return acc;
   }, { esperado: 0, pago: 0, pendente: 0, atrasado: 0 });
 
-  const livre30 = entradas - saidas;
-  const taxa30 = st.total > 0 ? Math.round((st.concluidas / st.total) * 100) : 0;
+  const taxa = (c, t) => (t > 0 ? Math.round((c / t) * 100) : 0);
+  let streak = 0;
+  for (const h of (historico || [])) {
+    const total = Number(h.total || 0);
+    const conc = Number(h.concluidas || 0);
+    if (total > 0 && conc >= total) streak++;
+    else break;
+  }
+
+  const comprometido = brlNum(plano.comprometidoMensal());
+  const rendaPiso = brlNum(plano.rendaPiso);
 
   return {
-    hoje,
-    mes: ym,
-    tarefas_hoje: {
-      total: tHoje.length,
-      concluidas: tHoje.filter(t => t.concluida).length,
-      pendentes: tHoje.filter(t => !t.concluida).map(t => ({
+    agora: {
+      hoje,
+      hora: horaAtual(),
+      dia_semana: diasSemana[diaSemana()] || '',
+      mes: ym
+    },
+    tarefas: {
+      hoje: {
+        total: tHoje.length,
+        concluidas: tHoje.filter(t => t.concluida).length,
+        itens: tHoje.map(mapTarefa)
+      },
+      ontem: {
+        total: (tarefasOntem || []).length,
+        concluidas: (tarefasOntem || []).filter(t => t.concluida).length,
+        pendentes: (tarefasOntem || []).filter(t => !t.concluida).map(t => t.titulo)
+      },
+      amanha: (tarefasAmanha || []).map(mapTarefa),
+      proximos_dias: (tarefasProx || []).map(mapTarefa),
+      atrasadas: (tarefasAtrasadas || []).map(t => ({
         titulo: t.titulo,
-        prioridade: t.prioridade,
-        hora: t.hora
+        data: String(t.data_reset).slice(0, 10),
+        prioridade: t.prioridade
+      })),
+      stats_7d: { total: st7.total || 0, concluidas: st7.concluidas || 0, taxa: taxa(st7.concluidas, st7.total) },
+      stats_30d: { total: st30.total || 0, concluidas: st30.concluidas || 0, taxa: taxa(st30.concluidas, st30.total) },
+      streak_dias_completos: streak
+    },
+    recorrentes: (recorrentes || []).map(r => ({
+      titulo: r.titulo,
+      frequencia: r.frequencia,
+      dias_semana: r.dias_semana,
+      prioridade: r.prioridade
+    })),
+    financeiro: {
+      d7: {
+        entradas: brlNum(f7.entradas),
+        saidas: brlNum(f7.saidas),
+        sobra: brlNum(f7.entradas - f7.saidas)
+      },
+      d30: {
+        entradas: brlNum(f30.entradas),
+        saidas: brlNum(f30.saidas),
+        sobra: brlNum(f30.entradas - f30.saidas),
+        gastando_mais_que_ganha: Number(f30.saidas) > Number(f30.entradas)
+      },
+      mes_atual: {
+        entradas: brlNum(fMes.entradas),
+        saidas: brlNum(fMes.saidas),
+        sobra: brlNum(fMes.entradas - fMes.saidas)
+      },
+      ultimas_transacoes: (txsRecentes || []).map(t => ({
+        desc: String(t.descricao || '').slice(0, 60),
+        valor: brlNum(t.valor),
+        tipo: t.tipo,
+        categoria: t.categoria || 'outros',
+        data: t.data ? String(t.data).slice(0, 10) : null,
+        fonte: t.fonte || null
+      })),
+      gastos_por_categoria_30d: (gastosCat || []).map(c => ({
+        categoria: c.categoria,
+        total: brlNum(c.total),
+        qtd: c.qtd
+      })),
+      saldos_contas: (saldos || []).map(s => ({
+        nome: s.nome,
+        tipo: s.tipo,
+        pessoa: s.pessoa,
+        banco: s.connector_nome,
+        saldo: brlNum(s.saldo)
       }))
-    },
-    produtividade_30d: {
-      total: st.total,
-      concluidas: st.concluidas,
-      taxa: taxa30
-    },
-    financeiro_30d: {
-      entradas,
-      saidas,
-      sobra: brlNum(livre30),
-      gastando_mais_que_ganha: saidas > entradas
     },
     despesas_mes: {
       resumo: {
@@ -470,23 +697,66 @@ async function snapshotAssistente() {
         valor: brlNum(d.valor_esperado),
         dia: d.dia_vencimento,
         status: d.status,
-        categoria: d.categoria
+        categoria: d.categoria,
+        pago_em: d.pago_em ? String(d.pago_em).slice(0, 10) : null
+      }))
+    },
+    plano_financeiro: {
+      renda_piso: rendaPiso,
+      renda_fontes: (plano.rendaFixa || []).map(r => ({ nome: r.nome, valor: r.valor, dia: r.dia })),
+      comprometido_mensal: comprometido,
+      sobra_estimada_piso: brlNum(rendaPiso - comprometido),
+      emprestimos: (plano.emprestimos || []).map(e => ({
+        titulo: e.titulo,
+        parcela: e.valor,
+        dia: e.dia,
+        pagas: e.pagas,
+        total: e.total
       }))
     },
     metas: (metas || []).map(m => ({
       nome: m.nome,
       total: brlNum(m.valor_total),
       guardado: brlNum(m.guardado),
-      prazo: m.prazo
+      falta: brlNum(Number(m.valor_total) - Number(m.guardado)),
+      prazo: m.prazo,
+      concluida: !!m.concluida
     })),
-    alarmes: (alarmes || []).map(a => ({ hora: a.hora, msg: a.mensagem })),
-    habitos_hoje: ((habitosLista && habitosLista.habitos) || []).map((h) => ({
+    alarmes: (alarmes || []).map(a => ({
+      hora: a.hora,
+      msg: a.mensagem,
+      ativo: a.ativo !== false
+    })),
+    eventos_proximos: (eventos || []).map(e => ({
+      titulo: e.titulo,
+      tipo: e.tipo,
+      data: e.data ? String(e.data).slice(0, 10) : null,
+      hora: e.hora || null
+    })),
+    habitos: ((habitosLista && habitosLista.habitos) || []).map((h) => ({
       titulo: h.titulo,
       feito_hoje: !!(h.hoje && h.hoje.concluida),
-      mes_concluidas: (h.mes && h.mes.concluidas) || 0,
-      mes_total: (h.mes && h.mes.total) || 0
+      semana_concluidas: (h.semana && h.semana.concluidas) || 0,
+      mes_concluidas: (h.mes && h.mes.concluidas) || 0
     })),
-    nota_habitos: 'Hábitos padrão: Academia, Beber água, Sono. Use marcar_habito com esses títulos.'
+    historico_tarefas_recentes: (historico || []).slice(0, 14).map(h => ({
+      data: String(h.data).slice(0, 10),
+      total: h.total,
+      concluidas: h.concluidas
+    })),
+    mei_das: (dasLista || []).map(d => ({
+      ym: d.ym,
+      valor: d.valor != null ? brlNum(d.valor) : null,
+      pago: !!d.pago,
+      data_pagamento: d.data_pagamento ? String(d.data_pagamento).slice(0, 10) : null
+    })),
+    guia_periodos: {
+      hoje,
+      ontem,
+      amanha,
+      semana: 'habitos[].semana_concluidas e tarefas.stats_7d',
+      mes: 'despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas'
+    }
   };
 }
 
@@ -571,22 +841,28 @@ router.post('/chat', async (req, res) => {
 
   try {
     const snap = await snapshotAssistente();
-    const livre = snap.financeiro_30d.sobra;
-    const systemPrompt = `Você é o assistente pessoal do App Rotina. Fala português brasileiro, direto, sem enrolação. Trata o usuário por "você".
+    const systemPrompt = `Você é o assistente pessoal do App Rotina. Português brasileiro, direto, tom de amigo útil. Trata o usuário por "você".
 
-Contexto atual (não invente números fora disso):
+Missão: responder QUALQUER pergunta sobre o app e os dados do usuário que estiverem no JSON de contexto abaixo — tarefas, hábitos, financeiro, despesas do mês, metas, alarmes, eventos/calendário, recorrentes, saldos, plano financeiro, MEI/DAS, histórico e streak. Se a informação existir no contexto, use-a. Se não existir no contexto, diga que não tem esse dado no app agora (não invente).
+
+Contexto atual (fonte da verdade):
 ${JSON.stringify(snap)}
 
 Como usar o contexto:
-- Saúde financeira: compare entradas vs saídas dos últimos 30 dias. Se gastando_mais_que_ganha, avise com clareza.
-- Quanto pode gastar/investir no mês: use a sobra (entradas - saídas) e o que ainda está pendente/atrasado em despesas_mes.
-- Tarefas: comente pendentes de hoje e a taxa de conclusão dos 30 dias. Se a taxa estiver baixa, seja honesto.
-- Metas: diga se o ritmo cabe na sobra.
+- Períodos: "hoje/ontem/amanhã" → tarefas.*; "essa semana" → habitos[].semana_concluidas ou tarefas.stats_7d; "esse mês" → despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas.
+- Finanças: financeiro.d7/d30/mes_atual, ultimas_transacoes, gastos_por_categoria_30d, saldos_contas, plano_financeiro, despesas_mes.
+- Produtividade: tarefas (hoje, atrasadas, próximos), stats_7d/30d, streak_dias_completos, historico_tarefas_recentes, recorrentes.
+- Agenda: eventos_proximos, alarmes.
+- Hábitos: Academia / Beber água / Sono com feito_hoje, semana e mês.
+- Confirmações ("já paguei X"): diga o status em despesas_mes ou nas transações; se não achar, diga que não encontrou.
 
-Ações: se o usuário pedir pra registrar pendência, dívida, despesa, tarefa ou meta, inclua no JSON. Se disser que foi à academia / treinou / bebeu água / dormiu bem hoje, use marcar_habito com o título certo (Academia, Beber água ou Sono). Não peça confirmação extra se os dados essenciais já vieram na frase. Se faltar valor, pergunte na resposta e NÃO emita a ação.
+Ações (só quando o usuário pedir explicitamente ou confirmar um hábito do dia):
+- registrar pendência/dívida/despesa/tarefa/meta → incluir em acoes
+- "fui na academia / bebi água / dormi bem" → marcar_habito
+- Se faltar valor essencial, pergunte e NÃO emita ação
 
-Responda APENAS JSON válido:
-{"resposta":"texto em markdown simples, no máximo 180 palavras","acoes":[]}
+Responda APENAS um JSON válido completo:
+{"resposta":"texto em markdown simples (máx 160 palavras). Use **negrito** em números-chave.","acoes":[]}
 
 Tipos de ação:
 - {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|assinaturas|transporte|saude|outros"}
@@ -595,28 +871,28 @@ Tipos de ação:
 - {"tipo":"marcar_habito","titulo":"Academia|Beber água|Sono"}
 
 Regras:
+- "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela.
+- Responda a pergunta feita; não desvie pra pitch genérico.
 - acoes pode ser [].
-- Não invente despesas/tarefas que o usuário não pediu.
-- Não use emoji em excesso (no máximo 1).
-- Números em reais com clareza (ex: R$ 1.200).`;
+- Não invente números, títulos ou status.
+- No máximo 1 emoji.
+- Valores em R$ (ex: R$ 1.200).`;
 
     const { texto, usage, provider } = await chamarIA({
       system: systemPrompt,
       user: mensagem,
       historico,
-      maxTokens: 700,
+      maxTokens: 1400,
       jsonMode: true,
-      timeout: 28000
+      timeout: 35000
     });
 
-    let parsed;
+    let parsed = null;
     try { parsed = parseJSON(texto); }
-    catch (e) {
-      return res.json({ resposta: texto || 'Não consegui formatar a resposta.', acoes: [], provider, usage });
-    }
+    catch (e) { parsed = null; }
 
-    const resposta = String(parsed.resposta || '').trim() || 'Beleza — me conta mais um detalhe pra eu agir.';
-    const acoesExec = await executarAcoes(parsed.acoes);
+    const resposta = textoAssistenteSeguro(texto, parsed);
+    const acoesExec = await executarAcoes(parsed && parsed.acoes);
     res.json({ resposta, acoes: acoesExec, snapshot: snap, provider, usage });
   } catch (err) {
     res.status(503).json({
