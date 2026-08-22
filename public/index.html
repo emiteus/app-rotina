@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=54">
+  <link rel="stylesheet" href="style.css?v=55">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -451,8 +451,6 @@
           </div>
         </div>
 
-        <div id="painel-bancos"></div>
-
         <div class="visao-sobra" id="visao-sobra">
           <span class="label">Sobra estimada (entradas − saídas, 30d)</span>
           <span class="valor" id="visao-sobra-valor">R$ 0,00</span>
@@ -489,6 +487,18 @@
         <div id="fin-cat-empty" class="empty-state" style="display:none;">
           <h3>Sem despesas neste mês</h3>
           <p>As categorias aparecem aqui quando você tiver gastos.</p>
+        </div>
+
+        <!-- Bancos: preso no rodapé, colapsado até clicar -->
+        <div class="bancos-pinned" id="bancos-pinned">
+          <button type="button" class="bancos-pinned-toggle" id="bancos-pinned-toggle" onclick="toggleBancosDrawer()" aria-expanded="false">
+            <span class="bancos-pinned-title">Bancos</span>
+            <span class="bancos-pinned-resumo" id="bancos-pinned-resumo"></span>
+            <span class="bancos-pinned-chevron" aria-hidden="true">▴</span>
+          </button>
+          <div class="bancos-pinned-body" id="bancos-pinned-body" hidden>
+            <div id="painel-bancos"></div>
+          </div>
         </div>
       </div>
 
@@ -832,7 +842,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=54"></script>
+  <script src="app.js?v=55"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

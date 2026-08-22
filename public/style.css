@@ -1221,6 +1221,67 @@ body { padding-left: 240px; }
   background: rgba(248, 81, 73, 0.12);
 }
 
+/* Bancos preso no rodapé da Visão Geral */
+.bancos-pinned {
+  position: sticky;
+  bottom: 0;
+  z-index: 25;
+  margin-top: 20px;
+  background: var(--bg-card, #111114);
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 28px rgba(0,0,0,0.35);
+  overflow: hidden;
+}
+.bancos-pinned-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+}
+.bancos-pinned-toggle:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+.bancos-pinned-title { flex-shrink: 0; }
+.bancos-pinned-resumo {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-family: var(--font-mono, inherit);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bancos-pinned-chevron {
+  color: var(--text-muted);
+  font-size: 12px;
+  transition: transform 0.2s ease;
+}
+.bancos-pinned.open .bancos-pinned-chevron {
+  transform: rotate(180deg);
+}
+.bancos-pinned-body {
+  max-height: min(55vh, 420px);
+  overflow-y: auto;
+  border-top: 1px solid var(--border, rgba(255,255,255,0.06));
+  padding: 0 8px 8px;
+}
+.bancos-pinned-body #painel-bancos > div {
+  margin-bottom: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 12px 8px !important;
+}
+
 .entrada-box { background: var(--bg-card); }
 .saida-box { background: var(--bg-card); }
 

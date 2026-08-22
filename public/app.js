@@ -1135,8 +1135,8 @@ function trocarSubAbaFin(id) {
   if (id === 'fin-metas') carregarMetas();
   if (id === 'fin-pj') carregarPJ();
   if (id === 'fin-visao') {
-    carregarTransacoes();
-    atualizarSaldosSilencioso();
+    // Saldo de banco primeiro (evita flash da sobra 30d no Em conta)
+    carregarBancos().then(() => carregarTransacoes());
   }
 }
 
@@ -3287,15 +3287,77 @@ function renderIR() {
 // =====================
 let _ofStatus = { configurado: false, items: [] };
 let _ofSaldos = null;
+let _bancosDrawerAberto = false;
+const OF_SALDO_CACHE_KEY = 'of_em_conta_cache_v1';
+
+function lerCacheSaldoEmConta() {
+  try {
+    const raw = sessionStorage.getItem(OF_SALDO_CACHE_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    if (j && Number.isFinite(Number(j.emConta))) return j;
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+function salvarCacheSaldoEmConta(emConta) {
+  try {
+    sessionStorage.setItem(OF_SALDO_CACHE_KEY, JSON.stringify({
+      emConta: Number(emConta),
+      em: Date.now()
+    }));
+  } catch (e) { /* ignore */ }
+}
+
+function restaurarSaldoEmContaCache() {
+  const cache = lerCacheSaldoEmConta();
+  if (!cache) return false;
+  const real = formatBRL(cache.emConta);
+  const fin = document.getElementById('saldo-total');
+  const dash = document.getElementById('dash-saldo');
+  if (fin) fin.textContent = real;
+  if (dash) dash.textContent = real;
+  const labelFin = document.querySelector('.saldo-box .box-label');
+  if (labelFin) labelFin.textContent = 'Em conta (PF)';
+  return true;
+}
+
+function atualizarResumoBancosPinned() {
+  const el = document.getElementById('bancos-pinned-resumo');
+  if (!el) return;
+  if (_ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length) {
+    const v = (_ofSaldos.emConta != null) ? _ofSaldos.emConta : _ofSaldos.totalBanco;
+    const n = (_ofStatus.items || []).length || [...new Set(_ofSaldos.contas.map(c => c.item_id))].length;
+    el.textContent = `${n} conta${n === 1 ? '' : 's'} · ${formatBRL(v)}`;
+  } else {
+    const cache = lerCacheSaldoEmConta();
+    el.textContent = cache ? formatBRL(cache.emConta) : 'toque pra abrir';
+  }
+}
+
+function toggleBancosDrawer() {
+  _bancosDrawerAberto = !_bancosDrawerAberto;
+  const wrap = document.getElementById('bancos-pinned');
+  const body = document.getElementById('bancos-pinned-body');
+  const btn = document.getElementById('bancos-pinned-toggle');
+  if (wrap) wrap.classList.toggle('open', _bancosDrawerAberto);
+  if (body) body.hidden = !_bancosDrawerAberto;
+  if (btn) btn.setAttribute('aria-expanded', _bancosDrawerAberto ? 'true' : 'false');
+  if (_bancosDrawerAberto) {
+    renderBancos();
+    carregarBancos();
+  }
+}
 
 async function carregarBancos() {
+  // Mostra cache imediato enquanto a API responde
+  restaurarSaldoEmContaCache();
   try {
     const res = await fetch('/api/openfinance/status');
     const data = await res.json().catch(() => ({}));
     if (res.ok && data && typeof data.configurado === 'boolean') {
       _ofStatus = data;
     } else {
-      // Sessão/API falhou: não esconde o botão Conectar — assume Pluggy ok se já usava antes
       _ofStatus = {
         configurado: true,
         items: [],
@@ -3306,7 +3368,6 @@ async function carregarBancos() {
   } catch (e) {
     _ofStatus = { configurado: true, items: [], temMeuPluggy: false, _statusErro: e.message };
   }
-  // Saldos reais das contas conectadas
   try {
     const r = await fetch('/api/openfinance/saldos');
     if (r.ok) _ofSaldos = await r.json();
@@ -3314,7 +3375,13 @@ async function carregarBancos() {
   } catch (e) {
     _ofSaldos = null;
   }
-  renderBancos();
+  if (_bancosDrawerAberto) renderBancos();
+  else {
+    // Mantém painel leve fechado; só atualiza resumo da barra
+    const painel = document.getElementById('painel-bancos');
+    if (painel && !painel.dataset.renderedOnce) painel.innerHTML = '';
+  }
+  atualizarResumoBancosPinned();
   aplicarSaldosReais();
   atualizarSaldosSilencioso();
 }
@@ -3322,14 +3389,13 @@ async function carregarBancos() {
 // Sobrescreve o "Saldo Total" / "Em conta" com o saldo REAL em conta (Open Finance)
 function aplicarSaldosReais() {
   if (!_ofSaldos || !_ofSaldos.contas || _ofSaldos.contas.length === 0) {
-    const labelFin = document.querySelector('.saldo-box .box-label');
-    if (labelFin && /demo/i.test(labelFin.textContent || '')) {
-      labelFin.textContent = 'Em conta (PF)';
-    }
+    // Sem OF: tenta cache; nunca sobrescreve Em conta com a sobra 30d
+    restaurarSaldoEmContaCache();
+    atualizarResumoBancosPinned();
     return;
   }
-  // Preferência: só PF (pessoal). Backend já manda emConta; fallback = totalBanco.
   const valor = (_ofSaldos.emConta != null) ? _ofSaldos.emConta : _ofSaldos.totalBanco;
+  salvarCacheSaldoEmConta(valor);
   const real = formatBRL(valor);
   const dash = document.getElementById('dash-saldo');
   const fin = document.getElementById('saldo-total');
@@ -3347,6 +3413,7 @@ function aplicarSaldosReais() {
     }
     labelFin.textContent = 'Em conta (PF)' + extra;
   }
+  atualizarResumoBancosPinned();
 }
 
 let _ultimoRefreshSaldos = 0;
@@ -3369,7 +3436,8 @@ function _aplicarPayloadSaldos(data) {
     }, null)
   };
   aplicarSaldosReais();
-  if (typeof renderBancos === 'function') renderBancos();
+  atualizarResumoBancosPinned();
+  if (_bancosDrawerAberto && typeof renderBancos === 'function') renderBancos();
 }
 
 async function atualizarSaldosSilencioso(opts = {}) {
@@ -3422,6 +3490,11 @@ document.addEventListener('click', fecharMenusBanco);
 function renderBancos() {
   const painel = document.getElementById('painel-bancos');
   if (!painel) return;
+  // Só monta o detalhe quando a gaveta está aberta
+  if (!_bancosDrawerAberto) {
+    atualizarResumoBancosPinned();
+    return;
+  }
 
   const temItens = (_ofStatus.items && _ofStatus.items.length > 0);
   const temSaldos = _ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length > 0;
@@ -3542,9 +3615,8 @@ function renderBancos() {
     : '';
 
   painel.innerHTML = `
-    <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
-        <h2 style="margin:0; font-size:16px;">Bancos</h2>
+    <div style="background:transparent; border:none; border-radius:0; padding:8px 4px 4px; margin-bottom:0;">
+      <div style="display:flex; justify-content:flex-end; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           ${items.length ? `<button type="button" id="btn-atualizar-saldos" onclick="atualizarSaldosAgora()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Atualizar saldos</button>
           <button type="button" onclick="sincronizarBancos()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
@@ -3555,6 +3627,7 @@ function renderBancos() {
       ${saldoHtml}
       ${itemsHtml}
     </div>`;
+  painel.dataset.renderedOnce = '1';
 }
 
 async function conectarBanco() {
@@ -3852,6 +3925,12 @@ function trocarAba(tab) {
   if (tab === 'historico-page') {
     carregarStats();
     if (typeof renderHistorico === 'function') renderHistorico();
+  }
+  if (tab === 'financeiro') {
+    restaurarSaldoEmContaCache();
+    carregarBancos().then(() => {
+      if (typeof carregarTransacoes === 'function') carregarTransacoes();
+    });
   }
 }
 
@@ -4239,7 +4318,6 @@ async function carregarTransacoes() {
     const data = await res.json();
     allTransactions = data.transacoes || [];
 
-    const saldoEl = document.getElementById('saldo-total');
     const entEl = document.getElementById('total-entradas');
     const saiEl = document.getElementById('total-saidas');
     // Entradas/saídas: sempre os últimos 30 dias (bate com o label da UI)
@@ -4254,10 +4332,8 @@ async function carregarTransacoes() {
       sobraEl.classList.toggle('negativo', sobra < 0);
     }
 
-    // "Em conta": prioriza saldo real do Open Finance; senão, sobra 30d com aviso no label
-    if (!_ofSaldos || !_ofSaldos.contas || !_ofSaldos.contas.length) {
-      if (saldoEl) saldoEl.textContent = formatBRL(data.saldo);
-    }
+    // Em conta = só saldo de banco (Open Finance). Nunca usa sobra 30d (causava flash errado).
+    aplicarSaldosReais();
 
     renderTransacoes();
     verificarAnaliseDiaria();
@@ -5872,7 +5948,7 @@ window.addEventListener('load', () => {
   setInterval(atualizarHora, 1000);
 
   carregarTarefas();
-  carregarTransacoes();
+  carregarBancos().then(() => carregarTransacoes());
   carregarAlarmes();
   carregarStats();
   carregarRecorrentes();
@@ -6618,7 +6694,7 @@ async function inicializarApp() {
   saudacao();
   conectarWebSocket();
   carregarTarefas();
-  carregarTransacoes();
+  carregarBancos().then(() => carregarTransacoes());
   carregarAlarmes();
   carregarRecorrentes();
   carregarEventos();
