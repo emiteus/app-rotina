@@ -1216,6 +1216,30 @@ async function carregarDespesasMes() {
   }
 }
 
+const LABELS_DESPESA_CAT = {
+  contas_fixas: 'Contas fixas',
+  assinaturas: 'Assinaturas',
+  saude: 'Saúde',
+  moradia: 'Moradia',
+  transporte: 'Transporte',
+  alimentacao: 'Alimentação',
+  lazer: 'Lazer',
+  outros: 'Outros',
+  outro: 'Outros'
+};
+
+const ORDEM_DESPESA_CAT = [
+  'contas_fixas', 'assinaturas', 'saude', 'moradia', 'transporte',
+  'alimentacao', 'lazer', 'outros', 'outro'
+];
+
+const ORDEM_STATUS_DESPESA = { atrasado: 0, pendente: 1, pago: 2, ignorado: 3 };
+
+function labelDespesaCat(cat) {
+  const id = cat || 'outros';
+  return LABELS_DESPESA_CAT[id] || id.replace(/_/g, ' ');
+}
+
 function renderDespesasMes() {
   const data = _despesasData;
   const painel = document.getElementById('painel-despesas');
@@ -1232,25 +1256,39 @@ function renderDespesasMes() {
     `;
   }
 
-  const grupos = {
-    atrasado: data.despesas.filter(d => d.status === 'atrasado'),
-    pendente: data.despesas.filter(d => d.status === 'pendente'),
-    pago: data.despesas.filter(d => d.status === 'pago'),
-    ignorado: data.despesas.filter(d => d.status === 'ignorado')
-  };
+  const porCat = {};
+  for (const d of data.despesas || []) {
+    const cat = d.categoria || 'outros';
+    if (!porCat[cat]) porCat[cat] = [];
+    porCat[cat].push(d);
+  }
 
-  const titulos = {
-    atrasado: 'Atrasadas',
-    pendente: 'Pendentes',
-    pago: 'Pagas',
-    ignorado: 'Ignoradas'
-  };
+  const catsOrdenadas = Object.keys(porCat).sort((a, b) => {
+    const ia = ORDEM_DESPESA_CAT.indexOf(a);
+    const ib = ORDEM_DESPESA_CAT.indexOf(b);
+    const oa = ia === -1 ? 99 : ia;
+    const ob = ib === -1 ? 99 : ib;
+    if (oa !== ob) return oa - ob;
+    return labelDespesaCat(a).localeCompare(labelDespesaCat(b), 'pt-BR');
+  });
 
   let html = '';
-  for (const key of ['atrasado', 'pendente', 'pago', 'ignorado']) {
-    const lista = grupos[key];
-    if (!lista.length) continue;
-    html += `<div class="despesas-grupo"><h3>${titulos[key]} (${lista.length})</h3>`;
+  for (const cat of catsOrdenadas) {
+    const lista = porCat[cat].slice().sort((a, b) => {
+      const sa = ORDEM_STATUS_DESPESA[a.status] ?? 9;
+      const sb = ORDEM_STATUS_DESPESA[b.status] ?? 9;
+      if (sa !== sb) return sa - sb;
+      const da = a.dia_vencimento ?? 99;
+      const db = b.dia_vencimento ?? 99;
+      if (da !== db) return da - db;
+      return String(a.titulo || '').localeCompare(String(b.titulo || ''), 'pt-BR');
+    });
+    const total = lista.reduce((s, d) => s + (parseFloat(d.valor_esperado) || 0), 0);
+    html += `<div class="despesas-grupo">
+      <h3>
+        <span>${escapeHtml(labelDespesaCat(cat))}</span>
+        <span class="despesas-grupo-meta">${lista.length} · ${formatBRL(total)}</span>
+      </h3>`;
     html += lista.map(d => {
       const dia = d.dia_vencimento ? `dia ${d.dia_vencimento}` : 'sem vencimento';
       const conf = d.confirmado_por === 'banco' ? ' · banco' : (d.confirmado_por === 'manual' ? ' · manual' : '');
@@ -1269,7 +1307,7 @@ function renderDespesasMes() {
         <div class="despesa-item" id="despesa-${d.id}">
           <div class="info">
             <div class="titulo">${escapeHtml(d.titulo)}</div>
-            <div class="meta">${dia}${conf}${pagoInfo} · ${escapeHtml(d.categoria || 'outros')}</div>
+            <div class="meta">${dia}${conf}${pagoInfo}</div>
           </div>
           <span class="badge-status ${d.status}">${d.status}</span>
           <div class="valor">${formatBRL(d.valor_esperado)}</div>
