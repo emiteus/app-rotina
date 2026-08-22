@@ -1298,7 +1298,7 @@ function renderDespesasMes() {
       const pagoInfo = d.pago_em ? ` · pago ${new Date(d.pago_em).toLocaleDateString('pt-BR')}` : '';
       let acoes = '';
       if (d.status === 'pago') {
-        acoes = `<button type="button" onclick="desvincularDespesa('${d.id}')">Desvincular</button>`;
+        acoes = '';
       } else if (d.status !== 'ignorado') {
         acoes = `
           <button type="button" class="primary" onclick="event.stopPropagation(); confirmarDespesa('${d.id}')">Confirmar</button>
