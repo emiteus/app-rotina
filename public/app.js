@@ -3316,7 +3316,13 @@ async function carregarBancos() {
 
 // Sobrescreve o "Saldo Total" / "Em conta" com o saldo REAL em conta (Open Finance)
 function aplicarSaldosReais() {
-  if (!_ofSaldos || !_ofSaldos.contas || _ofSaldos.contas.length === 0) return;
+  if (!_ofSaldos || !_ofSaldos.contas || _ofSaldos.contas.length === 0) {
+    const labelFin = document.querySelector('.saldo-box .box-label');
+    if (labelFin && /demo/i.test(labelFin.textContent || '')) {
+      labelFin.textContent = 'Em conta (PF)';
+    }
+    return;
+  }
   // Preferência: só PF (pessoal). Backend já manda emConta; fallback = totalBanco.
   const valor = (_ofSaldos.emConta != null) ? _ofSaldos.emConta : _ofSaldos.totalBanco;
   const real = formatBRL(valor);
@@ -3387,12 +3393,17 @@ function renderBancos() {
   const painel = document.getElementById('painel-bancos');
   if (!painel) return;
 
+  // Se o status falhou mas há saldos/contas, trata como configurado pra não sumir a UI
+  const temItens = (_ofStatus.items && _ofStatus.items.length > 0);
+  const temSaldos = _ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length > 0;
+  const configurado = !!_ofStatus.configurado || temItens || temSaldos;
+
   const btnConectar = `
     <button type="button" onclick="conectarBanco()" style="background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.45); color:#3fb950; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:600; cursor:pointer;">
       + Conectar banco
     </button>`;
 
-  if (!_ofStatus.configurado) {
+  if (!configurado) {
     painel.innerHTML = `
       <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
         <h2 style="margin:0 0 8px; font-size:16px;">Bancos</h2>
@@ -3407,7 +3418,24 @@ function renderBancos() {
     return;
   }
 
-  const items = _ofStatus.items || [];
+  // Se status veio vazio mas saldos têm contas, monta itens a partir dos saldos
+  let items = _ofStatus.items || [];
+  if (!items.length && temSaldos) {
+    const porItem = {};
+    _ofSaldos.contas.forEach(c => {
+      if (!c.item_id) return;
+      if (!porItem[c.item_id]) {
+        porItem[c.item_id] = {
+          item_id: c.item_id,
+          connector_nome: c.banco || 'Banco',
+          pessoa: c.pessoa || 'PF',
+          ultima_sync: c.atualizado_em || c.saldo_em
+        };
+      }
+    });
+    items = Object.values(porItem);
+  }
+
   const itemsHtml = items.length ? items.map(it => {
     const sync = it.ultima_sync ? new Date(it.ultima_sync).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'nunca';
     const pessoa = it.pessoa === 'PJ' ? 'PJ' : 'PF';

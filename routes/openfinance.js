@@ -67,8 +67,9 @@ function chaveCategoria(t) {
 // =====================================================
 router.get('/status', async (req, res) => {
   try {
-    const items = temCredenciais() ? await all(`SELECT * FROM openfinance_items ORDER BY criado_em DESC`) : [];
-    const itemsOut = items.map(it => {
+    // Sempre lista itens do DB (mesmo se Pluggy env falhar) pra UI não sumir
+    const items = await all(`SELECT * FROM openfinance_items ORDER BY criado_em DESC`).catch(() => []);
+    const itemsOut = (items || []).map(it => {
       const nome = String(it.connector_nome || '');
       const ehMeuPluggy = /meu\s*pluggy/i.test(nome);
       return { ...it, ehMeuPluggy };
