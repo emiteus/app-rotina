@@ -1297,13 +1297,7 @@ function renderDespesasMes() {
       const conf = d.confirmado_por === 'banco' ? ' · banco' : (d.confirmado_por === 'manual' ? ' · manual' : '');
       const pagoInfo = d.pago_em ? ` · pago ${new Date(d.pago_em).toLocaleDateString('pt-BR')}` : '';
       let acoes = '';
-      if (d.status === 'pago') {
-        acoes = '';
-      } else if (d.status !== 'ignorado') {
-        acoes = `
-          <button type="button" class="primary" onclick="event.stopPropagation(); confirmarDespesa('${d.id}')">Confirmar</button>
-          <button type="button" onclick="event.stopPropagation(); ignorarDespesa('${d.id}')">Ignorar</button>`;
-      } else {
+      if (d.status === 'ignorado') {
         acoes = `<button type="button" onclick="desvincularDespesa('${d.id}')">Reabrir</button>`;
       }
       return `
