@@ -171,6 +171,8 @@ router.get('/extrato', async (req, res) => {
   }
 });
 
+// GET stats mensais (últimos 6 meses)
+router.get('/stats', async (req, res) => {
   try {
     const stats = await all(`
       SELECT
