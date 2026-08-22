@@ -3454,8 +3454,17 @@ function renderBancos() {
 
   // Resumo de saldo REAL (banco vs cartão), separado PF / PJ
   let saldoHtml = '';
+  if (_ofStatus && _ofStatus.somenteDemo) {
+    saldoHtml += `
+      <div style="background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.35); border-radius:10px; padding:12px; margin-bottom:12px; font-size:12px; line-height:1.45; color:#f85149;">
+        <strong>Pluggy em modo demo</strong> — a API só libera MeuPluggy (não Inter/Nubank).
+        Crie uma aplicação de <strong>Produção</strong> em dashboard.pluggy.ai, atualize
+        <code>PLUGGY_CLIENT_ID</code> / <code>PLUGGY_CLIENT_SECRET</code> no Railway e volte.
+        <button type="button" onclick="mostrarSetupPluggy()" style="display:block; margin-top:8px; background:transparent; border:none; color:#f85149; text-decoration:underline; cursor:pointer; padding:0; font-size:12px;">Ver passo a passo</button>
+      </div>`;
+  }
   const ehDemo = !!(_ofStatus && _ofStatus.temMeuPluggy) || !!(_ofSaldos && _ofSaldos.demoMeuPluggy);
-  if (ehDemo) {
+  if (ehDemo && !(_ofStatus && _ofStatus.somenteDemo)) {
     saldoHtml += `
       <div style="background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.35); border-radius:10px; padding:12px; margin-bottom:12px; font-size:12px; line-height:1.45; color:#f85149;">
         <strong>Contas demo (MeuPluggy)</strong> — esses saldos <strong>não são</strong> do seu Inter/Nubank de verdade.
@@ -3526,6 +3535,11 @@ function renderBancos() {
 }
 
 async function conectarBanco() {
+  if (_ofStatus && _ofStatus.somenteDemo) {
+    toast('Sua app Pluggy é DEMO — só libera MeuPluggy. Crie app de Produção no dashboard.pluggy.ai', 'error');
+    mostrarSetupPluggy();
+    return;
+  }
   if (typeof PluggyConnect === 'undefined') {
     toast('SDK do Pluggy não carregou. Verifica tua conexão e recarrega.', 'error');
     return;
@@ -3657,21 +3671,24 @@ function mostrarSetupPluggy() {
     <div id="setup-pluggy-overlay" class="custom-modal" onclick="fecharSetupPluggy(event)">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>⚙️ Configurar Open Finance (Pluggy)</h2>
+          <h2>Pluggy em modo Produção</h2>
           <button class="modal-close" onclick="fecharSetupPluggy()">✕</button>
         </div>
         <div class="modal-body" style="font-size:13px; line-height:1.6;">
-          <p>Conexão automática usa o <b>Pluggy</b> (agregador brasileiro de Open Finance). Faça uma vez:</p>
-          <ol style="padding-left:18px;">
-            <li>Crie conta em <b>dashboard.pluggy.ai</b></li>
-            <li>No painel, copie seu <b>Client ID</b> e <b>Client Secret</b></li>
-            <li>No arquivo <code>.env</code> do app, adicione:<br>
-              <code style="display:block; background:rgba(15,23,42,0.05); padding:8px; border-radius:6px; margin-top:6px;">PLUGGY_CLIENT_ID=seu_id_aqui<br>PLUGGY_CLIENT_SECRET=seu_secret_aqui</code>
+          <p style="background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.3); border-radius:8px; padding:10px; color:#f85149;">
+            A faixa vermelha “Aplicação demo” e a lista só com <b>MeuPluggy</b> significam que o Client ID atual é de <b>Desenvolvimento/Demo</b>. Bancos reais (Inter, Nubank…) só saem com app de <b>Produção</b>.
+          </p>
+          <ol style="padding-left:18px; margin:14px 0;">
+            <li>Abra <b>dashboard.pluggy.ai</b> e faça login</li>
+            <li>Em <b>Aplicações</b>, clique em <b>“Ir para a produção”</b> (ou crie uma app de Produção)</li>
+            <li>Copie o novo <b>Client ID</b> e <b>Client Secret</b></li>
+            <li>No Railway → Variables, atualize:<br>
+              <code style="display:block; background:rgba(15,23,42,0.05); padding:8px; border-radius:6px; margin-top:6px;">PLUGGY_CLIENT_ID=…<br>PLUGGY_CLIENT_SECRET=…</code>
             </li>
-            <li>Reinicie o app</li>
-            <li>Volte aqui e clique em <b>Conectar</b> — você autoriza direto no widget seguro do Pluggy (sua senha do banco nunca passa pelo app).</li>
+            <li>Espere o redeploy e volte aqui em <b>+ Conectar</b></li>
+            <li>Opcional: em Customização, habilite os conectores (Inter, Nubank…)</li>
           </ol>
-          <p style="color:var(--text-muted);">Dica: o tier de desenvolvedor permite testar com bancos sandbox antes de conectar o banco real.</p>
+          <p style="color:var(--text-muted); margin:0;">Depois desconecte qualquer MeuPluggy que ainda estiver na lista.</p>
         </div>
       </div>
     </div>`;

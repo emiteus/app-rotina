@@ -74,10 +74,32 @@ router.get('/status', async (req, res) => {
       const ehMeuPluggy = /meu\s*pluggy/i.test(nome);
       return { ...it, ehMeuPluggy };
     });
+
+    let somenteDemo = false;
+    let conectoresReais = 0;
+    if (temCredenciais()) {
+      try {
+        const apiKey = await getApiKey();
+        const resp = await axios.get(`${PLUGGY_BASE}/connectors`, {
+          headers: { 'X-API-KEY': apiKey },
+          params: { countries: 'BR', sandbox: false },
+          timeout: 15000
+        });
+        const lista = resp.data.results || [];
+        const reais = lista.filter(c => c.name && !/meu\s*pluggy|pluggy bank/i.test(c.name));
+        conectoresReais = reais.length;
+        somenteDemo = lista.length > 0 && reais.length === 0;
+      } catch (e) {
+        /* ignora — status ainda responde */
+      }
+    }
+
     res.json({
       configurado: temCredenciais(),
       items: itemsOut,
-      temMeuPluggy: itemsOut.some(i => i.ehMeuPluggy)
+      temMeuPluggy: itemsOut.some(i => i.ehMeuPluggy),
+      somenteDemo,
+      conectoresReais
     });
   } catch (err) {
     res.json({ configurado: temCredenciais(), items: [], erro: err.message });
