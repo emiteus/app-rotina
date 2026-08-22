@@ -68,7 +68,16 @@ function chaveCategoria(t) {
 router.get('/status', async (req, res) => {
   try {
     const items = temCredenciais() ? await all(`SELECT * FROM openfinance_items ORDER BY criado_em DESC`) : [];
-    res.json({ configurado: temCredenciais(), items });
+    const itemsOut = items.map(it => {
+      const nome = String(it.connector_nome || '');
+      const ehMeuPluggy = /meu\s*pluggy/i.test(nome);
+      return { ...it, ehMeuPluggy };
+    });
+    res.json({
+      configurado: temCredenciais(),
+      items: itemsOut,
+      temMeuPluggy: itemsOut.some(i => i.ehMeuPluggy)
+    });
   } catch (err) {
     res.json({ configurado: temCredenciais(), items: [], erro: err.message });
   }
@@ -153,6 +162,7 @@ router.get('/saldos', async (req, res) => {
     // "Em conta" na visão geral = só PF (pessoal). Sem contas PF, cai no total.
     const temPfBanco = contas.some(c => c.pessoa !== 'PJ' && c.tipo !== 'CREDIT');
     const emConta = temPfBanco ? porPessoa.PF.totalBanco : totalBanco;
+    const demoMeuPluggy = contas.some(c => /meu\s*pluggy/i.test(String(c.banco || '')));
 
     res.json({
       contas,
@@ -162,7 +172,8 @@ router.get('/saldos', async (req, res) => {
       emConta,
       porPessoa,
       saldoEmMaisAntigo,
-      atualizadoEm: atualizadoEmMaisRecente
+      atualizadoEm: atualizadoEmMaisRecente,
+      demoMeuPluggy
     });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -385,29 +396,81 @@ async function refreshSaldoConta(apiKey, accountId, meta) {
 async function refreshSaldosAll(opts = {}) {
   const apiKey = await getApiKey();
   const contas = await all(`SELECT account_id, item_id, tipo, nome FROM openfinance_accounts`);
-  if (!contas.length) return { semContas: true, ok: 0, falhas: 0, detalhes: [] };
+  if (!contas.length) return { semContas: true, ok: 0, falhas: 0, detalhes: [], demoMeuPluggy: false };
+
+  // MeuPluggy (demo) não tem /balance realtime nem PATCH update
+  const itemsMeta = await all(`SELECT item_id, connector_nome FROM openfinance_items`);
+  const demoIds = new Set(
+    itemsMeta.filter(i => /meu\s*pluggy/i.test(String(i.connector_nome || ''))).map(i => i.item_id)
+  );
+  const demoMeuPluggy = demoIds.size > 0;
 
   let ok = 0, falhas = 0;
   const detalhes = [];
+  const jaListouItem = new Map(); // itemId -> results
+
+  async function listarContasItem(itemId) {
+    if (jaListouItem.has(itemId)) return jaListouItem.get(itemId);
+    const accResp = await axios.get(`${PLUGGY_BASE}/accounts`, {
+      headers: { 'X-API-KEY': apiKey },
+      params: { itemId },
+      timeout: 20000
+    });
+    const results = accResp.data.results || [];
+    jaListouItem.set(itemId, results);
+    return results;
+  }
+
   for (const c of contas) {
-    try {
-      // Endpoint realtime: melhor pra BANK; CREDIT também costuma responder
-      const r = await refreshSaldoConta(apiKey, c.account_id, c);
-      ok++;
-      detalhes.push({ account_id: c.account_id, nome: c.nome, ok: true, saldo: r.saldo });
-    } catch (e) {
-      // Fallback: lista accounts do item e atualiza essa conta
+    const ehDemo = demoIds.has(c.item_id);
+    // Contas demo: só lista (realtime e update não existem)
+    if (ehDemo) {
       try {
-        const accResp = await axios.get(`${PLUGGY_BASE}/accounts`, {
-          headers: { 'X-API-KEY': apiKey },
-          params: { itemId: c.item_id },
-          timeout: 20000
-        });
-        const hit = (accResp.data.results || []).find(a => a.id === c.account_id);
+        const results = await listarContasItem(c.item_id);
+        const hit = results.find(a => a.id === c.account_id);
         if (hit) {
           await upsertConta(hit, c.item_id);
           ok++;
-          detalhes.push({ account_id: c.account_id, nome: c.nome, ok: true, saldo: saldoDeContaPluggy(hit), via: 'list' });
+          detalhes.push({
+            account_id: c.account_id,
+            nome: c.nome,
+            ok: true,
+            saldo: saldoDeContaPluggy(hit),
+            via: 'list',
+            demo: true
+          });
+        } else {
+          falhas++;
+          detalhes.push({ account_id: c.account_id, nome: c.nome, ok: false, erro: 'conta não encontrada', demo: true });
+        }
+      } catch (e) {
+        falhas++;
+        detalhes.push({ account_id: c.account_id, nome: c.nome, ok: false, erro: (e.message || 'falha').slice(0, 120), demo: true });
+      }
+      continue;
+    }
+
+    try {
+      const r = await refreshSaldoConta(apiKey, c.account_id, c);
+      ok++;
+      detalhes.push({ account_id: c.account_id, nome: c.nome, ok: true, saldo: r.saldo, via: 'realtime' });
+    } catch (e) {
+      const code = e.response?.data?.codeDescription || e.response?.data?.code || '';
+      const msg = e.response?.data?.message || e.message || '';
+      try {
+        const results = await listarContasItem(c.item_id);
+        const hit = results.find(a => a.id === c.account_id);
+        if (hit) {
+          await upsertConta(hit, c.item_id);
+          ok++;
+          detalhes.push({
+            account_id: c.account_id,
+            nome: c.nome,
+            ok: true,
+            saldo: saldoDeContaPluggy(hit),
+            via: 'list',
+            aviso: String(code || msg).slice(0, 80)
+          });
         } else {
           falhas++;
           detalhes.push({ account_id: c.account_id, nome: c.nome, ok: false, erro: 'conta não encontrada' });
@@ -424,8 +487,8 @@ async function refreshSaldosAll(opts = {}) {
     }
   }
 
-  if (ok > 0) emitUpdate('saldos', { ok, falhas });
-  return { ok, falhas, detalhes, forcarUpdate: !!opts.forcarUpdate };
+  if (ok > 0) emitUpdate('saldos', { ok, falhas, demoMeuPluggy });
+  return { ok, falhas, detalhes, demoMeuPluggy, forcarUpdate: !!opts.forcarUpdate };
 }
 
 /** Pede ao Pluggy pra ir no banco de novo (PATCH /items/{id}). Respeita cooldown 1h. */
@@ -456,6 +519,10 @@ async function pedirUpdateItem(apiKey, itemId, { forcar = false } = {}) {
     // MFA / credenciais — precisa widget
     if (/LOGIN_ERROR|INVALID_CREDENTIALS|PARAMETERS|MFA|USER_INPUT/i.test(String(code) + msg)) {
       return { precisaUsuario: true, motivo: msg || String(code) };
+    }
+    // MeuPluggy (demo) não aceita update
+    if (/meuplugy|meu.?pluggy|cant be updated/i.test(String(msg))) {
+      return { skipped: true, demo: true, motivo: 'MeuPluggy (demo) não atualiza saldo' };
     }
     throw e;
   }
@@ -677,7 +744,8 @@ router.post('/refresh-saldos', async (req, res) => {
       emConta,
       porPessoa,
       contas,
-      atualizadoEm: new Date().toISOString()
+      atualizadoEm: new Date().toISOString(),
+      demoMeuPluggy: !!(saldos && saldos.demoMeuPluggy)
     });
   } catch (err) {
     if (err.code === 'PLUGGY_NAO_CONFIGURADO') {

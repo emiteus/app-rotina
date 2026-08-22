@@ -3314,15 +3314,19 @@ function aplicarSaldosReais() {
   if (fin) fin.textContent = real;
   const labelFin = document.querySelector('.saldo-box .box-label');
   if (labelFin) {
-    let extra = '';
-    const quando = _ofSaldos.atualizadoEm || _ofSaldos.saldoEmMaisAntigo;
-    if (quando) {
-      const mins = Math.max(0, Math.floor((Date.now() - new Date(quando).getTime()) / 60000));
-      if (mins < 60) extra = ` · há ${mins} min`;
-      else if (mins < 48 * 60) extra = ` · há ${Math.floor(mins / 60)} h`;
-      else extra = ` · ${new Date(quando).toLocaleDateString('pt-BR')}`;
+    if (_ofSaldos.demoMeuPluggy || (_ofStatus && _ofStatus.temMeuPluggy)) {
+      labelFin.textContent = 'Em conta (demo — não é o banco real)';
+    } else {
+      let extra = '';
+      const quando = _ofSaldos.atualizadoEm || _ofSaldos.saldoEmMaisAntigo;
+      if (quando) {
+        const mins = Math.max(0, Math.floor((Date.now() - new Date(quando).getTime()) / 60000));
+        if (mins < 60) extra = ` · há ${mins} min`;
+        else if (mins < 48 * 60) extra = ` · há ${Math.floor(mins / 60)} h`;
+        else extra = ` · ${new Date(quando).toLocaleDateString('pt-BR')}`;
+      }
+      labelFin.textContent = 'Em conta (PF)' + extra;
     }
-    labelFin.textContent = 'Em conta (PF)' + extra;
   }
 }
 
@@ -3336,6 +3340,7 @@ function _aplicarPayloadSaldos(data) {
     saldoLiquido: data.saldoLiquido,
     emConta: data.emConta,
     porPessoa: data.porPessoa,
+    demoMeuPluggy: !!data.demoMeuPluggy || !!(data.refresh && data.refresh.demoMeuPluggy),
     atualizadoEm: data.atualizadoEm || new Date().toISOString(),
     saldoEmMaisAntigo: data.saldoEmMaisAntigo || (data.contas || []).reduce((min, c) => {
       const t = c.saldo_em || c.atualizado_em;
@@ -3400,6 +3405,17 @@ function renderBancos() {
 
   // Resumo de saldo REAL (banco vs cartão), separado PF / PJ
   let saldoHtml = '';
+  const ehDemo = !!(_ofStatus && _ofStatus.temMeuPluggy) || !!(_ofSaldos && _ofSaldos.demoMeuPluggy);
+  if (ehDemo) {
+    saldoHtml += `
+      <div style="background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.35); border-radius:10px; padding:12px; margin-bottom:12px; font-size:12px; line-height:1.45; color:#f85149;">
+        <strong>Contas demo (MeuPluggy)</strong> — esses saldos <strong>não são</strong> do seu Inter/Nubank de verdade.
+        O Pluggy não atualiza MeuPluggy (valores travados desde julho).
+        <br><br>
+        Pra bater com os ~R$ 570 das suas 3 contas: <strong>desconecta</strong> cada MeuPluggy abaixo e clica em
+        <strong>+ Conectar</strong>, escolhendo o banco real (Inter, Nubank…). O widget agora não oferece mais o demo.
+      </div>`;
+  }
   if (_ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length > 0) {
     const pp = _ofSaldos.porPessoa || {};
     const pfBanco = (pp.PF && pp.PF.totalBanco) != null ? pp.PF.totalBanco : (_ofSaldos.emConta != null ? _ofSaldos.emConta : _ofSaldos.totalBanco);
@@ -3416,13 +3432,13 @@ function renderBancos() {
         </div>`;
     }).join('');
     let avisoStale = '';
-    if (_ofSaldos.saldoEmMaisAntigo) {
+    if (!ehDemo && _ofSaldos.saldoEmMaisAntigo) {
       const diasAtras = Math.floor((Date.now() - new Date(_ofSaldos.saldoEmMaisAntigo).getTime()) / 86400000);
       if (diasAtras >= 2) {
         avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">Saldo de até ${diasAtras} dias atrás. Use "Atualizar saldos" ou atualize a conexão no meu.pluggy.ai.</div>`;
       }
     }
-    saldoHtml = `
+    saldoHtml += `
       ${avisoStale}
       <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:14px; margin-bottom:14px;">
         <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
@@ -3473,7 +3489,7 @@ async function conectarBanco() {
 
     const pluggy = new PluggyConnect({
       connectToken: data.accessToken,
-      includeSandbox: true,
+      includeSandbox: false,
       onSuccess: async (itemData) => {
         const item = itemData.item || {};
         const nome = (item.connector && item.connector.name) || 'Banco';
@@ -3532,6 +3548,10 @@ async function atualizarSaldosAgora() {
   const data = await atualizarSaldosSilencioso({ forcar: true, pedirUpdate: true });
   if (btn) { btn.disabled = false; btn.textContent = 'Atualizar saldos'; }
   if (!data) { toast('Não deu pra atualizar agora', 'error'); return; }
+  if (data.demoMeuPluggy || (data.refresh && data.refresh.demoMeuPluggy)) {
+    toast('MeuPluggy é demo — desconecta e conecta o banco real pra ver os ~R$ 570', 'error');
+    return;
+  }
   if (data.updates && data.updates.some(u => u.precisaUsuario)) {
     toast('Banco pediu login/MFA — atualiza no meu.pluggy.ai', 'info');
   } else {
