@@ -337,7 +337,8 @@ router.post('/reconciliar', async (req, res) => {
 
     for (const desp of pendentes) {
       const aliases = aliasesDaDespesa(desp.titulo);
-      const ehAssinatura = (desp.categoria || '') === 'assinaturas' || !desp.dia_vencimento;
+      const cat = desp.categoria || '';
+      const ehAssinatura = cat === 'assinaturas' || cat === 'projetos' || !desp.dia_vencimento;
       let melhor = null;
       let melhorScore = 0;
 

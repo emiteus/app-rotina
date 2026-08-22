@@ -1219,6 +1219,7 @@ async function carregarDespesasMes() {
 const LABELS_DESPESA_CAT = {
   contas_fixas: 'Contas fixas',
   assinaturas: 'Assinaturas',
+  projetos: 'Projetos',
   saude: 'Saúde',
   moradia: 'Moradia',
   transporte: 'Transporte',
@@ -1229,7 +1230,7 @@ const LABELS_DESPESA_CAT = {
 };
 
 const ORDEM_DESPESA_CAT = [
-  'contas_fixas', 'assinaturas', 'saude', 'moradia', 'transporte',
+  'contas_fixas', 'assinaturas', 'projetos', 'saude', 'moradia', 'transporte',
   'alimentacao', 'lazer', 'outros', 'outro'
 ];
 
@@ -2277,7 +2278,7 @@ async function registrarPagamentoAmigo(amigo) {
 const LABELS_CAT_ALERTA = {
   alimentacao: 'Alimentação', transporte: 'Transporte', moradia: 'Moradia',
   lazer: 'Lazer', apostas: 'Apostas', saude: 'Saúde', educacao: 'Educação',
-  compras: 'Compras', assinaturas: 'Assinaturas', contas_fixas: 'Contas fixas', outros: 'Outros'
+  compras: 'Compras', assinaturas: 'Assinaturas', projetos: 'Projetos', contas_fixas: 'Contas fixas', outros: 'Outros'
 };
 
 async function carregarAlertas() {
