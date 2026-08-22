@@ -3286,14 +3286,26 @@ let _ofSaldos = null;
 async function carregarBancos() {
   try {
     const res = await fetch('/api/openfinance/status');
-    _ofStatus = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data && typeof data.configurado === 'boolean') {
+      _ofStatus = data;
+    } else {
+      // Sessão/API falhou: não esconde o botão Conectar — assume Pluggy ok se já usava antes
+      _ofStatus = {
+        configurado: true,
+        items: [],
+        temMeuPluggy: false,
+        _statusErro: data.erro || `HTTP ${res.status}`
+      };
+    }
   } catch (e) {
-    _ofStatus = { configurado: false, items: [] };
+    _ofStatus = { configurado: true, items: [], temMeuPluggy: false, _statusErro: e.message };
   }
   // Saldos reais das contas conectadas
   try {
     const r = await fetch('/api/openfinance/saldos');
-    _ofSaldos = await r.json();
+    if (r.ok) _ofSaldos = await r.json();
+    else _ofSaldos = null;
   } catch (e) {
     _ofSaldos = null;
   }
@@ -3375,17 +3387,24 @@ function renderBancos() {
   const painel = document.getElementById('painel-bancos');
   if (!painel) return;
 
+  const btnConectar = `
+    <button type="button" onclick="conectarBanco()" style="background:rgba(49,162,76,0.18); border:1px solid rgba(49,162,76,0.45); color:#3fb950; border-radius:10px; padding:10px 16px; font-size:14px; font-weight:600; cursor:pointer;">
+      + Conectar banco
+    </button>`;
+
   if (!_ofStatus.configurado) {
     painel.innerHTML = `
       <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <h2 style="margin:0; font-size:16px;">Conectar banco (Open Finance)</h2>
-        </div>
-        <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px;">
-          Sincronize automaticamente toda movimentação dos seus bancos (Nubank, Inter, C6, PicPay...).
-          Precisa configurar suas credenciais do Pluggy uma única vez.
+        <h2 style="margin:0 0 8px; font-size:16px;">Conectar banco (Open Finance)</h2>
+        <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 14px;">
+          Sincronize Nubank, Inter, C6… Clique em conectar e autorize no banco.
+          Se der erro de credencial Pluggy, use “Como configurar”.
         </p>
-        <button onclick="mostrarSetupPluggy()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:8px 16px; font-size:13px; cursor:pointer;">Como configurar</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          ${btnConectar}
+          <button type="button" onclick="importarPorItemId()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer;">Colar Item ID</button>
+          <button type="button" onclick="mostrarSetupPluggy()" style="background:transparent; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline;">Como configurar</button>
+        </div>
       </div>`;
     return;
   }
@@ -3401,7 +3420,11 @@ function renderBancos() {
         <span style="font-size:11px; color:var(--text-muted);">sync: ${sync}</span>
         <span onclick="desconectarBanco('${it.item_id}')" style="cursor:pointer; color:#f81d13; font-size:13px;">desconectar</span>
       </div>`;
-  }).join('') : '<p style="font-size:13px; color:var(--text-muted);">Nenhum banco conectado ainda.</p>';
+  }).join('') : `
+    <div style="padding:16px; text-align:center; margin-bottom:8px;">
+      <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Nenhum banco conectado. Conecte Inter, Nubank… (não use MeuPluggy).</p>
+      ${btnConectar}
+    </div>`;
 
   // Resumo de saldo REAL (banco vs cartão), separado PF / PJ
   let saldoHtml = '';
@@ -3410,10 +3433,7 @@ function renderBancos() {
     saldoHtml += `
       <div style="background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.35); border-radius:10px; padding:12px; margin-bottom:12px; font-size:12px; line-height:1.45; color:#f85149;">
         <strong>Contas demo (MeuPluggy)</strong> — esses saldos <strong>não são</strong> do seu Inter/Nubank de verdade.
-        O Pluggy não atualiza MeuPluggy (valores travados desde julho).
-        <br><br>
-        Pra bater com os ~R$ 570 das suas 3 contas: <strong>desconecta</strong> cada MeuPluggy abaixo e clica em
-        <strong>+ Conectar</strong>, escolhendo o banco real (Inter, Nubank…). O widget agora não oferece mais o demo.
+        Desconecta e conecta o banco real.
       </div>`;
   }
   if (_ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length > 0) {
@@ -3435,7 +3455,7 @@ function renderBancos() {
     if (!ehDemo && _ofSaldos.saldoEmMaisAntigo) {
       const diasAtras = Math.floor((Date.now() - new Date(_ofSaldos.saldoEmMaisAntigo).getTime()) / 86400000);
       if (diasAtras >= 2) {
-        avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">Saldo de até ${diasAtras} dias atrás. Use "Atualizar saldos" ou atualize a conexão no meu.pluggy.ai.</div>`;
+        avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">Saldo de até ${diasAtras} dias atrás. Use "Atualizar saldos".</div>`;
       }
     }
     saldoHtml += `
@@ -3459,6 +3479,10 @@ function renderBancos() {
       </div>`;
   }
 
+  const erroStatus = _ofStatus._statusErro
+    ? `<p style="font-size:11px; color:#f85149; margin:0 0 10px;">Falha ao ler status (${escapeHtml(String(_ofStatus._statusErro))}). Tente Conectar mesmo assim.</p>`
+    : '';
+
   painel.innerHTML = `
     <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
@@ -3467,9 +3491,10 @@ function renderBancos() {
           <button type="button" onclick="sincronizarBancos()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
           <button type="button" onclick="atualizarSaldosAgora()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Atualizar saldos</button>
           <button type="button" onclick="importarPorItemId()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
-          <button type="button" onclick="conectarBanco()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">+ Conectar</button>
+          <button type="button" onclick="conectarBanco()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;">+ Conectar</button>
         </div>
       </div>
+      ${erroStatus}
       ${saldoHtml}
       ${itemsHtml}
     </div>`;
