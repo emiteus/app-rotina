@@ -95,7 +95,8 @@ async function syncPlanoMes(ym) {
       campos.push(`valor_esperado = $${i++}`);
       vals.push(item.valor);
     }
-    if (Number(existente.dia_vencimento || 0) !== Number(dia || 0)) {
+    // Só sobrescreve dia se o plano define um dia fixo (não apaga dia aprendido do cartão)
+    if (dia != null && Number(existente.dia_vencimento || 0) !== Number(dia)) {
       campos.push(`dia_vencimento = $${i++}`);
       vals.push(dia);
     }
@@ -187,6 +188,30 @@ function ymAnterior(ym) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function diaDoPago(pagoEm) {
+  if (!pagoEm) return null;
+  if (typeof pagoEm === 'string') {
+    const m = pagoEm.match(/^\d{4}-\d{2}-(\d{2})/);
+    if (m) return Number(m[1]);
+  }
+  const d = new Date(pagoEm);
+  if (Number.isNaN(d.getTime())) return null;
+  // Usa UTC date parts se for Date midnight UTC de um DATE do PG
+  return d.getUTCDate();
+}
+
+async function preencherVencimentoPeloPagamento(ym) {
+  const r = await run(
+    `UPDATE despesas_mes
+     SET dia_vencimento = EXTRACT(DAY FROM pago_em::date)::int
+     WHERE ym = $1
+       AND dia_vencimento IS NULL
+       AND pago_em IS NOT NULL`,
+    [ym]
+  );
+  return r?.rowCount || 0;
+}
+
 function aliasesDaDespesa(titulo) {
   const itens = [...plano.despesas, ...Object.values(plano.extrasPorMes || {}).flat()];
   const hit = itens.find((i) => chaveTitulo(i.titulo) === chaveTitulo(titulo));
@@ -229,6 +254,7 @@ router.get('/', async (req, res) => {
     const ym = ymValido(req.query.ym) ? req.query.ym : ymAtual();
     const seed = await seedMesSeVazio(ym);
     const sync = await syncPlanoMes(ym);
+    await preencherVencimentoPeloPagamento(ym);
     const rows = await all(
       `SELECT * FROM despesas_mes WHERE ym = $1 ORDER BY
         CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'pago' THEN 2 ELSE 3 END,
@@ -286,6 +312,7 @@ router.post('/reconciliar', async (req, res) => {
     const ym = ymValido(req.query.ym || req.body?.ym) ? (req.query.ym || req.body.ym) : ymAtual();
     await seedMesSeVazio(ym);
     await syncPlanoMes(ym);
+    await preencherVencimentoPeloPagamento(ym);
 
     const pendentes = await all(
       `SELECT * FROM despesas_mes WHERE ym = $1 AND status IN ('pendente','atrasado')`,
@@ -355,7 +382,8 @@ router.post('/reconciliar', async (req, res) => {
             ? melhor.data.slice(0, 10)
             : new Date(melhor.data).toISOString().slice(0, 10);
         await run(
-          `UPDATE despesas_mes SET status = 'pago', pago_em = $1, confirmado_por = 'banco', tx_id = $2
+          `UPDATE despesas_mes SET status = 'pago', pago_em = $1, confirmado_por = 'banco', tx_id = $2,
+             dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
            WHERE id = $3`,
           [pagoEm, melhor.id, desp.id]
         );
@@ -389,7 +417,7 @@ router.patch('/:id', async (req, res) => {
     const titulo = req.body.titulo != null ? String(req.body.titulo).trim() : row.titulo;
     const valor =
       req.body.valor_esperado != null ? Number(req.body.valor_esperado) : Number(row.valor_esperado);
-    const dia =
+    let dia =
       req.body.dia_vencimento !== undefined ? req.body.dia_vencimento : row.dia_vencimento;
     const categoria = req.body.categoria != null ? req.body.categoria : row.categoria;
 
@@ -403,6 +431,7 @@ router.patch('/:id', async (req, res) => {
       pago_em = req.body.pago_em || hojeStr();
       confirmado_por = req.body.confirmado_por || 'manual';
       if (req.body.tx_id) tx_id = req.body.tx_id;
+      if (dia == null) dia = diaDoPago(pago_em);
     } else if (req.body.status === 'pendente' || req.body.acao === 'desvincular') {
       status = 'pendente';
       pago_em = null;
@@ -412,6 +441,11 @@ router.patch('/:id', async (req, res) => {
       status = 'ignorado';
     } else if (req.body.status) {
       status = req.body.status;
+    }
+
+    // Se já estava pago sem vencimento, aprende o dia do pagamento
+    if (status === 'pago' && (dia == null || dia === '') && pago_em) {
+      dia = diaDoPago(pago_em);
     }
 
     await run(
@@ -437,7 +471,8 @@ router.post('/:id/confirmar', async (req, res) => {
       `UPDATE despesas_mes SET
         status = 'pago',
         pago_em = $1::date,
-        confirmado_por = COALESCE($2, 'manual')
+        confirmado_por = COALESCE($2, 'manual'),
+        dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
        WHERE id = $3`,
       [hojeStr(), req.body?.confirmado_por || 'manual', req.params.id]
     );
