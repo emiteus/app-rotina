@@ -354,25 +354,33 @@ router.post('/reconciliar', async (req, res) => {
         if (texto < 0.35) continue;
 
         const frouxo = ehCartao || ehAssinatura;
-        // Nome forte no cartão: tolera variação de câmbio (Railway/Cursor em USD)
+        const ehDas = chaveTitulo(desp.titulo) === 'das';
+        const textoReceita =
+          /receita\s*federal|pgdas|das\s*mei|documento\s*de\s*arrecad/i.test(String(tx.descricao || ''));
+        // DAS MEI: valor muda (INSS/mês) e às vezes vem atrasado — casa pelo beneficiário
         const valorOk =
           valorCasa(desp.valor_esperado, tx.valor, { frouxo }) ||
           (texto >= 0.7 && ehCartao && Math.abs(Number(tx.valor)) >= 5 &&
-            Math.abs(Number(tx.valor) - Number(desp.valor_esperado)) / Math.max(Number(desp.valor_esperado), 1) <= 1.2);
+            Math.abs(Number(tx.valor) - Number(desp.valor_esperado)) / Math.max(Number(desp.valor_esperado), 1) <= 1.2) ||
+          (ehDas && textoReceita && Number(tx.valor) >= 50 && Number(tx.valor) <= 300);
 
         if (!valorOk) continue;
 
         const txYm = String(tx.data).slice(0, 7);
         let dataOk = false;
-        if (ehCartao || ehAssinatura) {
-          // Fatura: qualquer dia do mês atual ou anterior
+        if (ehCartao || ehAssinatura || (ehDas && textoReceita)) {
+          // Fatura / DAS: qualquer dia do mês atual ou anterior
           dataOk = txYm === ym || txYm === ymPrev;
         } else {
           dataOk = dataDentroJanela(tx.data, ym, desp.dia_vencimento, 5);
         }
         if (!dataOk) continue;
 
-        const scoreFinal = texto + (ehCartao ? 0.1 : 0) + (valorCasa(desp.valor_esperado, tx.valor) ? 0.15 : 0);
+        const scoreFinal =
+          texto +
+          (ehCartao ? 0.1 : 0) +
+          (valorCasa(desp.valor_esperado, tx.valor) ? 0.15 : 0) +
+          (ehDas && textoReceita ? 0.4 : 0);
         if (scoreFinal > melhorScore) {
           melhorScore = scoreFinal;
           melhor = tx;
