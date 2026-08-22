@@ -112,24 +112,30 @@ router.get('/items-status', async (req, res) => {
 // =====================================================
 router.get('/saldos', async (req, res) => {
   try {
-    const contas = await all(`SELECT account_id, tipo, nome, saldo, saldo_em FROM openfinance_accounts ORDER BY tipo, nome`);
+    const contas = await all(`SELECT account_id, item_id, tipo, nome, saldo, saldo_em, atualizado_em FROM openfinance_accounts ORDER BY tipo, nome`);
     let totalBanco = 0, totalCredito = 0;
     let saldoEmMaisAntigo = null;
+    let atualizadoEmMaisRecente = null;
     contas.forEach(c => {
       const v = Number(c.saldo) || 0;
-      // Pluggy pode mandar fatura de cartão como valor negativo; trata como dívida positiva
+      // Só BANK entra em "Em conta"; CREDIT = fatura
       if (c.tipo === 'CREDIT') totalCredito += Math.abs(v);
-      else totalBanco += v;
-      if (c.saldo_em && (!saldoEmMaisAntigo || new Date(c.saldo_em) < new Date(saldoEmMaisAntigo))) {
-        saldoEmMaisAntigo = c.saldo_em;
+      else if (c.tipo === 'BANK' || !c.tipo) totalBanco += v;
+      const ref = c.saldo_em || c.atualizado_em;
+      if (ref && (!saldoEmMaisAntigo || new Date(ref) < new Date(saldoEmMaisAntigo))) {
+        saldoEmMaisAntigo = ref;
+      }
+      if (c.atualizado_em && (!atualizadoEmMaisRecente || new Date(c.atualizado_em) > new Date(atualizadoEmMaisRecente))) {
+        atualizadoEmMaisRecente = c.atualizado_em;
       }
     });
     res.json({
       contas,
-      totalBanco,            // dinheiro disponível em conta
-      totalCredito,          // fatura de cartão (dívida)
+      totalBanco,
+      totalCredito,
       saldoLiquido: totalBanco - totalCredito,
-      saldoEmMaisAntigo      // data do saldo mais desatualizado (pra avisar)
+      saldoEmMaisAntigo,
+      atualizadoEm: atualizadoEmMaisRecente
     });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -169,7 +175,8 @@ router.get('/contas', async (req, res) => {
       let saldoBanco = 0, saldoCredito = 0, entradasMes = 0, saidasMes = 0;
       accs.forEach(a => {
         const v = Number(a.saldo) || 0;
-        if (a.tipo === 'CREDIT') saldoCredito += Math.abs(v); else saldoBanco += v;
+        if (a.tipo === 'CREDIT') saldoCredito += Math.abs(v);
+        else if (a.tipo === 'BANK' || !a.tipo) saldoBanco += v;
         const f = fluxoPorConta[a.account_id] || { entradas: 0, saidas: 0 };
         entradasMes += f.entradas; saidasMes += f.saidas;
       });
@@ -292,14 +299,188 @@ router.post('/import-item', async (req, res) => {
 // =====================================================
 // SYNC — puxa transações do(s) banco(s) e importa
 // =====================================================
-async function syncItem(apiKey, itemId) {
+
+const REFRESH_COOLDOWN_MS = 60 * 60 * 1000; // Pluggy limita update manual a ~1x/hora
+
+function saldoDeContaPluggy(conta) {
+  // BANK: balance = disponível; closingBalance = disponível + bloqueado (pode inflar)
+  if (conta.type === 'BANK' && conta.bankData && conta.bankData.closingBalance != null) {
+    // Preferimos o balance (disponível pra gastar)
+    return Number(conta.balance) || 0;
+  }
+  return Number(conta.balance) || 0;
+}
+
+async function upsertConta(conta, itemId, saldoOverride, saldoEmOverride) {
+  const saldo = saldoOverride != null ? Number(saldoOverride) : saldoDeContaPluggy(conta);
+  const saldoEm = saldoEmOverride || conta.updatedAt || new Date().toISOString();
+  await run(
+    `INSERT INTO openfinance_accounts (account_id, item_id, tipo, nome, saldo, saldo_em, atualizado_em)
+     VALUES ($1,$2,$3,$4,$5,$6, CURRENT_TIMESTAMP)
+     ON CONFLICT (account_id) DO UPDATE SET
+       tipo=EXCLUDED.tipo, nome=EXCLUDED.nome, saldo=EXCLUDED.saldo,
+       saldo_em=EXCLUDED.saldo_em, atualizado_em=CURRENT_TIMESTAMP, item_id=EXCLUDED.item_id`,
+    [
+      conta.id || conta.account_id,
+      itemId || conta.itemId,
+      conta.type || 'BANK',
+      conta.name || conta.marketingName || 'Conta',
+      saldo,
+      saldoEm
+    ]
+  );
+}
+
+/** Saldo em tempo real via GET /accounts/{id}/balance (sem full sync). */
+async function refreshSaldoConta(apiKey, accountId, meta) {
+  const resp = await axios.get(`${PLUGGY_BASE}/accounts/${accountId}/balance`, {
+    headers: { 'X-API-KEY': apiKey },
+    timeout: 20000
+  });
+  const bal = resp.data || {};
+  const saldo = Number(bal.balance);
+  if (!Number.isFinite(saldo)) throw new Error('balance inválido');
+  const saldoEm = bal.updateDateTime || new Date().toISOString();
+  if (meta && meta.tipo) {
+    await run(
+      `UPDATE openfinance_accounts SET saldo = $1, saldo_em = $2, atualizado_em = CURRENT_TIMESTAMP WHERE account_id = $3`,
+      [saldo, saldoEm, accountId]
+    );
+  } else {
+    await run(
+      `UPDATE openfinance_accounts SET saldo = $1, saldo_em = $2, atualizado_em = CURRENT_TIMESTAMP WHERE account_id = $3`,
+      [saldo, saldoEm, accountId]
+    );
+  }
+  return { accountId, saldo, saldoEm };
+}
+
+async function refreshSaldosAll(opts = {}) {
+  const apiKey = await getApiKey();
+  const contas = await all(`SELECT account_id, item_id, tipo, nome FROM openfinance_accounts`);
+  if (!contas.length) return { semContas: true, ok: 0, falhas: 0, detalhes: [] };
+
+  let ok = 0, falhas = 0;
+  const detalhes = [];
+  for (const c of contas) {
+    try {
+      // Endpoint realtime: melhor pra BANK; CREDIT também costuma responder
+      const r = await refreshSaldoConta(apiKey, c.account_id, c);
+      ok++;
+      detalhes.push({ account_id: c.account_id, nome: c.nome, ok: true, saldo: r.saldo });
+    } catch (e) {
+      // Fallback: lista accounts do item e atualiza essa conta
+      try {
+        const accResp = await axios.get(`${PLUGGY_BASE}/accounts`, {
+          headers: { 'X-API-KEY': apiKey },
+          params: { itemId: c.item_id },
+          timeout: 20000
+        });
+        const hit = (accResp.data.results || []).find(a => a.id === c.account_id);
+        if (hit) {
+          await upsertConta(hit, c.item_id);
+          ok++;
+          detalhes.push({ account_id: c.account_id, nome: c.nome, ok: true, saldo: saldoDeContaPluggy(hit), via: 'list' });
+        } else {
+          falhas++;
+          detalhes.push({ account_id: c.account_id, nome: c.nome, ok: false, erro: 'conta não encontrada' });
+        }
+      } catch (e2) {
+        falhas++;
+        detalhes.push({
+          account_id: c.account_id,
+          nome: c.nome,
+          ok: false,
+          erro: (e.response?.data?.message || e.message || 'falha').slice(0, 120)
+        });
+      }
+    }
+  }
+
+  if (ok > 0) emitUpdate('saldos', { ok, falhas });
+  return { ok, falhas, detalhes, forcarUpdate: !!opts.forcarUpdate };
+}
+
+/** Pede ao Pluggy pra ir no banco de novo (PATCH /items/{id}). Respeita cooldown 1h. */
+async function pedirUpdateItem(apiKey, itemId, { forcar = false } = {}) {
+  const row = await get(`SELECT ultima_refresh_pedido, next_auto_sync FROM openfinance_items WHERE item_id = $1`, [itemId]);
+  const ultimo = row && row.ultima_refresh_pedido ? new Date(row.ultima_refresh_pedido).getTime() : 0;
+  if (!forcar && ultimo && (Date.now() - ultimo) < REFRESH_COOLDOWN_MS) {
+    return { skipped: true, motivo: 'cooldown', proximoEmMin: Math.ceil((REFRESH_COOLDOWN_MS - (Date.now() - ultimo)) / 60000) };
+  }
+  try {
+    const resp = await axios.patch(
+      `${PLUGGY_BASE}/items/${itemId}`,
+      {},
+      { headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' }, timeout: 30000 }
+    );
+    await run(
+      `UPDATE openfinance_items SET ultima_refresh_pedido = CURRENT_TIMESTAMP, ultimo_status = $1 WHERE item_id = $2`,
+      [resp.data?.status || 'UPDATING', itemId]
+    );
+    return { ok: true, status: resp.data?.status, executionStatus: resp.data?.executionStatus };
+  } catch (e) {
+    const msg = e.response?.data?.message || e.message || '';
+    const code = e.response?.data?.code || e.response?.status;
+    // Já atualizando / cooldown do lado Pluggy — não é erro fatal
+    if (/ALREADY_UPDATING|BEFORE_ALLOWED_FREQUENCY|CLIENT_IS_UPDATING/i.test(String(code) + msg)) {
+      return { skipped: true, motivo: msg || String(code) };
+    }
+    // MFA / credenciais — precisa widget
+    if (/LOGIN_ERROR|INVALID_CREDENTIALS|PARAMETERS|MFA|USER_INPUT/i.test(String(code) + msg)) {
+      return { precisaUsuario: true, motivo: msg || String(code) };
+    }
+    throw e;
+  }
+}
+
+async function esperarItemAtualizado(apiKey, itemId, { timeoutMs = 45000 } = {}) {
+  const inicio = Date.now();
+  while (Date.now() - inicio < timeoutMs) {
+    const resp = await axios.get(`${PLUGGY_BASE}/items/${itemId}`, {
+      headers: { 'X-API-KEY': apiKey },
+      timeout: 15000
+    });
+    const st = resp.data?.status;
+    const ex = resp.data?.executionStatus;
+    await run(
+      `UPDATE openfinance_items SET ultimo_status = $1, next_auto_sync = $2 WHERE item_id = $3`,
+      [st || null, resp.data?.nextAutoSyncAt || null, itemId]
+    );
+    if (st === 'UPDATED' || ex === 'SUCCESS' || st === 'LOGIN_ERROR' || st === 'OUTDATED') {
+      return { status: st, executionStatus: ex };
+    }
+    if (st === 'WAITING_USER_INPUT') {
+      return { status: st, precisaUsuario: true };
+    }
+    await new Promise(r => setTimeout(r, 2500));
+  }
+  return { timeout: true };
+}
+
+async function syncItem(apiKey, itemId, opts = {}) {
   let importadas = 0, ignoradas = 0;
+  let refreshInfo = null;
+
+  if (opts.refresh) {
+    try {
+      refreshInfo = await pedirUpdateItem(apiKey, itemId, { forcar: !!opts.forcar });
+      if (refreshInfo.ok) {
+        await esperarItemAtualizado(apiKey, itemId, { timeoutMs: opts.waitMs || 40000 });
+      }
+    } catch (e) {
+      refreshInfo = { erro: e.message };
+    }
+  }
 
   // Pega metadata do item pra saber se tem auto-sync (produção Pluggy) ou é Meu Pluggy
   try {
     const itemResp = await axios.get(`${PLUGGY_BASE}/items/${itemId}`, { headers: { 'X-API-KEY': apiKey } });
     const nextAuto = itemResp.data && itemResp.data.nextAutoSyncAt;
-    await run(`UPDATE openfinance_items SET next_auto_sync = $1 WHERE item_id = $2`, [nextAuto || null, itemId]);
+    await run(
+      `UPDATE openfinance_items SET next_auto_sync = $1, ultimo_status = $2 WHERE item_id = $3`,
+      [nextAuto || null, itemResp.data?.status || null, itemId]
+    );
   } catch (e) { /* segue mesmo sem meta */ }
 
   // Regras de categoria aprendidas (chave -> categoria)
@@ -315,15 +496,12 @@ async function syncItem(apiKey, itemId) {
   });
   const contas = accResp.data.results || [];
 
-  // Guarda o saldo REAL de cada conta (banco = ativo, cartão = dívida)
+  // Guarda o saldo REAL de cada conta
   for (const conta of contas) {
     try {
-      await run(
-        `INSERT INTO openfinance_accounts (account_id, item_id, tipo, nome, saldo, saldo_em, atualizado_em)
-         VALUES ($1,$2,$3,$4,$5,$6, CURRENT_TIMESTAMP)
-         ON CONFLICT (account_id) DO UPDATE SET tipo=EXCLUDED.tipo, nome=EXCLUDED.nome, saldo=EXCLUDED.saldo, saldo_em=EXCLUDED.saldo_em, atualizado_em=CURRENT_TIMESTAMP`,
-        [conta.id, itemId, conta.type || 'BANK', conta.name || conta.marketingName || 'Conta', Number(conta.balance) || 0, conta.updatedAt || null]
-      );
+      await upsertConta(conta, itemId);
+      // Tenta sobrescrever com balance realtime (mais fresco)
+      try { await refreshSaldoConta(apiKey, conta.id, { tipo: conta.type }); } catch (e) { /* ok */ }
     } catch (e) { /* não bloqueia o sync por causa de saldo */ }
   }
 
@@ -331,8 +509,6 @@ async function syncItem(apiKey, itemId) {
   const fromStr = addDias(-90);
 
   for (const conta of contas) {
-    // v2/transactions: paginação por cursor ("next" = URL da próxima página).
-    // O endpoint não aceita filtro de data, então filtramos a janela aqui.
     let url = `${PLUGGY_BASE}/v2/transactions`;
     let params = { accountId: conta.id };
     let guard = 0;
@@ -344,9 +520,7 @@ async function syncItem(apiKey, itemId) {
 
       for (const t of results) {
         const dataUso = (t.date || '').split('T')[0] || hojeStr();
-        if (dataUso < fromStr) { parar = true; continue; } // mais antiga que a janela → para
-        // Cartão de crédito (CREDIT): amount+ = compra (saída), amount- = estorno/pagamento (entrada).
-        // Conta bancária (BANK): amount+ ou type=CREDIT = entrada, senão saída.
+        if (dataUso < fromStr) { parar = true; continue; }
         const ehCartao = conta.type === 'CREDIT';
         const tipo = ehCartao
           ? (Number(t.amount) > 0 ? 'saida' : 'entrada')
@@ -357,7 +531,7 @@ async function syncItem(apiKey, itemId) {
         const chave = chaveCategoria(t);
         const regra = regras[chave];
         const categoria = regra || mapCategoria(t.category);
-        const confirmada = !!regra; // se veio de regra aprendida, já está confirmada
+        const confirmada = !!regra;
         try {
           const r = await run(
             `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, external_id, fonte, account_id, chave_categoria, categoria_confirmada)
@@ -368,18 +542,17 @@ async function syncItem(apiKey, itemId) {
           if (r.rowCount > 0) importadas++; else ignoradas++;
         } catch (e) { ignoradas++; }
       }
-      // próxima página: o "next" já vem com query string embutida
       url = parar ? null : (txResp.data.next || null);
       params = undefined;
     }
   }
 
   await run(`UPDATE openfinance_items SET ultima_sync = CURRENT_TIMESTAMP WHERE item_id = $1`, [itemId]);
-  return { importadas, ignoradas };
+  return { importadas, ignoradas, refresh: refreshInfo };
 }
 
 // Lógica reutilizável (usada pela rota e pelo agendador automático)
-async function syncAll(itemId) {
+async function syncAll(itemId, opts = {}) {
   const apiKey = await getApiKey();
   const items = itemId
     ? [{ item_id: itemId }]
@@ -387,20 +560,34 @@ async function syncAll(itemId) {
   if (items.length === 0) return { semItems: true, importadas: 0, ignoradas: 0 };
 
   let importadas = 0, ignoradas = 0;
+  const refreshes = [];
   for (const it of items) {
-    const r = await syncItem(apiKey, it.item_id);
+    const r = await syncItem(apiKey, it.item_id, opts);
     importadas += r.importadas;
     ignoradas += r.ignoradas;
+    if (r.refresh) refreshes.push({ item_id: it.item_id, ...r.refresh });
   }
   if (importadas > 0) emitUpdate('sync', { importadas });
-  return { importadas, ignoradas };
+  // Sempre emite saldos após sync
+  emitUpdate('saldos', { ok: true });
+  return { importadas, ignoradas, refreshes };
 }
 
 router.post('/sync', async (req, res) => {
   try {
-    const r = await syncAll(req.body && req.body.itemId);
+    const refresh = !!(req.body && req.body.refresh);
+    const r = await syncAll(req.body && req.body.itemId, { refresh, forcar: !!(req.body && req.body.forcar) });
     if (r.semItems) return res.status(400).json({ erro: 'Nenhum banco conectado. Conecte um banco primeiro.' });
-    res.json({ ok: true, importadas: r.importadas, ignoradas: r.ignoradas });
+    // Após sync, puxa saldo realtime de novo
+    let saldos = null;
+    try { saldos = await refreshSaldosAll(); } catch (e) { /* best-effort */ }
+    res.json({
+      ok: true,
+      importadas: r.importadas,
+      ignoradas: r.ignoradas,
+      refreshes: r.refreshes || [],
+      saldos
+    });
   } catch (err) {
     if (err.code === 'PLUGGY_NAO_CONFIGURADO') {
       return res.status(400).json({ erro: 'Open Finance não configurado. Adicione PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET no .env.' });
@@ -409,11 +596,91 @@ router.post('/sync', async (req, res) => {
   }
 });
 
+// Atualiza só saldos (rápido) — usa GET /accounts/{id}/balance
+router.post('/refresh-saldos', async (req, res) => {
+  try {
+    const pedirUpdate = !!(req.body && req.body.pedirUpdate);
+    const apiKey = await getApiKey();
+    const updates = [];
+    if (pedirUpdate) {
+      const items = await all(`SELECT item_id FROM openfinance_items WHERE status = 'ativo'`);
+      for (const it of items) {
+        try {
+          updates.push({ item_id: it.item_id, ...(await pedirUpdateItem(apiKey, it.item_id)) });
+        } catch (e) {
+          updates.push({ item_id: it.item_id, erro: e.message });
+        }
+      }
+      // Se pediu update, espera um pouco e sincroniza contas
+      const algumOk = updates.some(u => u.ok);
+      if (algumOk) {
+        await new Promise(r => setTimeout(r, 8000));
+        await syncAll(null, { refresh: false });
+      }
+    }
+    const saldos = await refreshSaldosAll();
+    const snapshot = await all(`SELECT account_id, tipo, nome, saldo, saldo_em, atualizado_em FROM openfinance_accounts ORDER BY tipo, nome`);
+    let totalBanco = 0, totalCredito = 0;
+    snapshot.forEach(c => {
+      const v = Number(c.saldo) || 0;
+      if (c.tipo === 'CREDIT') totalCredito += Math.abs(v);
+      else if (c.tipo === 'BANK' || !c.tipo) totalBanco += v;
+    });
+    res.json({
+      ok: true,
+      updates,
+      refresh: saldos,
+      totalBanco,
+      totalCredito,
+      saldoLiquido: totalBanco - totalCredito,
+      contas: snapshot
+    });
+  } catch (err) {
+    if (err.code === 'PLUGGY_NAO_CONFIGURADO') {
+      return res.status(400).json({ erro: 'Open Finance não configurado.' });
+    }
+    res.status(500).json({ erro: err.response?.data?.message || err.message });
+  }
+});
+
 // Exposto pro agendador (server.js)
-router.syncAll = function () {
-  return syncAll().catch(e => ({ erro: e.message }));
+router.syncAll = function (itemId, opts) {
+  return syncAll(itemId, opts).catch(e => ({ erro: e.message }));
+};
+router.refreshSaldosAll = function (opts) {
+  return refreshSaldosAll(opts).catch(e => ({ erro: e.message }));
 };
 router.temCredenciais = temCredenciais;
+
+/** Webhook Pluggy (público) — quando o banco termina de atualizar, puxa saldos/txs */
+async function handlePluggyWebhook(req, res) {
+  try {
+    const secret = process.env.PLUGGY_WEBHOOK_SECRET;
+    if (secret) {
+      const got = req.get('X-Pluggy-Secret') || req.get('x-webhook-secret') || req.query.secret;
+      if (got !== secret) return res.status(401).json({ erro: 'secret inválido' });
+    }
+    const event = req.body || {};
+    const tipo = event.event || event.type || '';
+    const itemId = event.itemId || event.data?.itemId || event.id;
+    console.log('[pluggy-webhook]', tipo, itemId || '');
+    if (/item\/updated|item\/created|item\/waiting|ITEM_UPDATED/i.test(tipo) && itemId) {
+      // Fire-and-forget pra responder 200 rápido
+      setImmediate(async () => {
+        try {
+          await syncAll(itemId, { refresh: false });
+          await refreshSaldosAll();
+        } catch (e) {
+          console.error('[pluggy-webhook] sync falhou:', e.message);
+        }
+      });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+}
+router.handlePluggyWebhook = handlePluggyWebhook;
 
 // =====================================================
 // DESCONECTAR banco

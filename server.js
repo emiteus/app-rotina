@@ -81,6 +81,8 @@ app.use('/api/despesas', requireAuth, despesasRouter);
 app.use('/api/alarmes', requireAuth, alarmesRouter);
 app.use('/api/recorrentes', requireAuth, recorrentesRouter);
 app.use('/api/eventos', requireAuth, eventosRouter);
+// Webhook Pluggy precisa ser público (sem cookie de sessão)
+app.post('/api/openfinance/webhook', openfinanceRouter.handlePluggyWebhook);
 app.use('/api/openfinance', requireAuth, openfinanceRouter);
 app.use('/api/categorias', requireAuth, categoriasRouter);
 app.use('/api/estado', requireAuth, estadoRouter);
@@ -203,9 +205,11 @@ sched('10 0 * * *', runCron('historico-ontem', () => persistirHistoricoCron(addD
 async function syncOpenFinanceDiario() {
   try {
     if (!openfinanceRouter.temCredenciais || !openfinanceRouter.temCredenciais()) return;
-    const r = await openfinanceRouter.syncAll();
+    // Pede update no banco (1x/h max) + importa txs + saldos realtime
+    const r = await openfinanceRouter.syncAll(null, { refresh: true });
     if (r && r.erro) { console.error('[OpenFinance] Erro no sync automático:', r.erro); return; }
     if (!r || r.semItems) return;
+    try { await openfinanceRouter.refreshSaldosAll(); } catch (e) { /* ok */ }
     console.log(`[OpenFinance] Sync automático: ${r.importadas} nova(s) transação(ões)`);
     if (r.importadas > 0) {
       const { all } = require('./lib/db');
@@ -227,11 +231,25 @@ async function syncOpenFinanceDiario() {
     console.error('[OpenFinance] Erro no sync automático:', e.message);
   }
 }
-// 3x/dia: 6h, 14h30 (pós-refresh do Pluggy), 20h — pra pegar Nubank cedo
-// (Inter PF/PJ só sincronizam manualmente no meu.pluggy.ai enquanto Meu Pluggy)
+
+// Só saldos (rápido) — a cada 2h durante o dia
+async function refreshSaldosPeriodico() {
+  try {
+    if (!openfinanceRouter.temCredenciais || !openfinanceRouter.temCredenciais()) return;
+    const r = await openfinanceRouter.refreshSaldosAll();
+    if (r && r.erro) { console.error('[OpenFinance] refresh saldos:', r.erro); return; }
+    if (r && !r.semContas) console.log(`[OpenFinance] Saldos atualizados: ${r.ok} ok, ${r.falhas} falha(s)`);
+  } catch (e) {
+    console.error('[OpenFinance] refresh saldos:', e.message);
+  }
+}
+
+// 3x/dia sync completo: 6h, 14h30, 20h
 sched('0 6 * * *', runCron('of-sync-6h', syncOpenFinanceDiario));
 sched('30 14 * * *', runCron('of-sync-14h30', syncOpenFinanceDiario));
 sched('0 20 * * *', runCron('of-sync-20h', syncOpenFinanceDiario));
+// Saldos realtime a cada 2h das 7h às 23h
+sched('15 7-23/2 * * *', runCron('of-saldos', refreshSaldosPeriodico));
 
 // 9h30 — alerta pra reconectar itens sem sync há > 48h (Meu Pluggy só)
 sched('30 9 * * *', runCron('reconectar-alerta', async () => {

@@ -1136,6 +1136,7 @@ function trocarSubAbaFin(id) {
   if (id === 'fin-pj') carregarPJ();
   if (id === 'fin-visao') {
     carregarTransacoes();
+    atualizarSaldosSilencioso();
   }
 }
 
@@ -3298,6 +3299,7 @@ async function carregarBancos() {
   }
   renderBancos();
   aplicarSaldosReais();
+  atualizarSaldosSilencioso();
 }
 
 // Sobrescreve o "Saldo Total" / "Em conta" com o saldo REAL em conta (Open Finance)
@@ -3309,7 +3311,52 @@ function aplicarSaldosReais() {
   if (dash) dash.textContent = real;
   if (fin) fin.textContent = real;
   const labelFin = document.querySelector('.saldo-box .box-label');
-  if (labelFin) labelFin.textContent = 'Em conta';
+  if (labelFin) {
+    let extra = '';
+    const quando = _ofSaldos.atualizadoEm || _ofSaldos.saldoEmMaisAntigo;
+    if (quando) {
+      const mins = Math.max(0, Math.floor((Date.now() - new Date(quando).getTime()) / 60000));
+      if (mins < 60) extra = ` · há ${mins} min`;
+      else if (mins < 48 * 60) extra = ` · há ${Math.floor(mins / 60)} h`;
+      else extra = ` · ${new Date(quando).toLocaleDateString('pt-BR')}`;
+    }
+    labelFin.textContent = 'Em conta' + extra;
+  }
+}
+
+let _ultimoRefreshSaldos = 0;
+async function atualizarSaldosSilencioso(opts = {}) {
+  const forcar = !!opts.forcar;
+  const agora = Date.now();
+  if (!forcar && agora - _ultimoRefreshSaldos < 10 * 60 * 1000) return;
+  _ultimoRefreshSaldos = agora;
+  try {
+    const res = await fetch('/api/openfinance/refresh-saldos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pedirUpdate: !!opts.pedirUpdate })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.contas) {
+      _ofSaldos = {
+        contas: data.contas,
+        totalBanco: data.totalBanco,
+        totalCredito: data.totalCredito,
+        saldoLiquido: data.saldoLiquido,
+        atualizadoEm: new Date().toISOString(),
+        saldoEmMaisAntigo: (data.contas || []).reduce((min, c) => {
+          const t = c.saldo_em || c.atualizado_em;
+          if (!t) return min;
+          if (!min || new Date(t) < new Date(min)) return t;
+          return min;
+        }, null)
+      };
+      aplicarSaldosReais();
+      if (typeof renderBancos === 'function') renderBancos();
+    }
+    return data;
+  } catch (e) { /* silencioso */ }
 }
 
 function renderBancos() {
@@ -3391,6 +3438,7 @@ function renderBancos() {
         <h2 style="margin:0; font-size:16px;">Bancos conectados</h2>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button onclick="sincronizarBancos()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
+          <button onclick="atualizarSaldosAgora()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Atualizar saldos</button>
           <button onclick="importarPorItemId()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
           <button onclick="conectarBanco()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">+ Conectar</button>
         </div>
@@ -3438,20 +3486,42 @@ async function conectarBanco() {
 }
 
 async function sincronizarBancos(itemId) {
-  toast('Sincronizando transações...', 'info');
+  toast('Atualizando bancos e saldos...', 'info');
   try {
     const res = await fetch('/api/openfinance/sync', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(itemId ? { itemId } : {})
+      body: JSON.stringify(itemId ? { itemId, refresh: true } : { refresh: true })
     });
     const data = await res.json();
     if (!res.ok) { toast(data.erro || 'Erro ao sincronizar', 'error'); return; }
-    toast(`${data.importadas} novas transações importadas`, 'success');
+    const precisa = (data.refreshes || []).filter(r => r.precisaUsuario);
+    if (precisa.length) {
+      toast('Algum banco pediu login/MFA — atualiza a conexão no meu.pluggy.ai', 'info');
+    }
+    const saldosOk = data.saldos && data.saldos.ok;
+    toast(
+      `${data.importadas} novas txs` + (saldosOk != null ? ` · ${saldosOk} saldo(s) ok` : ''),
+      'success'
+    );
+    _ultimoRefreshSaldos = 0;
+    await carregarBancos();
     if (typeof carregarFinanceiro === 'function') carregarFinanceiro();
     if (typeof carregarTransacoes === 'function') carregarTransacoes();
     await reconciliarDespesas({ silencioso: true });
   } catch (e) {
     toast('Erro ao sincronizar: ' + e.message, 'error');
+  }
+}
+
+async function atualizarSaldosAgora() {
+  toast('Buscando saldos no banco...', 'info');
+  _ultimoRefreshSaldos = 0;
+  const data = await atualizarSaldosSilencioso({ forcar: true, pedirUpdate: true });
+  if (!data) { toast('Não deu pra atualizar agora', 'error'); return; }
+  if (data.updates && data.updates.some(u => u.precisaUsuario)) {
+    toast('Banco pediu login/MFA — atualiza no meu.pluggy.ai', 'info');
+  } else {
+    toast(`Saldos atualizados · ${formatBRL(data.totalBanco)} em conta`, 'success');
   }
 }
 
