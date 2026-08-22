@@ -3395,14 +3395,12 @@ function renderBancos() {
   if (!_ofStatus.configurado) {
     painel.innerHTML = `
       <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
-        <h2 style="margin:0 0 8px; font-size:16px;">Conectar banco (Open Finance)</h2>
+        <h2 style="margin:0 0 8px; font-size:16px;">Bancos</h2>
         <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 14px;">
-          Sincronize Nubank, Inter, C6… Clique em conectar e autorize no banco.
-          Se der erro de credencial Pluggy, use “Como configurar”.
+          Conecte Inter, Nubank… pra sincronizar saldo e extrato.
         </p>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           ${btnConectar}
-          <button type="button" onclick="importarPorItemId()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer;">Colar Item ID</button>
           <button type="button" onclick="mostrarSetupPluggy()" style="background:transparent; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline;">Como configurar</button>
         </div>
       </div>`;
@@ -3421,8 +3419,8 @@ function renderBancos() {
         <span onclick="desconectarBanco('${it.item_id}')" style="cursor:pointer; color:#f81d13; font-size:13px;">desconectar</span>
       </div>`;
   }).join('') : `
-    <div style="padding:16px; text-align:center; margin-bottom:8px;">
-      <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">Nenhum banco conectado. Conecte Inter, Nubank… (não use MeuPluggy).</p>
+    <div style="padding:8px 0 4px;">
+      <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px;">Nenhum banco conectado ainda.</p>
       ${btnConectar}
     </div>`;
 
@@ -3486,12 +3484,11 @@ function renderBancos() {
   painel.innerHTML = `
     <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
-        <h2 style="margin:0; font-size:16px;">Bancos conectados</h2>
+        <h2 style="margin:0; font-size:16px;">Bancos</h2>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          ${items.length ? `<button type="button" id="btn-atualizar-saldos" onclick="atualizarSaldosAgora()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Atualizar saldos</button>
           <button type="button" onclick="sincronizarBancos()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
-          <button type="button" onclick="atualizarSaldosAgora()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Atualizar saldos</button>
-          <button type="button" onclick="importarPorItemId()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
-          <button type="button" onclick="conectarBanco()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;">+ Conectar</button>
+          <button type="button" onclick="conectarBanco()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;">+ Conectar</button>` : ''}
         </div>
       </div>
       ${erroStatus}
