@@ -50,8 +50,127 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET stats mensais (últimos 6 meses)
-router.get('/stats', async (req, res) => {
+// GET /api/financeiro/extrato — movimentações com filtros de período e conta
+router.get('/extrato', async (req, res) => {
+  try {
+    const hoje = hojeStr();
+    let from = String(req.query.from || '').slice(0, 10);
+    let to = String(req.query.to || '').slice(0, 10);
+    const dias = Math.min(Math.max(Number(req.query.dias) || 0, 0), 365);
+    const accountId = String(req.query.account_id || '').trim();
+    const itemId = String(req.query.item_id || '').trim();
+    const tipo = String(req.query.tipo || '').trim(); // entrada|saida|''
+    const q = String(req.query.q || '').trim();
+    const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
+
+    if (!from && !to && dias > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() - dias);
+      from = d.toISOString().slice(0, 10);
+      to = hoje;
+    }
+    if (!from) {
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      from = d.toISOString().slice(0, 10);
+    }
+    if (!to) to = hoje;
+
+    const where = ['f.data::date >= $1::date', 'f.data::date <= $2::date'];
+    const vals = [from, to];
+    let i = 3;
+
+    if (accountId === 'manual') {
+      where.push('f.account_id IS NULL');
+    } else if (accountId) {
+      where.push(`f.account_id = $${i++}`);
+      vals.push(accountId);
+    } else if (itemId) {
+      where.push(`a.item_id = $${i++}`);
+      vals.push(itemId);
+    }
+
+    if (tipo === 'entrada' || tipo === 'saida') {
+      where.push(`f.tipo = $${i++}`);
+      vals.push(tipo);
+    }
+
+    if (q) {
+      where.push(`f.descricao ILIKE $${i++}`);
+      vals.push(`%${q}%`);
+    }
+
+    vals.push(limit);
+    const limitIdx = i;
+
+    const movimentacoes = await all(
+      `SELECT f.id, f.tipo, f.valor, f.descricao, f.data, f.categoria, f.fonte, f.account_id,
+              a.nome AS conta_nome, a.tipo AS conta_tipo, a.item_id,
+              COALESCE(i.apelido, i.connector_nome, 'Manual') AS banco
+       FROM financeiro f
+       LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
+       LEFT JOIN openfinance_items i ON i.item_id = a.item_id
+       WHERE ${where.join(' AND ')}
+       ORDER BY f.data DESC, f.criado_em DESC
+       LIMIT $${limitIdx}`,
+      vals
+    );
+
+    const resumoVals = vals.slice(0, -1); // sem limit
+    const resumo = await get(
+      `SELECT
+         COUNT(*)::int AS qtd,
+         COALESCE(SUM(CASE WHEN f.tipo = 'entrada' THEN f.valor ELSE 0 END), 0) AS entradas,
+         COALESCE(SUM(CASE WHEN f.tipo = 'saida' THEN f.valor ELSE 0 END), 0) AS saidas
+       FROM financeiro f
+       LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
+       WHERE ${where.join(' AND ')}`,
+      resumoVals
+    );
+
+    const contas = await all(
+      `SELECT a.account_id, a.tipo, a.nome, a.item_id,
+              COALESCE(i.apelido, i.connector_nome, 'Banco') AS banco,
+              i.pessoa
+       FROM openfinance_accounts a
+       JOIN openfinance_items i ON i.item_id = a.item_id
+       ORDER BY i.apelido NULLS LAST, a.tipo, a.nome`
+    );
+
+    const entradas = Number(resumo?.entradas || 0);
+    const saidas = Number(resumo?.saidas || 0);
+    res.json({
+      from,
+      to,
+      movimentacoes: (movimentacoes || []).map((m) => ({
+        ...m,
+        valor: Number(m.valor),
+        data: m.data ? String(m.data).slice(0, 10) : null
+      })),
+      resumo: {
+        qtd: Number(resumo?.qtd || 0),
+        entradas,
+        saidas,
+        saldo: Math.round((entradas - saidas) * 100) / 100
+      },
+      contas: (contas || []).map((c) => ({
+        account_id: c.account_id,
+        item_id: c.item_id,
+        tipo: c.tipo,
+        nome: c.nome,
+        banco: c.banco,
+        pessoa: c.pessoa,
+        label:
+          c.tipo === 'CREDIT'
+            ? `${c.banco} · Cartão`
+            : `${c.banco}${c.pessoa === 'PJ' ? ' · PJ' : ''}`
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
   try {
     const stats = await all(`
       SELECT

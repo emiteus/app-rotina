@@ -1134,6 +1134,7 @@ function trocarSubAbaFin(id) {
   if (id === 'fin-despesas') carregarDespesasMes();
   if (id === 'fin-metas') carregarMetas();
   if (id === 'fin-pj') carregarPJ();
+  if (id === 'fin-extrato') carregarExtrato();
   if (id === 'fin-visao') {
     // Saldo de banco primeiro (evita flash da sobra 30d no Em conta)
     carregarBancos().then(() => carregarTransacoes());
@@ -4550,6 +4551,165 @@ function _dataMaxima(periodo) {
   const hoje = new Date();
   if (periodo === 'mes-passado') { const d = new Date(hoje.getFullYear(), hoje.getMonth(), 1); d.setMilliseconds(-1); return d; }
   return null;
+}
+
+// =====================
+//  EXTRATO
+// =====================
+let _extratoPeriodo = '30d';
+let _extratoBuscaTimer = null;
+let _extratoContasCache = null;
+
+function extratoRangeFromPeriodo(periodo) {
+  const hoje = new Date();
+  const ymd = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const to = ymd(hoje);
+  if (periodo === '7d') {
+    const d = new Date(hoje); d.setDate(d.getDate() - 7);
+    return { from: ymd(d), to };
+  }
+  if (periodo === '30d') {
+    const d = new Date(hoje); d.setDate(d.getDate() - 30);
+    return { from: ymd(d), to };
+  }
+  if (periodo === 'mes') {
+    return { from: ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), to };
+  }
+  if (periodo === 'mes-passado') {
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const fim = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+    return { from: ymd(ini), to: ymd(fim) };
+  }
+  const de = document.getElementById('extrato-de')?.value;
+  const ate = document.getElementById('extrato-ate')?.value;
+  return { from: de || ymd(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), to: ate || to };
+}
+
+function extratoSetPeriodo(periodo) {
+  _extratoPeriodo = periodo;
+  document.querySelectorAll('#extrato-periodo-chips .extrato-chip').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-periodo') === periodo);
+  });
+  const datas = document.getElementById('extrato-datas');
+  if (datas) datas.hidden = periodo !== 'custom';
+  if (periodo === 'custom') {
+    const range = extratoRangeFromPeriodo('mes');
+    const de = document.getElementById('extrato-de');
+    const ate = document.getElementById('extrato-ate');
+    if (de && !de.value) de.value = range.from;
+    if (ate && !ate.value) ate.value = range.to;
+  }
+  carregarExtrato();
+}
+
+function extratoBuscaDebounced() {
+  clearTimeout(_extratoBuscaTimer);
+  _extratoBuscaTimer = setTimeout(() => carregarExtrato(), 280);
+}
+
+function _preencherExtratoContas(contas) {
+  const sel = document.getElementById('extrato-conta');
+  if (!sel) return;
+  const atual = sel.value || 'todas';
+  const opts = [
+    '<option value="todas">Todas as contas</option>',
+    '<option value="manual">Só manuais</option>'
+  ];
+  (contas || []).forEach((c) => {
+    opts.push(`<option value="${escapeHtml(c.account_id)}">${escapeHtml(c.label || c.banco)}</option>`);
+  });
+  sel.innerHTML = opts.join('');
+  if ([...sel.options].some((o) => o.value === atual)) sel.value = atual;
+}
+
+async function carregarExtrato() {
+  const lista = document.getElementById('lista-extrato');
+  const resumoEl = document.getElementById('extrato-resumo');
+  if (!lista) return;
+
+  const range = extratoRangeFromPeriodo(_extratoPeriodo);
+  const conta = document.getElementById('extrato-conta')?.value || 'todas';
+  const tipo = document.getElementById('extrato-tipo')?.value || '';
+  const q = (document.getElementById('extrato-busca')?.value || '').trim();
+
+  const params = new URLSearchParams({ from: range.from, to: range.to, limit: '300' });
+  if (conta === 'manual') params.set('account_id', 'manual');
+  else if (conta && conta !== 'todas') params.set('account_id', conta);
+  if (tipo) params.set('tipo', tipo);
+  if (q) params.set('q', q);
+
+  lista.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:12px 0;">Carregando extrato…</p>';
+  try {
+    const res = await fetch(`/api/financeiro/extrato?${params}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro ao carregar extrato');
+    _extratoContasCache = data.contas || [];
+    _preencherExtratoContas(_extratoContasCache);
+    renderExtrato(data);
+  } catch (e) {
+    if (resumoEl) resumoEl.innerHTML = '';
+    lista.innerHTML = `<p style="color:var(--danger); font-size:13px;">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function renderExtrato(data) {
+  const lista = document.getElementById('lista-extrato');
+  const resumoEl = document.getElementById('extrato-resumo');
+  if (!lista) return;
+
+  const r = data.resumo || {};
+  if (resumoEl) {
+    resumoEl.innerHTML = `
+      <div class="extrato-kpi"><span class="label">Movimentações</span><span class="valor">${r.qtd || 0}</span></div>
+      <div class="extrato-kpi ok"><span class="label">Entradas</span><span class="valor">${formatBRL(r.entradas || 0)}</span></div>
+      <div class="extrato-kpi saida"><span class="label">Saídas</span><span class="valor">${formatBRL(r.saidas || 0)}</span></div>
+      <div class="extrato-kpi"><span class="label">Saldo do período</span><span class="valor">${formatBRL(r.saldo || 0)}</span></div>
+    `;
+  }
+
+  const movs = data.movimentacoes || [];
+  if (!movs.length) {
+    lista.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:16px 0;">Nenhuma movimentação nesse período/conta.</p>';
+    return;
+  }
+
+  const porDia = {};
+  movs.forEach((m) => {
+    const dia = (m.data || '').slice(0, 10) || 'sem-data';
+    if (!porDia[dia]) porDia[dia] = [];
+    porDia[dia].push(m);
+  });
+
+  const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a));
+  lista.innerHTML = dias.map((dia) => {
+    const itens = porDia[dia];
+    const labelDia = dia === 'sem-data'
+      ? 'Sem data'
+      : new Date(dia + 'T12:00:00').toLocaleDateString('pt-BR', {
+          weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+        });
+    const rows = itens.map((t) => {
+      const sinal = t.tipo === 'entrada' ? '+' : '−';
+      const banco = t.account_id
+        ? `${t.banco || 'Banco'}${t.conta_tipo === 'CREDIT' ? ' · cartão' : ''}`
+        : 'Manual';
+      const cat = t.categoria || 'outros';
+      return `
+        <div class="extrato-item ${t.tipo}">
+          <div class="extrato-item-info">
+            <div class="extrato-item-desc">${escapeHtml(t.descricao || '(sem descrição)')}</div>
+            <div class="extrato-item-meta">${escapeHtml(banco)} · ${escapeHtml(cat)}</div>
+          </div>
+          <div class="extrato-item-valor ${t.tipo}">${sinal} ${formatBRL(Math.abs(Number(t.valor) || 0))}</div>
+        </div>`;
+    }).join('');
+    return `<div class="extrato-dia"><h4>${labelDia}</h4>${rows}</div>`;
+  }).join('');
 }
 
 function atualizarFinFiltros() { renderTransacoes(); }
