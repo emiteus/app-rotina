@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=60">
+  <link rel="stylesheet" href="style.css?v=61">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -739,6 +739,15 @@
         <div id="tendencias-container" class="tendencias-list"></div>
       </div>
 
+      <!-- Consistência de horário -->
+      <div class="panel" style="margin-top: 20px;">
+        <div class="panel-header">
+          <h3>Consistência de horário</h3>
+        </div>
+        <p id="consistencia-resumo" style="font-size:13px; color:var(--text-muted); margin:0 0 12px;"></p>
+        <div id="consistencia-container" class="tendencias-list"></div>
+      </div>
+
       <!-- Tarefas Concluídas Recentemente -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-header">
@@ -804,8 +813,6 @@
     <div class="assist-msgs" id="assist-msgs"></div>
     <div class="assist-chips">
       <button type="button" onclick="checkinHabitoUI('Academia')">Academia</button>
-      <button type="button" onclick="checkinHabitoUI('Beber água')">Água</button>
-      <button type="button" onclick="checkinHabitoUI('Sono')">Sono</button>
     </div>
     <form class="assist-form" id="assist-form" onsubmit="enviarAssistente(event)">
       <input id="assist-input" type="text" placeholder="Ex: quantas vezes fui à academia essa semana?" autocomplete="off" maxlength="800" />
@@ -844,7 +851,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=60"></script>
+  <script src="app.js?v=61"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

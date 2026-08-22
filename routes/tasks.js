@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
-const { checkinHabito, resumoHabito, listarHabitos } = require('../lib/habitos');
+const { checkinHabito, resumoHabito, listarHabitos, analisarConsistencia } = require('../lib/habitos');
 const { persistirHistoricoDia } = require('../lib/historico');
 const { hojeStr, dataResetSql, ymdDe } = require('../lib/datas');
 
@@ -155,6 +155,7 @@ router.get('/stats', async (req, res) => {
     const diasComTarefas = historico.length;
     const taxaMedia = totalCriadas > 0 ? Math.round((totalConcluidas / totalCriadas) * 100) : 0;
     const mediaPorDia = diasComTarefas > 0 ? (totalConcluidas / diasComTarefas).toFixed(1) : 0;
+    const consistencia = await analisarConsistencia(30).catch(() => null);
 
     res.json({
       historico,
@@ -169,8 +170,19 @@ router.get('/stats', async (req, res) => {
         piorDia
       },
       categorias,
-      prioridades
+      prioridades,
+      consistencia
     });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// GET consistência de horário de conclusão
+router.get('/consistencia', async (req, res) => {
+  try {
+    const dias = Number(req.query.dias) || 30;
+    res.json(await analisarConsistencia(dias));
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -240,7 +252,17 @@ router.patch('/:id', async (req, res) => {
   const { concluida, titulo, descricao, prioridade, categoria } = req.body;
   try {
     if (concluida !== undefined) {
-      await run(`UPDATE tasks SET concluida = $1 WHERE id = $2`, [!!concluida, req.params.id]);
+      if (concluida) {
+        await run(
+          `UPDATE tasks SET concluida = true, concluida_em = COALESCE(concluida_em, CURRENT_TIMESTAMP) WHERE id = $1`,
+          [req.params.id]
+        );
+      } else {
+        await run(
+          `UPDATE tasks SET concluida = false, concluida_em = NULL WHERE id = $1`,
+          [req.params.id]
+        );
+      }
     }
     if (titulo !== undefined) {
       await run(`UPDATE tasks SET titulo = $1 WHERE id = $2`, [titulo, req.params.id]);

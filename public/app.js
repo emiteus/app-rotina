@@ -6356,10 +6356,16 @@ function renderHistorico() {
   // Render tendências
   renderTendencias(porDia);
 
+  renderConsistenciaHorario();
+
   // Render histórico de concluídas
   const concluiDasRecentemente = allTasks
     .filter(t => t.concluida)
-    .sort((a, b) => new Date(b.updated_at || b.data_reset) - new Date(a.updated_at || a.data_reset))
+    .sort((a, b) => {
+      const da = new Date(a.concluida_em || a.updated_at || a.data_reset || 0);
+      const db = new Date(b.concluida_em || b.updated_at || b.data_reset || 0);
+      return db - da;
+    })
     .slice(0, 10);
 
   const container = document.getElementById('historico-concluidas');
@@ -6367,15 +6373,51 @@ function renderHistorico() {
     container.innerHTML = '<div class="mini-item-empty">Nenhuma tarefa concluída ainda</div>';
   } else {
     container.innerHTML = concluiDasRecentemente.map(t => {
-      const data = new Date(t.updated_at || t.data_reset);
-      const dataStr = data.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
+      const data = new Date(t.concluida_em || t.updated_at || t.data_reset);
+      const dataStr = t.concluida_em
+        ? data.toLocaleString('pt-BR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : data.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
       return `
         <div class="mini-item" style="opacity: 0.8;">
-          <span>✅ ${t.titulo}</span>
+          <span>✅ ${escapeHtml(t.titulo)}</span>
           <span style="color: var(--text-muted); font-size: 12px;">${dataStr}</span>
         </div>
       `;
     }).join('');
+  }
+}
+
+async function renderConsistenciaHorario() {
+  const resumoEl = document.getElementById('consistencia-resumo');
+  const container = document.getElementById('consistencia-container');
+  if (!resumoEl || !container) return;
+  try {
+    const data = await fetch('/api/tasks/consistencia?dias=30').then(r => r.json());
+    if (data.erro) throw new Error(data.erro);
+    resumoEl.textContent = data.resumo || '';
+    const lista = data.por_tarefa || [];
+    if (!lista.length) {
+      container.innerHTML = '<div class="tendencia-item">Conclua algumas tarefas — o horário passa a ser salvo agora.</div>';
+      return;
+    }
+    const labelNivel = { alta: 'alta', media: 'média', baixa: 'baixa', insuficiente: '—' };
+    const corNivel = {
+      alta: 'var(--ok, #5baf7a)',
+      media: 'var(--text-secondary)',
+      baixa: 'var(--danger, #e05a4e)',
+      insuficiente: 'var(--text-muted)'
+    };
+    container.innerHTML = lista.map(t => {
+      const nivel = labelNivel[t.consistencia] || t.consistencia;
+      const desvio = t.desvio_minutos != null ? `±${t.desvio_minutos} min` : '';
+      return `<div class="tendencia-item" style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <span>${escapeHtml(t.titulo)} <span style="color:var(--text-muted); font-size:12px;">(${t.vezes}x · média ${t.horario_medio || '—'})</span></span>
+        <span style="color:${corNivel[t.consistencia] || 'var(--text-muted)'}; font-size:12px; font-weight:600;">consistência ${nivel}${desvio ? ' · ' + desvio : ''}</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    resumoEl.textContent = '';
+    container.innerHTML = `<div class="tendencia-item" style="color:var(--danger);">Não deu pra carregar: ${escapeHtml(e.message)}</div>`;
   }
 }
 

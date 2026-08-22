@@ -2,7 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const { v4: uuid } = require('uuid');
 const { all, run, get } = require('../lib/db');
-const { checkinHabito, listarHabitos } = require('../lib/habitos');
+const { checkinHabito, listarHabitos, analisarConsistencia } = require('../lib/habitos');
 const { hojeStr, ymAtual, addDias, dataResetSql, horaAtual, diaSemana } = require('../lib/datas');
 const { persistirHistoricoDia } = require('../lib/historico');
 const plano = require('../lib/plano-financeiro');
@@ -410,6 +410,7 @@ function mapTarefa(t) {
     concluida: !!t.concluida,
     prioridade: t.prioridade || 'media',
     hora: t.hora || null,
+    concluida_em: t.concluida_em || null,
     categoria: t.categoria || null,
     data: t.data_reset ? String(t.data_reset).slice(0, 10) : null
   };
@@ -446,16 +447,17 @@ async function snapshotAssistente() {
     eventos,
     historico,
     saldos,
-    dasLista
+    dasLista,
+    consistencia
   ] = await Promise.all([
     all(
-      `SELECT titulo, concluida, prioridade, hora, categoria, data_reset
+      `SELECT titulo, concluida, prioridade, hora, concluida_em, categoria, data_reset
        FROM tasks WHERE data_reset::date = $1
        ORDER BY concluida, prioridade, hora NULLS LAST LIMIT 50`,
       [hoje]
     ).catch(() => []),
     all(
-      `SELECT titulo, concluida, prioridade, hora, categoria
+      `SELECT titulo, concluida, prioridade, hora, concluida_em, categoria
        FROM tasks WHERE data_reset::date = $1
        ORDER BY concluida, prioridade LIMIT 30`,
       [ontem]
@@ -580,7 +582,8 @@ async function snapshotAssistente() {
        FROM mei_das
        ORDER BY ym DESC
        LIMIT 6`
-    ).catch(() => [])
+    ).catch(() => []),
+    analisarConsistencia(30).catch(() => null)
   ]);
 
   const tHoje = tarefasHoje || [];
@@ -740,6 +743,7 @@ async function snapshotAssistente() {
       semana_concluidas: (h.semana && h.semana.concluidas) || 0,
       mes_concluidas: (h.mes && h.mes.concluidas) || 0
     })),
+    consistencia_horario: consistencia || null,
     historico_tarefas_recentes: (historico || []).slice(0, 14).map(h => ({
       data: String(h.data).slice(0, 10),
       total: h.total,
@@ -852,24 +856,24 @@ ${JSON.stringify(snap)}
 Como usar o contexto:
 - Períodos: "hoje/ontem/amanhã" → tarefas.*; "essa semana" → habitos[].semana_concluidas ou tarefas.stats_7d; "esse mês" → despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas.
 - Finanças: financeiro.d7/d30/mes_atual, ultimas_transacoes, gastos_por_categoria_30d, saldos_contas, plano_financeiro, despesas_mes.
-- Produtividade: tarefas (hoje, atrasadas, próximos), stats_7d/30d, streak_dias_completos, historico_tarefas_recentes, recorrentes.
+- Produtividade: tarefas (hoje, atrasadas, próximos), stats_7d/30d, streak_dias_completos, historico_tarefas_recentes, recorrentes, consistencia_horario (horário médio e desvio por tarefa).
 - Agenda: eventos_proximos, alarmes.
-- Hábitos: Academia / Beber água / Sono com feito_hoje, semana e mês.
+- Hábitos: só Academia (feito_hoje, semana e mês).
 - Confirmações ("já paguei X"): diga o status em despesas_mes ou nas transações; se não achar, diga que não encontrou.
 
 Ações (só quando o usuário pedir explicitamente ou confirmar um hábito do dia):
 - registrar pendência/dívida/despesa/tarefa/meta → incluir em acoes
-- "fui na academia / bebi água / dormi bem" → marcar_habito
+- "fui na academia" → marcar_habito
 - Se faltar valor essencial, pergunte e NÃO emita ação
 
 Responda APENAS um JSON válido completo:
 {"resposta":"texto em markdown simples (máx 160 palavras). Use **negrito** em números-chave.","acoes":[]}
 
 Tipos de ação:
-- {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|assinaturas|transporte|saude|outros"}
+- {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|assinaturas|transporte|saude|outros|projetos|faturas"}
 - {"tipo":"criar_tarefa","titulo":"...","prioridade":"alta|media|baixa","data_reset":"YYYY-MM-DD"}
 - {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
-- {"tipo":"marcar_habito","titulo":"Academia|Beber água|Sono"}
+- {"tipo":"marcar_habito","titulo":"Academia"}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela.
