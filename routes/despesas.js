@@ -230,9 +230,12 @@ function enriquecerStatus(row, ym) {
 }
 
 function resumo(lista) {
-  const r = { esperado: 0, pago: 0, pendente: 0, atrasado: 0, ignorado: 0, qtd: lista.length };
+  const r = { esperado: 0, pago: 0, pendente: 0, atrasado: 0, ignorado: 0, qtd: 0 };
   for (const d of lista) {
+    // Faturas de cartão já incluem assinaturas/itens listados à parte — não somar de novo
+    if ((d.categoria || '') === 'faturas') continue;
     const v = Number(d.valor_esperado) || 0;
+    r.qtd++;
     if (d.status === 'ignorado') {
       r.ignorado += v;
       continue;

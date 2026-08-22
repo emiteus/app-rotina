@@ -1220,6 +1220,7 @@ const LABELS_DESPESA_CAT = {
   contas_fixas: 'Contas fixas',
   assinaturas: 'Assinaturas',
   projetos: 'Projetos',
+  faturas: 'Faturas',
   saude: 'Saúde',
   moradia: 'Moradia',
   transporte: 'Transporte',
@@ -1230,7 +1231,7 @@ const LABELS_DESPESA_CAT = {
 };
 
 const ORDEM_DESPESA_CAT = [
-  'contas_fixas', 'assinaturas', 'projetos', 'saude', 'moradia', 'transporte',
+  'contas_fixas', 'assinaturas', 'projetos', 'faturas', 'saude', 'moradia', 'transporte',
   'alimentacao', 'lazer', 'outros', 'outro'
 ];
 
@@ -1285,10 +1286,11 @@ function renderDespesasMes() {
       return String(a.titulo || '').localeCompare(String(b.titulo || ''), 'pt-BR');
     });
     const total = lista.reduce((s, d) => s + (parseFloat(d.valor_esperado) || 0), 0);
+    const metaExtra = cat === 'faturas' ? ' · não soma no total' : '';
     html += `<div class="despesas-grupo">
       <h3>
         <span>${escapeHtml(labelDespesaCat(cat))}</span>
-        <span class="despesas-grupo-meta">${lista.length} · ${formatBRL(total)}</span>
+        <span class="despesas-grupo-meta">${lista.length} · ${formatBRL(total)}${metaExtra}</span>
       </h3>`;
     html += lista.map(d => {
       const dia = d.dia_vencimento ? `dia ${d.dia_vencimento}` : 'sem vencimento';
@@ -2278,7 +2280,7 @@ async function registrarPagamentoAmigo(amigo) {
 const LABELS_CAT_ALERTA = {
   alimentacao: 'Alimentação', transporte: 'Transporte', moradia: 'Moradia',
   lazer: 'Lazer', apostas: 'Apostas', saude: 'Saúde', educacao: 'Educação',
-  compras: 'Compras', assinaturas: 'Assinaturas', projetos: 'Projetos', contas_fixas: 'Contas fixas', outros: 'Outros'
+  compras: 'Compras', assinaturas: 'Assinaturas', projetos: 'Projetos', faturas: 'Faturas', contas_fixas: 'Contas fixas', outros: 'Outros'
 };
 
 async function carregarAlertas() {

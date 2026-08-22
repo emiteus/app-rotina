@@ -592,6 +592,7 @@ async function snapshotAssistente() {
   const desp = despesas || [];
 
   const resumoDesp = desp.reduce((acc, d) => {
+    if ((d.categoria || '') === 'faturas') return acc;
     const v = brlNum(d.valor_esperado);
     acc.esperado += v;
     if (d.status === 'pago') acc.pago += v;
