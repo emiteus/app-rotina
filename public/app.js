@@ -3305,7 +3305,9 @@ async function carregarBancos() {
 // Sobrescreve o "Saldo Total" / "Em conta" com o saldo REAL em conta (Open Finance)
 function aplicarSaldosReais() {
   if (!_ofSaldos || !_ofSaldos.contas || _ofSaldos.contas.length === 0) return;
-  const real = formatBRL(_ofSaldos.totalBanco);
+  // Preferência: só PF (pessoal). Backend já manda emConta; fallback = totalBanco.
+  const valor = (_ofSaldos.emConta != null) ? _ofSaldos.emConta : _ofSaldos.totalBanco;
+  const real = formatBRL(valor);
   const dash = document.getElementById('dash-saldo');
   const fin = document.getElementById('saldo-total');
   if (dash) dash.textContent = real;
@@ -3320,11 +3322,32 @@ function aplicarSaldosReais() {
       else if (mins < 48 * 60) extra = ` · há ${Math.floor(mins / 60)} h`;
       else extra = ` · ${new Date(quando).toLocaleDateString('pt-BR')}`;
     }
-    labelFin.textContent = 'Em conta' + extra;
+    labelFin.textContent = 'Em conta (PF)' + extra;
   }
 }
 
 let _ultimoRefreshSaldos = 0;
+function _aplicarPayloadSaldos(data) {
+  if (!data || !data.contas) return;
+  _ofSaldos = {
+    contas: data.contas,
+    totalBanco: data.totalBanco,
+    totalCredito: data.totalCredito,
+    saldoLiquido: data.saldoLiquido,
+    emConta: data.emConta,
+    porPessoa: data.porPessoa,
+    atualizadoEm: data.atualizadoEm || new Date().toISOString(),
+    saldoEmMaisAntigo: data.saldoEmMaisAntigo || (data.contas || []).reduce((min, c) => {
+      const t = c.saldo_em || c.atualizado_em;
+      if (!t) return min;
+      if (!min || new Date(t) < new Date(min)) return t;
+      return min;
+    }, null)
+  };
+  aplicarSaldosReais();
+  if (typeof renderBancos === 'function') renderBancos();
+}
+
 async function atualizarSaldosSilencioso(opts = {}) {
   const forcar = !!opts.forcar;
   const agora = Date.now();
@@ -3338,23 +3361,7 @@ async function atualizarSaldosSilencioso(opts = {}) {
     });
     if (!res.ok) return;
     const data = await res.json();
-    if (data.contas) {
-      _ofSaldos = {
-        contas: data.contas,
-        totalBanco: data.totalBanco,
-        totalCredito: data.totalCredito,
-        saldoLiquido: data.saldoLiquido,
-        atualizadoEm: new Date().toISOString(),
-        saldoEmMaisAntigo: (data.contas || []).reduce((min, c) => {
-          const t = c.saldo_em || c.atualizado_em;
-          if (!t) return min;
-          if (!min || new Date(t) < new Date(min)) return t;
-          return min;
-        }, null)
-      };
-      aplicarSaldosReais();
-      if (typeof renderBancos === 'function') renderBancos();
-    }
+    _aplicarPayloadSaldos(data);
     return data;
   } catch (e) { /* silencioso */ }
 }
@@ -3381,51 +3388,55 @@ function renderBancos() {
   const items = _ofStatus.items || [];
   const itemsHtml = items.length ? items.map(it => {
     const sync = it.ultima_sync ? new Date(it.ultima_sync).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'nunca';
+    const pessoa = it.pessoa === 'PJ' ? 'PJ' : 'PF';
     return `
       <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(15,23,42,0.03); border-radius:8px; margin-bottom:6px;">
         <span style="font-size:16px;">🏦</span>
-        <span style="flex:1; font-size:13px;">${escapeHtml(it.connector_nome || 'Banco')}</span>
+        <span style="flex:1; font-size:13px;">${escapeHtml(it.connector_nome || 'Banco')} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span></span>
         <span style="font-size:11px; color:var(--text-muted);">sync: ${sync}</span>
         <span onclick="desconectarBanco('${it.item_id}')" style="cursor:pointer; color:#f81d13; font-size:13px;">desconectar</span>
       </div>`;
   }).join('') : '<p style="font-size:13px; color:var(--text-muted);">Nenhum banco conectado ainda.</p>';
 
-  // Resumo de saldo REAL (banco vs cartão)
+  // Resumo de saldo REAL (banco vs cartão), separado PF / PJ
   let saldoHtml = '';
   if (_ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length > 0) {
+    const pp = _ofSaldos.porPessoa || {};
+    const pfBanco = (pp.PF && pp.PF.totalBanco) != null ? pp.PF.totalBanco : (_ofSaldos.emConta != null ? _ofSaldos.emConta : _ofSaldos.totalBanco);
+    const pjBanco = (pp.PJ && pp.PJ.totalBanco) || 0;
     const contasHtml = _ofSaldos.contas.map(c => {
       const ehCartao = c.tipo === 'CREDIT';
-      const dataSaldo = c.saldo_em ? new Date(c.saldo_em).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : null;
+      const pessoa = c.pessoa === 'PJ' ? 'PJ' : 'PF';
+      const dataSaldo = c.saldo_em ? new Date(c.saldo_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
+      const banco = c.banco ? `${escapeHtml(c.banco)} · ` : '';
       return `
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:5px 0;">
-          <span>${ehCartao ? '💳' : '🏦'} ${escapeHtml(c.nome || (ehCartao ? 'Cartão' : 'Conta'))}${dataSaldo ? ` <span style="color:var(--text-muted); font-size:10px;">(saldo de ${dataSaldo})</span>` : ''}</span>
-          <span style="color:${ehCartao ? '#f5a623' : 'var(--text)'};">${ehCartao ? '−' : ''}${formatBRL(Math.abs(Number(c.saldo)))}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:5px 0; gap:8px;">
+          <span style="min-width:0;">${ehCartao ? '💳' : '🏦'} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span> ${banco}${escapeHtml(c.nome || (ehCartao ? 'Cartão' : 'Conta'))}${dataSaldo ? ` <span style="color:var(--text-muted); font-size:10px;">(${dataSaldo})</span>` : ''}</span>
+          <span style="flex-shrink:0; color:${ehCartao ? '#f5a623' : 'var(--text)'};">${ehCartao ? '−' : ''}${formatBRL(Math.abs(Number(c.saldo)))}</span>
         </div>`;
     }).join('');
-    // Aviso de saldo desatualizado (> 2 dias)
     let avisoStale = '';
     if (_ofSaldos.saldoEmMaisAntigo) {
       const diasAtras = Math.floor((Date.now() - new Date(_ofSaldos.saldoEmMaisAntigo).getTime()) / 86400000);
       if (diasAtras >= 2) {
-        avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">⚠️ Saldo de até ${diasAtras} dias atrás. Atualize a conexão no meu.pluggy.ai e clique em Sincronizar pra puxar o valor atual.</div>`;
+        avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">Saldo de até ${diasAtras} dias atrás. Use "Atualizar saldos" ou atualize a conexão no meu.pluggy.ai.</div>`;
       }
     }
     saldoHtml = `
-      ${avisoStale}`;
-    saldoHtml += `
+      ${avisoStale}
       <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="display:flex; gap:10px; margin-bottom:10px;">
-          <div style="flex:1; text-align:center;">
-            <div style="font-size:11px; color:var(--text-muted);">Em conta</div>
-            <div style="font-size:18px; font-weight:700; color:#31a24c;">${formatBRL(_ofSaldos.totalBanco)}</div>
+        <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:90px; text-align:center;">
+            <div style="font-size:11px; color:var(--text-muted);">PF (pessoal)</div>
+            <div style="font-size:18px; font-weight:700; color:#31a24c;">${formatBRL(pfBanco)}</div>
           </div>
-          <div style="flex:1; text-align:center;">
-            <div style="font-size:11px; color:var(--text-muted);">Faturas de cartão</div>
+          ${pjBanco ? `<div style="flex:1; min-width:90px; text-align:center;">
+            <div style="font-size:11px; color:var(--text-muted);">PJ (empresa)</div>
+            <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${formatBRL(pjBanco)}</div>
+          </div>` : ''}
+          <div style="flex:1; min-width:90px; text-align:center;">
+            <div style="font-size:11px; color:var(--text-muted);">Faturas</div>
             <div style="font-size:18px; font-weight:700; color:#f5a623;">${formatBRL(_ofSaldos.totalCredito)}</div>
-          </div>
-          <div style="flex:1; text-align:center;">
-            <div style="font-size:11px; color:var(--text-muted);">Líquido</div>
-            <div style="font-size:18px; font-weight:700; color:${_ofSaldos.saldoLiquido >= 0 ? '#31a24c' : '#f81d13'};">${formatBRL(_ofSaldos.saldoLiquido)}</div>
           </div>
         </div>
         <div style="border-top:1px solid rgba(15,23,42,0.08); padding-top:8px;">${contasHtml}</div>
@@ -3434,13 +3445,13 @@ function renderBancos() {
 
   painel.innerHTML = `
     <div style="background:var(--card-bg, #1c1c1e); border:1px solid rgba(15,23,42,0.08); border-radius:14px; padding:18px; margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:8px; flex-wrap:wrap;">
         <h2 style="margin:0; font-size:16px;">Bancos conectados</h2>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button onclick="sincronizarBancos()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
-          <button onclick="atualizarSaldosAgora()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Atualizar saldos</button>
-          <button onclick="importarPorItemId()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
-          <button onclick="conectarBanco()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">+ Conectar</button>
+          <button type="button" onclick="sincronizarBancos()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Sincronizar</button>
+          <button type="button" onclick="atualizarSaldosAgora()" style="background:rgba(49,162,76,0.12); border:1px solid rgba(49,162,76,0.3); color:#3fb950; border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Atualizar saldos</button>
+          <button type="button" onclick="importarPorItemId()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">Item ID</button>
+          <button type="button" onclick="conectarBanco()" style="background:rgba(15,23,42,0.06); border:1px solid rgba(15,23,42,0.12); color:var(--text-primary); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;">+ Conectar</button>
         </div>
       </div>
       ${saldoHtml}
@@ -3514,14 +3525,18 @@ async function sincronizarBancos(itemId) {
 }
 
 async function atualizarSaldosAgora() {
+  const btn = document.getElementById('btn-atualizar-saldos');
+  if (btn) { btn.disabled = true; btn.textContent = 'Atualizando…'; }
   toast('Buscando saldos no banco...', 'info');
   _ultimoRefreshSaldos = 0;
   const data = await atualizarSaldosSilencioso({ forcar: true, pedirUpdate: true });
+  if (btn) { btn.disabled = false; btn.textContent = 'Atualizar saldos'; }
   if (!data) { toast('Não deu pra atualizar agora', 'error'); return; }
   if (data.updates && data.updates.some(u => u.precisaUsuario)) {
     toast('Banco pediu login/MFA — atualiza no meu.pluggy.ai', 'info');
   } else {
-    toast(`Saldos atualizados · ${formatBRL(data.totalBanco)} em conta`, 'success');
+    const v = data.emConta != null ? data.emConta : data.totalBanco;
+    toast(`Saldos atualizados · ${formatBRL(v)} em conta (PF)`, 'success');
   }
 }
 

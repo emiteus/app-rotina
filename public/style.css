@@ -1153,6 +1153,26 @@ body { padding-left: 240px; }
   font-variant-numeric: tabular-nums;
 }
 
+.btn-atualizar-saldos {
+  display: inline-block;
+  margin-top: 10px;
+  background: rgba(49, 162, 76, 0.12);
+  border: 1px solid rgba(49, 162, 76, 0.35);
+  color: #3fb950;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-atualizar-saldos:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.btn-atualizar-saldos:hover:not(:disabled) {
+  background: rgba(49, 162, 76, 0.2);
+}
+
 .entrada-box { background: var(--bg-card); }
 .saida-box { background: var(--bg-card); }
 

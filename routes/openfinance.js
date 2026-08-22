@@ -112,15 +112,32 @@ router.get('/items-status', async (req, res) => {
 // =====================================================
 router.get('/saldos', async (req, res) => {
   try {
-    const contas = await all(`SELECT account_id, item_id, tipo, nome, saldo, saldo_em, atualizado_em FROM openfinance_accounts ORDER BY tipo, nome`);
+    const contas = await all(`
+      SELECT a.account_id, a.item_id, a.tipo, a.nome, a.saldo, a.saldo_em, a.atualizado_em,
+             COALESCE(i.pessoa, 'PF') AS pessoa,
+             COALESCE(i.apelido, i.connector_nome, '') AS banco
+      FROM openfinance_accounts a
+      LEFT JOIN openfinance_items i ON i.item_id = a.item_id
+      ORDER BY COALESCE(i.pessoa, 'PF'), a.tipo, a.nome
+    `);
+    const porPessoa = {
+      PF: { totalBanco: 0, totalCredito: 0 },
+      PJ: { totalBanco: 0, totalCredito: 0 }
+    };
     let totalBanco = 0, totalCredito = 0;
     let saldoEmMaisAntigo = null;
     let atualizadoEmMaisRecente = null;
+
     contas.forEach(c => {
       const v = Number(c.saldo) || 0;
-      // Só BANK entra em "Em conta"; CREDIT = fatura
-      if (c.tipo === 'CREDIT') totalCredito += Math.abs(v);
-      else if (c.tipo === 'BANK' || !c.tipo) totalBanco += v;
+      const p = c.pessoa === 'PJ' ? 'PJ' : 'PF';
+      if (c.tipo === 'CREDIT') {
+        totalCredito += Math.abs(v);
+        porPessoa[p].totalCredito += Math.abs(v);
+      } else if (c.tipo === 'BANK' || !c.tipo) {
+        totalBanco += v;
+        porPessoa[p].totalBanco += v;
+      }
       const ref = c.saldo_em || c.atualizado_em;
       if (ref && (!saldoEmMaisAntigo || new Date(ref) < new Date(saldoEmMaisAntigo))) {
         saldoEmMaisAntigo = ref;
@@ -129,11 +146,21 @@ router.get('/saldos', async (req, res) => {
         atualizadoEmMaisRecente = c.atualizado_em;
       }
     });
+
+    porPessoa.PF.saldoLiquido = porPessoa.PF.totalBanco - porPessoa.PF.totalCredito;
+    porPessoa.PJ.saldoLiquido = porPessoa.PJ.totalBanco - porPessoa.PJ.totalCredito;
+
+    // "Em conta" na visão geral = só PF (pessoal). Sem contas PF, cai no total.
+    const temPfBanco = contas.some(c => c.pessoa !== 'PJ' && c.tipo !== 'CREDIT');
+    const emConta = temPfBanco ? porPessoa.PF.totalBanco : totalBanco;
+
     res.json({
       contas,
       totalBanco,
       totalCredito,
       saldoLiquido: totalBanco - totalCredito,
+      emConta,
+      porPessoa,
       saldoEmMaisAntigo,
       atualizadoEm: atualizadoEmMaisRecente
     });
@@ -619,13 +646,27 @@ router.post('/refresh-saldos', async (req, res) => {
       }
     }
     const saldos = await refreshSaldosAll();
-    const snapshot = await all(`SELECT account_id, tipo, nome, saldo, saldo_em, atualizado_em FROM openfinance_accounts ORDER BY tipo, nome`);
+    // Reusa o mesmo shape do GET /saldos
+    const contas = await all(`
+      SELECT a.account_id, a.item_id, a.tipo, a.nome, a.saldo, a.saldo_em, a.atualizado_em,
+             COALESCE(i.pessoa, 'PF') AS pessoa,
+             COALESCE(i.apelido, i.connector_nome, '') AS banco
+      FROM openfinance_accounts a
+      LEFT JOIN openfinance_items i ON i.item_id = a.item_id
+      ORDER BY COALESCE(i.pessoa, 'PF'), a.tipo, a.nome
+    `);
+    const porPessoa = { PF: { totalBanco: 0, totalCredito: 0 }, PJ: { totalBanco: 0, totalCredito: 0 } };
     let totalBanco = 0, totalCredito = 0;
-    snapshot.forEach(c => {
+    contas.forEach(c => {
       const v = Number(c.saldo) || 0;
-      if (c.tipo === 'CREDIT') totalCredito += Math.abs(v);
-      else if (c.tipo === 'BANK' || !c.tipo) totalBanco += v;
+      const p = c.pessoa === 'PJ' ? 'PJ' : 'PF';
+      if (c.tipo === 'CREDIT') { totalCredito += Math.abs(v); porPessoa[p].totalCredito += Math.abs(v); }
+      else if (c.tipo === 'BANK' || !c.tipo) { totalBanco += v; porPessoa[p].totalBanco += v; }
     });
+    porPessoa.PF.saldoLiquido = porPessoa.PF.totalBanco - porPessoa.PF.totalCredito;
+    porPessoa.PJ.saldoLiquido = porPessoa.PJ.totalBanco - porPessoa.PJ.totalCredito;
+    const temPfBanco = contas.some(c => c.pessoa !== 'PJ' && c.tipo !== 'CREDIT');
+    const emConta = temPfBanco ? porPessoa.PF.totalBanco : totalBanco;
     res.json({
       ok: true,
       updates,
@@ -633,7 +674,10 @@ router.post('/refresh-saldos', async (req, res) => {
       totalBanco,
       totalCredito,
       saldoLiquido: totalBanco - totalCredito,
-      contas: snapshot
+      emConta,
+      porPessoa,
+      contas,
+      atualizadoEm: new Date().toISOString()
     });
   } catch (err) {
     if (err.code === 'PLUGGY_NAO_CONFIGURADO') {

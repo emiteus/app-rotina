@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="style.css?v=48">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -427,8 +427,9 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <div class="box-body">
-              <p class="box-label">Em conta</p>
+              <p class="box-label">Em conta (PF)</p>
               <h2 id="saldo-total">R$ 0,00</h2>
+              <button type="button" id="btn-atualizar-saldos" onclick="atualizarSaldosAgora()" class="btn-atualizar-saldos">Atualizar saldos</button>
             </div>
           </div>
           <div class="finance-box entrada-box">
@@ -450,6 +451,8 @@
             </div>
           </div>
         </div>
+
+        <div id="painel-bancos"></div>
 
         <div class="visao-sobra" id="visao-sobra">
           <span class="label">Sobra estimada (entradas − saídas, 30d)</span>
@@ -830,7 +833,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=47"></script>
+  <script src="app.js?v=48"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
