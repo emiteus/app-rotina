@@ -1173,6 +1173,54 @@ body { padding-left: 240px; }
   background: rgba(49, 162, 76, 0.2);
 }
 
+.banco-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+.banco-menu-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.banco-menu-btn:hover {
+  background: rgba(15, 23, 42, 0.08);
+  color: var(--text-primary);
+}
+.banco-menu-drop {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: 100%;
+  min-width: 120px;
+  background: var(--bg-card, #16161a);
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 20;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+.banco-menu.open .banco-menu-drop { display: block; }
+.banco-menu-drop button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #f85149;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.banco-menu-drop button:hover {
+  background: rgba(248, 81, 73, 0.12);
+}
+
 .entrada-box { background: var(--bg-card); }
 .saida-box { background: var(--bg-card); }
 

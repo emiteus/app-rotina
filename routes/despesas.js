@@ -144,10 +144,30 @@ function similaridade(a, b) {
   return inter / Math.max(ta.size, tb.size);
 }
 
-function valorCasa(esperado, real) {
+/** Score de texto: containment de título/alias na descrição do extrato (bom pra fatura de cartão). */
+function scoreTexto(titulo, descricao, aliases = []) {
+  const d = normalizaTexto(descricao);
+  if (!d) return 0;
+  const candidatos = [titulo, ...(aliases || [])].map(normalizaTexto).filter(Boolean);
+  let best = 0;
+  for (const c of candidatos) {
+    if (!c) continue;
+    if (d.includes(c) || c.includes(d)) best = Math.max(best, 0.95);
+    else {
+      const tokens = c.split(' ').filter((t) => t.length >= 3);
+      const hits = tokens.filter((t) => d.includes(t)).length;
+      if (tokens.length && hits === tokens.length) best = Math.max(best, 0.85);
+      else if (hits > 0) best = Math.max(best, 0.45 + 0.2 * (hits / tokens.length));
+      best = Math.max(best, similaridade(c, d));
+    }
+  }
+  return best;
+}
+
+function valorCasa(esperado, real, { frouxo = false } = {}) {
   const e = Math.abs(Number(esperado));
   const r = Math.abs(Number(real));
-  const tol = Math.max(2, e * 0.02);
+  const tol = frouxo ? Math.max(8, e * 0.15) : Math.max(2, e * 0.02);
   return Math.abs(e - r) <= tol;
 }
 
@@ -159,6 +179,18 @@ function dataDentroJanela(dataStr, ym, diaVenc, janela = 3) {
   if (txYm !== ym) return false;
   if (!diaVenc) return true;
   return Math.abs(d.getDate() - Number(diaVenc)) <= janela;
+}
+
+function ymAnterior(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function aliasesDaDespesa(titulo) {
+  const itens = [...plano.despesas, ...Object.values(plano.extrasPorMes || {}).flat()];
+  const hit = itens.find((i) => chaveTitulo(i.titulo) === chaveTitulo(titulo));
+  return hit?.aliases || [];
 }
 
 function enriquecerStatus(row, ym) {
@@ -259,33 +291,64 @@ router.post('/reconciliar', async (req, res) => {
       `SELECT * FROM despesas_mes WHERE ym = $1 AND status IN ('pendente','atrasado')`,
       [ym]
     );
+
+    // Extrato do mês + mês anterior (ciclo de fatura de cartão)
+    const ymPrev = ymAnterior(ym);
     const txs = await all(
-      `SELECT id, descricao, valor, data, fonte
-       FROM financeiro
-       WHERE tipo = 'saida'
-         AND TO_CHAR(data::date, 'YYYY-MM') = $1
-         AND id NOT IN (SELECT tx_id FROM despesas_mes WHERE tx_id IS NOT NULL)`,
-      [ym]
+      `SELECT f.id, f.descricao, f.valor, f.data, f.fonte, a.tipo AS conta_tipo
+       FROM financeiro f
+       LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
+       WHERE f.tipo = 'saida'
+         AND TO_CHAR(f.data::date, 'YYYY-MM') IN ($1, $2)
+         AND f.id NOT IN (SELECT tx_id FROM despesas_mes WHERE tx_id IS NOT NULL)`,
+      [ym, ymPrev]
     );
 
     const usados = new Set();
     let matched = 0;
+    const detalhes = [];
 
     for (const desp of pendentes) {
+      const aliases = aliasesDaDespesa(desp.titulo);
+      const ehAssinatura = (desp.categoria || '') === 'assinaturas' || !desp.dia_vencimento;
       let melhor = null;
       let melhorScore = 0;
+
       for (const tx of txs) {
         if (usados.has(tx.id)) continue;
-        if (!valorCasa(desp.valor_esperado, tx.valor)) continue;
-        if (!dataDentroJanela(tx.data, ym, desp.dia_vencimento, 3)) continue;
-        const score = similaridade(desp.titulo, tx.descricao);
-        const scoreFinal = score + 0.35;
+        const ehCartao = tx.conta_tipo === 'CREDIT';
+        const texto = scoreTexto(desp.titulo, tx.descricao, aliases);
+
+        // Sem overlap de texto: não casa (evita Netflix↔Cursor só por valor parecido)
+        if (texto < 0.35) continue;
+
+        const frouxo = ehCartao || ehAssinatura;
+        // Nome forte no cartão: tolera variação de câmbio (Railway/Cursor em USD)
+        const valorOk =
+          valorCasa(desp.valor_esperado, tx.valor, { frouxo }) ||
+          (texto >= 0.7 && ehCartao && Math.abs(Number(tx.valor)) >= 5 &&
+            Math.abs(Number(tx.valor) - Number(desp.valor_esperado)) / Math.max(Number(desp.valor_esperado), 1) <= 1.2);
+
+        if (!valorOk) continue;
+
+        const txYm = String(tx.data).slice(0, 7);
+        let dataOk = false;
+        if (ehCartao || ehAssinatura) {
+          // Fatura: qualquer dia do mês atual ou anterior
+          dataOk = txYm === ym || txYm === ymPrev;
+        } else {
+          dataOk = dataDentroJanela(tx.data, ym, desp.dia_vencimento, 5);
+        }
+        if (!dataOk) continue;
+
+        const scoreFinal = texto + (ehCartao ? 0.1 : 0) + (valorCasa(desp.valor_esperado, tx.valor) ? 0.15 : 0);
         if (scoreFinal > melhorScore) {
           melhorScore = scoreFinal;
           melhor = tx;
         }
       }
-      if (melhor && melhorScore >= 0.35) {
+
+      if (melhor && melhorScore >= 0.45) {
         usados.add(melhor.id);
         const pagoEm =
           typeof melhor.data === 'string'
@@ -297,6 +360,12 @@ router.post('/reconciliar', async (req, res) => {
           [pagoEm, melhor.id, desp.id]
         );
         matched++;
+        detalhes.push({
+          despesa: desp.titulo,
+          tx: melhor.descricao,
+          valor: Number(melhor.valor),
+          via: melhor.conta_tipo === 'CREDIT' ? 'cartao' : 'conta'
+        });
       }
     }
 
@@ -305,7 +374,7 @@ router.post('/reconciliar', async (req, res) => {
       [ym]
     );
     const despesas = rows.map((r) => enriquecerStatus(r, ym));
-    res.json({ ym, matched, despesas, resumo: resumo(despesas) });
+    res.json({ ym, matched, detalhes, despesas, resumo: resumo(despesas) });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

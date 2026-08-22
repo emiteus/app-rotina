@@ -1437,7 +1437,12 @@ async function reconciliarDespesas(opts = {}) {
     _despesasData = data;
     renderDespesasMes();
     if (!opts.silencioso || data.matched > 0) {
-      toast(data.matched ? `${data.matched} despesa(s) confirmada(s) pelo banco` : 'Nenhum match novo', data.matched ? 'success' : 'info');
+      const viaCartao = (data.detalhes || []).filter(d => d.via === 'cartao').length;
+      const extra = viaCartao ? ` (${viaCartao} via fatura)` : '';
+      toast(
+        data.matched ? `${data.matched} despesa(s) confirmada(s)${extra}` : 'Nenhum match novo',
+        data.matched ? 'success' : 'info'
+      );
     }
   } catch (e) {
     if (!opts.silencioso) toast(e.message, 'error');
@@ -3332,19 +3337,15 @@ function aplicarSaldosReais() {
   if (fin) fin.textContent = real;
   const labelFin = document.querySelector('.saldo-box .box-label');
   if (labelFin) {
-    if (_ofSaldos.demoMeuPluggy || (_ofStatus && _ofStatus.temMeuPluggy)) {
-      labelFin.textContent = 'Em conta (demo — não é o banco real)';
-    } else {
-      let extra = '';
-      const quando = _ofSaldos.atualizadoEm || _ofSaldos.saldoEmMaisAntigo;
-      if (quando) {
-        const mins = Math.max(0, Math.floor((Date.now() - new Date(quando).getTime()) / 60000));
-        if (mins < 60) extra = ` · há ${mins} min`;
-        else if (mins < 48 * 60) extra = ` · há ${Math.floor(mins / 60)} h`;
-        else extra = ` · ${new Date(quando).toLocaleDateString('pt-BR')}`;
-      }
-      labelFin.textContent = 'Em conta (PF)' + extra;
+    let extra = '';
+    const quando = _ofSaldos.atualizadoEm || _ofSaldos.saldoEmMaisAntigo;
+    if (quando) {
+      const mins = Math.max(0, Math.floor((Date.now() - new Date(quando).getTime()) / 60000));
+      if (mins < 60) extra = ` · há ${mins} min`;
+      else if (mins < 48 * 60) extra = ` · há ${Math.floor(mins / 60)} h`;
+      else extra = ` · ${new Date(quando).toLocaleDateString('pt-BR')}`;
     }
+    labelFin.textContent = 'Em conta (PF)' + extra;
   }
 }
 
@@ -3389,11 +3390,39 @@ async function atualizarSaldosSilencioso(opts = {}) {
   } catch (e) { /* silencioso */ }
 }
 
+function nomeBancoItem(it) {
+  if (it.apelido) return it.apelido;
+  const nome = String(it.connector_nome || '');
+  if (/nu|nubank/i.test(nome)) return 'Nubank';
+  if (/meu\s*pluggy/i.test(nome)) {
+    // fallback visual enquanto apelido carrega
+    const contas = (_ofSaldos && _ofSaldos.contas) || [];
+    const minhas = contas.filter(c => c.item_id === it.item_id);
+    if (minhas.some(c => /nu pagamentos|nubank|gold/i.test(c.nome || ''))) return 'Nubank';
+    if (it.pessoa === 'PJ') return 'Inter empresas';
+    return 'Inter';
+  }
+  return nome || 'Banco';
+}
+
+function toggleMenuBanco(btn, ev) {
+  if (ev) ev.stopPropagation();
+  document.querySelectorAll('.banco-menu.open').forEach(m => {
+    if (m !== btn.parentElement) m.classList.remove('open');
+  });
+  btn.parentElement.classList.toggle('open');
+}
+
+function fecharMenusBanco() {
+  document.querySelectorAll('.banco-menu.open').forEach(m => m.classList.remove('open'));
+}
+
+document.addEventListener('click', fecharMenusBanco);
+
 function renderBancos() {
   const painel = document.getElementById('painel-bancos');
   if (!painel) return;
 
-  // Se o status falhou mas há saldos/contas, trata como configurado pra não sumir a UI
   const temItens = (_ofStatus.items && _ofStatus.items.length > 0);
   const temSaldos = _ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length > 0;
   const configurado = !!_ofStatus.configurado || temItens || temSaldos;
@@ -3412,13 +3441,11 @@ function renderBancos() {
         </p>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           ${btnConectar}
-          <button type="button" onclick="mostrarSetupPluggy()" style="background:transparent; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; text-decoration:underline;">Como configurar</button>
         </div>
       </div>`;
     return;
   }
 
-  // Se status veio vazio mas saldos têm contas, monta itens a partir dos saldos
   let items = _ofStatus.items || [];
   if (!items.length && temSaldos) {
     const porItem = {};
@@ -3428,6 +3455,7 @@ function renderBancos() {
         porItem[c.item_id] = {
           item_id: c.item_id,
           connector_nome: c.banco || 'Banco',
+          apelido: c.banco || null,
           pessoa: c.pessoa || 'PF',
           ultima_sync: c.atualizado_em || c.saldo_em
         };
@@ -3436,15 +3464,24 @@ function renderBancos() {
     items = Object.values(porItem);
   }
 
+  const apelidoPorItem = {};
+  items.forEach(it => { apelidoPorItem[it.item_id] = nomeBancoItem(it); });
+
   const itemsHtml = items.length ? items.map(it => {
     const sync = it.ultima_sync ? new Date(it.ultima_sync).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'nunca';
     const pessoa = it.pessoa === 'PJ' ? 'PJ' : 'PF';
+    const nome = nomeBancoItem(it);
     return `
       <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(15,23,42,0.03); border-radius:8px; margin-bottom:6px;">
         <span style="font-size:16px;">🏦</span>
-        <span style="flex:1; font-size:13px;">${escapeHtml(it.connector_nome || 'Banco')} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span></span>
+        <span style="flex:1; font-size:13px;">${escapeHtml(nome)} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span></span>
         <span style="font-size:11px; color:var(--text-muted);">sync: ${sync}</span>
-        <span onclick="desconectarBanco('${it.item_id}')" style="cursor:pointer; color:#f81d13; font-size:13px;">desconectar</span>
+        <div class="banco-menu" onclick="event.stopPropagation()">
+          <button type="button" class="banco-menu-btn" aria-label="Opções" onclick="toggleMenuBanco(this, event)">⋯</button>
+          <div class="banco-menu-drop">
+            <button type="button" onclick="desconectarBanco('${it.item_id}')">Remover</button>
+          </div>
+        </div>
       </div>`;
   }).join('') : `
     <div style="padding:8px 0 4px;">
@@ -3452,25 +3489,7 @@ function renderBancos() {
       ${btnConectar}
     </div>`;
 
-  // Resumo de saldo REAL (banco vs cartão), separado PF / PJ
   let saldoHtml = '';
-  if (_ofStatus && _ofStatus.somenteDemo) {
-    saldoHtml += `
-      <div style="background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.35); border-radius:10px; padding:12px; margin-bottom:12px; font-size:12px; line-height:1.45; color:#f85149;">
-        <strong>Pluggy em modo demo</strong> — a API só libera MeuPluggy (não Inter/Nubank).
-        Crie uma aplicação de <strong>Produção</strong> em dashboard.pluggy.ai, atualize
-        <code>PLUGGY_CLIENT_ID</code> / <code>PLUGGY_CLIENT_SECRET</code> no Railway e volte.
-        <button type="button" onclick="mostrarSetupPluggy()" style="display:block; margin-top:8px; background:transparent; border:none; color:#f85149; text-decoration:underline; cursor:pointer; padding:0; font-size:12px;">Ver passo a passo</button>
-      </div>`;
-  }
-  const ehDemo = !!(_ofStatus && _ofStatus.temMeuPluggy) || !!(_ofSaldos && _ofSaldos.demoMeuPluggy);
-  if (ehDemo && !(_ofStatus && _ofStatus.somenteDemo)) {
-    saldoHtml += `
-      <div style="background:rgba(248,81,73,0.1); border:1px solid rgba(248,81,73,0.35); border-radius:10px; padding:12px; margin-bottom:12px; font-size:12px; line-height:1.45; color:#f85149;">
-        <strong>Contas demo (MeuPluggy)</strong> — esses saldos <strong>não são</strong> do seu Inter/Nubank de verdade.
-        Desconecta e conecta o banco real.
-      </div>`;
-  }
   if (_ofSaldos && _ofSaldos.contas && _ofSaldos.contas.length > 0) {
     const pp = _ofSaldos.porPessoa || {};
     const pfBanco = (pp.PF && pp.PF.totalBanco) != null ? pp.PF.totalBanco : (_ofSaldos.emConta != null ? _ofSaldos.emConta : _ofSaldos.totalBanco);
@@ -3479,15 +3498,19 @@ function renderBancos() {
       const ehCartao = c.tipo === 'CREDIT';
       const pessoa = c.pessoa === 'PJ' ? 'PJ' : 'PF';
       const dataSaldo = c.saldo_em ? new Date(c.saldo_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
-      const banco = c.banco ? `${escapeHtml(c.banco)} · ` : '';
+      const bancoNome = apelidoPorItem[c.item_id] || c.banco || '';
+      const banco = bancoNome ? `${escapeHtml(bancoNome)} · ` : '';
+      const contaLabel = ehCartao
+        ? ( /gold/i.test(c.nome || '') ? 'Cartão gold' : 'Cartão' )
+        : (c.nome || 'Conta');
       return `
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:5px 0; gap:8px;">
-          <span style="min-width:0;">${ehCartao ? '💳' : '🏦'} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span> ${banco}${escapeHtml(c.nome || (ehCartao ? 'Cartão' : 'Conta'))}${dataSaldo ? ` <span style="color:var(--text-muted); font-size:10px;">(${dataSaldo})</span>` : ''}</span>
+          <span style="min-width:0;">${ehCartao ? '💳' : '🏦'} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span> ${banco}${escapeHtml(contaLabel)}${dataSaldo ? ` <span style="color:var(--text-muted); font-size:10px;">(${dataSaldo})</span>` : ''}</span>
           <span style="flex-shrink:0; color:${ehCartao ? '#f5a623' : 'var(--text)'};">${ehCartao ? '−' : ''}${formatBRL(Math.abs(Number(c.saldo)))}</span>
         </div>`;
     }).join('');
     let avisoStale = '';
-    if (!ehDemo && _ofSaldos.saldoEmMaisAntigo) {
+    if (_ofSaldos.saldoEmMaisAntigo) {
       const diasAtras = Math.floor((Date.now() - new Date(_ofSaldos.saldoEmMaisAntigo).getTime()) / 86400000);
       if (diasAtras >= 2) {
         avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">Saldo de até ${diasAtras} dias atrás. Use "Atualizar saldos".</div>`;
@@ -3535,11 +3558,6 @@ function renderBancos() {
 }
 
 async function conectarBanco() {
-  if (_ofStatus && _ofStatus.somenteDemo) {
-    toast('Sua app Pluggy é DEMO — só libera MeuPluggy. Crie app de Produção no dashboard.pluggy.ai', 'error');
-    mostrarSetupPluggy();
-    return;
-  }
   if (typeof PluggyConnect === 'undefined') {
     toast('SDK do Pluggy não carregou. Verifica tua conexão e recarrega.', 'error');
     return;
@@ -3612,10 +3630,6 @@ async function atualizarSaldosAgora() {
   const data = await atualizarSaldosSilencioso({ forcar: true, pedirUpdate: true });
   if (btn) { btn.disabled = false; btn.textContent = 'Atualizar saldos'; }
   if (!data) { toast('Não deu pra atualizar agora', 'error'); return; }
-  if (data.demoMeuPluggy || (data.refresh && data.refresh.demoMeuPluggy)) {
-    toast('MeuPluggy é demo — desconecta e conecta o banco real pra ver os ~R$ 570', 'error');
-    return;
-  }
   if (data.updates && data.updates.some(u => u.precisaUsuario)) {
     toast('Banco pediu login/MFA — atualiza no meu.pluggy.ai', 'info');
   } else {
