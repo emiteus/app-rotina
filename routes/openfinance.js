@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const axios = require('axios');
 const { run, get, all } = require('../lib/db');
 const { hojeStr, addDias } = require('../lib/datas');
+const { categoriaObvia } = require('../lib/categoria-heuristica');
 
 const router = express.Router();
 const PLUGGY_BASE = 'https://api.pluggy.ai';
@@ -647,8 +648,9 @@ async function syncItem(apiKey, itemId, opts = {}) {
         const extId = `pluggy:${t.id}`;
         const chave = chaveCategoria(t);
         const regra = regras[chave];
-        const categoria = regra || mapCategoria(t.category);
-        const confirmada = !!regra;
+        const obvia = categoriaObvia(t.description || '');
+        const categoria = regra || obvia || mapCategoria(t.category);
+        const confirmada = !!(regra || obvia);
         try {
           const r = await run(
             `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, external_id, fonte, account_id, chave_categoria, categoria_confirmada)
