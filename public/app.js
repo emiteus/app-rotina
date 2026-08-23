@@ -4413,10 +4413,28 @@ async function renderFinDonut() {
       return;
     }
 
+    // Paleta + labels do catálogo
+    const palette = ['#ff5c68', '#6ab7ff', '#ffb547', '#26e0c8', '#3fe8d3', '#c084fc', '#ec4899', '#94a3b8', '#14b8a6'];
+    const catLabels = _catLista.length ? Object.fromEntries(_catLista.map(c => [c.id || c.chave, c.label])) : {};
+
+    // Normaliza chaves quebradas / sinônimos antes de agregar
+    const aliasCat = (raw) => {
+      const k = String(raw || 'outros').toLowerCase().trim();
+      if (!k || k === 'outro') return 'outros';
+      if (/^fatura/.test(k) || k.includes('cartaointer') || k.includes('rotativo')) return 'faturas';
+      if (k === 'cs') return 'lazer';
+      return k;
+    };
+    const labelCat = (k) =>
+      catLabels[k]
+      || (LABELS_DESPESA_CAT && LABELS_DESPESA_CAT[k])
+      || ({ faturas: 'Faturas', projetos: 'Projetos', iof: 'IOF', compras: 'Compras', demais: 'Demais' }[k])
+      || k;
+
     // Agrupa por categoria
     const agrupado = {};
     saidas.forEach(r => {
-      const k = r.categoria || 'outros';
+      const k = aliasCat(r.categoria);
       agrupado[k] = (agrupado[k] || 0) + Number(r.total || 0);
     });
     const entries = Object.entries(agrupado).sort((a,b) => b[1] - a[1]);
@@ -4427,19 +4445,20 @@ async function renderFinDonut() {
       return;
     }
 
-    // Paleta consistente entre donut e lista
-    const palette = ['#ff5c68', '#6ab7ff', '#ffb547', '#26e0c8', '#3fe8d3', '#c084fc', '#ec4899', '#94a3b8', '#14b8a6'];
-    const catLabels = _catLista.length ? Object.fromEntries(_catLista.map(c => [c.id || c.chave, c.label])) : {};
-
-    // Donut: top 6 + Outros agrupado
+    // Donut: top 6. Se sobrar fatia, funde em "outros" (sem duplicar o rótulo) ou "Demais"
     const TOP = 6;
-    let dataset = entries.slice(0, TOP);
+    let dataset = entries.slice(0, TOP).map(([k, v]) => [k, v]);
     if (entries.length > TOP) {
-      const outrosTotal = entries.slice(TOP).reduce((s, [,v]) => s + v, 0);
-      dataset.push(['outros_agrup', outrosTotal]);
+      const resto = entries.slice(TOP).reduce((s, [, v]) => s + v, 0);
+      const idxOutros = dataset.findIndex(([k]) => k === 'outros');
+      if (idxOutros >= 0) {
+        dataset[idxOutros][1] += resto;
+      } else {
+        dataset.push(['demais', resto]);
+      }
     }
 
-    const labels = dataset.map(([k]) => k === 'outros_agrup' ? 'Outros' : (catLabels[k] || k));
+    const labels = dataset.map(([k]) => labelCat(k));
     const values = dataset.map(([,v]) => v);
     const colors = dataset.map((_, i) => palette[i % palette.length]);
 
@@ -4450,7 +4469,7 @@ async function renderFinDonut() {
     // Lista de categorias (todas, não só top 6 — o donut é resumo, a lista é detalhe)
     catList.innerHTML = entries.map(([k, v], i) => {
       const cor = palette[Math.min(i, palette.length - 1)];
-      const nome = catLabels[k] || LABELS_DESPESA_CAT[k] || k;
+      const nome = labelCat(k);
       const catAttr = encodeURIComponent(k);
       return `<div class="fin-cat-row" role="button" tabindex="0" onclick="abrirRevisaoCategoria('${catAttr}')" onkeydown="if(event.key==='Enter')abrirRevisaoCategoria('${catAttr}')" title="Ver e categorizar">
         <span class="dot" style="background:${cor}"></span>
