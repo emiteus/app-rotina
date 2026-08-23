@@ -95,7 +95,7 @@ router.get('/pendentes', async (req, res) => {
 
 // POST aprender: cria/atualiza a regra e aplica em todas as transações da chave
 router.post('/aprender', async (req, res) => {
-  const { chave, categoria, exemplo } = req.body || {};
+  const { chave, categoria, exemplo, ids } = req.body || {};
   if (!chave || !categoria) return res.status(400).json({ erro: 'chave e categoria obrigatórios' });
   if (!(await categoriaExiste(categoria))) return res.status(400).json({ erro: 'categoria inválida' });
   try {
@@ -105,11 +105,31 @@ router.post('/aprender', async (req, res) => {
        ON CONFLICT (chave) DO UPDATE SET categoria = EXCLUDED.categoria`,
       [chave, categoria, exemplo || null]
     );
+    // Garante chave nas linhas órfãs (só id listados) antes de aplicar
+    if (Array.isArray(ids) && ids.length) {
+      await run(
+        `UPDATE financeiro
+         SET chave_categoria = COALESCE(NULLIF(chave_categoria,''), $1)
+         WHERE id = ANY($2::text[])`,
+        [chave, ids]
+      );
+    }
     const r = await run(
       `UPDATE financeiro SET categoria = $1, categoria_confirmada = true WHERE chave_categoria = $2`,
       [categoria, chave]
     );
-    res.json({ ok: true, aplicadas: r.rowCount });
+    // Fallback: se a chave não batia em nada, aplica pelos ids
+    let aplicadas = r.rowCount || 0;
+    if ((!aplicadas || aplicadas === 0) && Array.isArray(ids) && ids.length) {
+      const r2 = await run(
+        `UPDATE financeiro
+         SET categoria = $1, categoria_confirmada = true, chave_categoria = $2
+         WHERE id = ANY($3::text[])`,
+        [categoria, chave, ids]
+      );
+      aplicadas = r2.rowCount || 0;
+    }
+    res.json({ ok: true, aplicadas });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

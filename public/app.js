@@ -4450,10 +4450,12 @@ async function renderFinDonut() {
     // Lista de categorias (todas, não só top 6 — o donut é resumo, a lista é detalhe)
     catList.innerHTML = entries.map(([k, v], i) => {
       const cor = palette[Math.min(i, palette.length - 1)];
-      const nome = catLabels[k] || k;
-      return `<div class="fin-cat-row">
+      const nome = catLabels[k] || LABELS_DESPESA_CAT[k] || k;
+      const catAttr = encodeURIComponent(k);
+      return `<div class="fin-cat-row" role="button" tabindex="0" onclick="abrirRevisaoCategoria('${catAttr}')" onkeydown="if(event.key==='Enter')abrirRevisaoCategoria('${catAttr}')" title="Ver e categorizar">
         <span class="dot" style="background:${cor}"></span>
         <span class="name">${escapeHtml(nome)}</span>
+        <span class="hint">revisar</span>
         <span class="valor">− ${formatBRL(v)}</span>
       </div>`;
     }).join('');
@@ -4507,6 +4509,112 @@ async function renderFinDonut() {
     });
   } catch (e) {
     console.error('Erro donut fin:', e);
+  }
+}
+
+async function abrirRevisaoCategoria(catEncoded) {
+  const cat = decodeURIComponent(catEncoded || 'outros');
+  const modal = document.getElementById('modal-revisar-cat');
+  const lista = document.getElementById('revisar-cat-lista');
+  const titulo = document.getElementById('revisar-cat-titulo');
+  const sub = document.getElementById('revisar-cat-sub');
+  if (!modal || !lista) return;
+
+  const nome = (_catLista.find(c => c.id === cat)?.label)
+    || (LABELS_DESPESA_CAT && LABELS_DESPESA_CAT[cat])
+    || cat;
+  if (titulo) titulo.textContent = nome;
+  if (sub) sub.textContent = 'Carregando…';
+  lista.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando lançamentos…</p>';
+  modal.style.display = 'flex';
+
+  if (!_catLista.length) {
+    try {
+      const l = await fetch('/api/categorias/lista').then(r => r.json());
+      _catLista = l.categorias || [];
+    } catch (_) { /* ignore */ }
+  }
+
+  try {
+    const ym = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const res = await fetch(`/api/financeiro/categoria/${encodeURIComponent(cat)}?ym=${ym}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro');
+    if (sub) {
+      sub.textContent = `${data.qtd || 0} lançamentos · ${formatBRL(data.total || 0)} neste mês — categorize uma vez e o app aprende pro futuro.`;
+    }
+    const grupos = data.grupos || [];
+    if (!grupos.length) {
+      lista.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Nada nesta categoria neste mês.</p>';
+      return;
+    }
+    lista.innerHTML = grupos.map((g, idx) => {
+      const ids = (g.transacoes || []).map(t => t.id).filter(Boolean);
+      const idsJson = JSON.stringify(ids).replace(/"/g, '&quot;');
+      const exemploEsc = JSON.stringify(g.exemplo || '').replace(/"/g, '&quot;');
+      const inputId = `rev-cat-${idx}`;
+      const txs = (g.transacoes || []).slice(0, 4).map(t => {
+        const dt = t.data
+          ? new Date(t.data + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+          : '—';
+        return `<div style="display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--text-muted); padding:2px 0;">
+          <span>${dt} · ${escapeHtml(t.banco || '')}</span>
+          <span>−${formatBRL(t.valor)}</span>
+        </div>`;
+      }).join('');
+      const mais = (g.transacoes || []).length > 4
+        ? `<div style="font-size:11px; color:var(--text-muted);">+ ${(g.transacoes || []).length - 4} outra(s)</div>`
+        : '';
+      return `
+        <div class="revisar-cat-card" data-chave="${escapeHtml(g.chave)}" style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; margin-bottom:8px;">
+            <div style="font-size:13px; font-weight:500; min-width:0;">${escapeHtml(limparDescricao(g.exemplo).slice(0, 52))}</div>
+            <div style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${g.qtd}× · ${formatBRL(g.total)}</div>
+          </div>
+          <div style="margin-bottom:8px;">${txs}${mais}</div>
+          <div style="display:flex; gap:8px; align-items:stretch;">
+            ${_catAutocompleteHtml(inputId, cat === 'outros' ? '' : cat)}
+            <button type="button" class="btn-primary" style="padding:6px 12px; font-size:12px; white-space:nowrap;"
+              onclick="aplicarRevisaoCategoria('${escapeHtml(g.chave)}', ${exemploEsc}, '${inputId}', ${idsJson})">Aplicar</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    if (sub) sub.textContent = '';
+    lista.innerHTML = `<p style="color:var(--danger); font-size:13px;">${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function fecharRevisaoCategoria() {
+  const modal = document.getElementById('modal-revisar-cat');
+  if (modal) modal.style.display = 'none';
+}
+
+async function aplicarRevisaoCategoria(chave, exemplo, inputId, ids) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const categoria = await _catResolver(el.value);
+  if (!categoria) {
+    toast('Escolha ou digite uma categoria', 'error');
+    el.focus();
+    return;
+  }
+  try {
+    const res = await fetch('/api/categorias/aprender', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chave, categoria, exemplo, ids: ids || [] })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro');
+    toast(`Aplicado em ${data.aplicadas || 0} lançamento(s)`, 'success');
+    await renderFinDonut();
+    // Recarrega o modal na categoria atual do título se ainda for outros, senão fecha
+    const titulo = document.getElementById('revisar-cat-titulo')?.textContent || '';
+    if (/outros/i.test(titulo)) abrirRevisaoCategoria('outros');
+    else fecharRevisaoCategoria();
+  } catch (e) {
+    toast(e.message || 'Erro ao aplicar', 'error');
   }
 }
 

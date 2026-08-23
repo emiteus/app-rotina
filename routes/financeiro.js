@@ -277,6 +277,75 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// GET /api/financeiro/categoria/:cat — gastos do mês numa categoria (pra revisar "outros" etc.)
+router.get('/categoria/:cat', async (req, res) => {
+  try {
+    const cat = String(req.params.cat || 'outros').trim().toLowerCase() || 'outros';
+    const ym = /^\d{4}-\d{2}$/.test(String(req.query.ym || '')) ? String(req.query.ym) : ymAtual();
+    const rows = await all(
+      `SELECT f.id, f.descricao, f.valor, f.data, f.categoria, f.chave_categoria, f.fonte,
+              f.categoria_confirmada, a.tipo AS conta_tipo,
+              COALESCE(i.apelido, a.nome, 'Manual') AS banco
+       FROM financeiro f
+       LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
+       LEFT JOIN openfinance_items i ON i.item_id = a.item_id
+       WHERE f.tipo = 'saida'
+         AND TO_CHAR(f.data, 'YYYY-MM') = $1
+         AND (
+           ($2 = 'outros' AND (f.categoria IS NULL OR f.categoria = '' OR lower(f.categoria) IN ('outros','outro')))
+           OR lower(COALESCE(f.categoria,'')) = $2
+         )
+       ORDER BY f.valor DESC, f.data DESC
+       LIMIT 200`,
+      [ym, cat]
+    );
+
+    const gruposMap = {};
+    for (const r of rows || []) {
+      let chave = r.chave_categoria;
+      if (!chave) {
+        chave = String(r.descricao || '')
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[^a-z0-9]/g, '')
+          .slice(0, 40) || 'semchave';
+      }
+      if (!gruposMap[chave]) {
+        gruposMap[chave] = {
+          chave,
+          exemplo: r.descricao,
+          qtd: 0,
+          total: 0,
+          transacoes: []
+        };
+      }
+      const g = gruposMap[chave];
+      g.qtd += 1;
+      g.total += Number(r.valor) || 0;
+      g.transacoes.push({
+        id: r.id,
+        data: ymdDe(r.data) || null,
+        valor: Number(r.valor) || 0,
+        descricao: r.descricao,
+        banco: r.banco,
+        conta_tipo: r.conta_tipo
+      });
+    }
+
+    const grupos = Object.values(gruposMap).sort((a, b) => b.total - a.total);
+    const total = grupos.reduce((s, g) => s + g.total, 0);
+    res.json({
+      ym,
+      categoria: cat,
+      total: Math.round(total * 100) / 100,
+      qtd: (rows || []).length,
+      grupos
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // GET alertas de gasto incomum (mês atual vs média dos meses anteriores por categoria)
 router.get('/alertas', async (req, res) => {
   try {

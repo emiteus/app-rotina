@@ -5535,8 +5535,19 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   border-bottom: 1px solid var(--border);
   font-size: 13px;
   color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background var(--transition);
 }
+.fin-cat-row:hover { background: rgba(255,255,255,0.035); }
 .fin-cat-row:last-child { border-bottom: none; }
+.fin-cat-row .hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.fin-cat-row:hover .hint { opacity: 1; }
 .fin-cat-row .dot {
   width: 8px;
   height: 8px;
