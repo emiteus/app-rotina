@@ -203,8 +203,17 @@ body {
 }
 
 /* ----- Extrato ----- */
+#fin-extrato {
+  display: flex;
+  justify-content: center;
+}
 .extrato-shell {
-  max-width: 820px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.extrato-datas[hidden] {
+  display: none !important;
 }
 .extrato-filtros {
   display: flex;
