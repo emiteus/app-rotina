@@ -4627,9 +4627,76 @@ function _preencherExtratoContas(contas) {
   if ([...sel.options].some((o) => o.value === atual)) sel.value = atual;
 }
 
+function extratoYmd(value) {
+  if (!value) return '';
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const y = value.getFullYear();
+    const m = String(value.getMonth() + 1).padStart(2, '0');
+    const d = String(value.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(value);
+  const m = s.match(/(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+function extratoLabelDia(ymd) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return 'Sem data';
+  const d = new Date(`${ymd}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return ymd;
+  const hoje = extratoYmd(new Date());
+  const ontemD = new Date();
+  ontemD.setDate(ontemD.getDate() - 1);
+  const ontem = extratoYmd(ontemD);
+  if (ymd === hoje) return 'Hoje';
+  if (ymd === ontem) return 'Ontem';
+  return d.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'short'
+  });
+}
+
+function extratoLimparDesc(raw) {
+  let s = String(raw || '').trim();
+  if (!s) return '(sem descrição)';
+  s = s
+    .replace(/^PIX\s+ENVIADO(\s+INTERNO)?\s*-\s*/i, '')
+    .replace(/^PIX\s+RECEBIDO(\s+INTERNO)?\s*-\s*/i, '')
+    .replace(/^PIX\s+DEVOLUCAO\s+RECEBIDA\s*-\s*/i, 'Devolução · ')
+    .replace(/^Cp\s*:\s*\d+-?/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return s || '(sem descrição)';
+}
+
+function extratoLabelCat(cat) {
+  const id = cat || 'outros';
+  if (typeof labelDespesaCat === 'function') {
+    const known = LABELS_DESPESA_CAT && LABELS_DESPESA_CAT[id];
+    if (known) return known;
+  }
+  const map = {
+    assinaturas: 'Assinaturas',
+    contas_fixas: 'Contas fixas',
+    projetos: 'Projetos',
+    faturas: 'Faturas',
+    saude: 'Saúde',
+    alimentacao: 'Alimentação',
+    transporte: 'Transporte',
+    lazer: 'Lazer',
+    iof: 'IOF',
+    barbeiro: 'Barbeiro',
+    outros: 'Outros',
+    outro: 'Outros'
+  };
+  return map[id] || id.replace(/_/g, ' ');
+}
+
 async function carregarExtrato() {
   const lista = document.getElementById('lista-extrato');
   const resumoEl = document.getElementById('extrato-resumo');
+  const periodoEl = document.getElementById('extrato-periodo-label');
   if (!lista) return;
 
   const range = extratoRangeFromPeriodo(_extratoPeriodo);
@@ -4643,7 +4710,16 @@ async function carregarExtrato() {
   if (tipo) params.set('tipo', tipo);
   if (q) params.set('q', q);
 
-  lista.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:12px 0;">Carregando extrato…</p>';
+  if (periodoEl) {
+    const fmt = (ymd) => {
+      if (!ymd) return '—';
+      const [y, m, d] = ymd.split('-');
+      return `${d}/${m}/${y}`;
+    };
+    periodoEl.textContent = `${fmt(range.from)} — ${fmt(range.to)}`;
+  }
+
+  lista.innerHTML = '<div class="extrato-loading">Carregando extrato…</div>';
   try {
     const res = await fetch(`/api/financeiro/extrato?${params}`);
     const data = await res.json();
@@ -4653,7 +4729,7 @@ async function carregarExtrato() {
     renderExtrato(data);
   } catch (e) {
     if (resumoEl) resumoEl.innerHTML = '';
-    lista.innerHTML = `<p style="color:var(--danger); font-size:13px;">${escapeHtml(e.message)}</p>`;
+    lista.innerHTML = `<div class="extrato-empty">${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -4663,24 +4739,37 @@ function renderExtrato(data) {
   if (!lista) return;
 
   const r = data.resumo || {};
+  const saldo = Number(r.saldo || 0);
   if (resumoEl) {
     resumoEl.innerHTML = `
-      <div class="extrato-kpi"><span class="label">Movimentações</span><span class="valor">${r.qtd || 0}</span></div>
-      <div class="extrato-kpi ok"><span class="label">Entradas</span><span class="valor">${formatBRL(r.entradas || 0)}</span></div>
-      <div class="extrato-kpi saida"><span class="label">Saídas</span><span class="valor">${formatBRL(r.saidas || 0)}</span></div>
-      <div class="extrato-kpi"><span class="label">Saldo do período</span><span class="valor">${formatBRL(r.saldo || 0)}</span></div>
+      <div class="extrato-kpi">
+        <span class="label">Movimentações</span>
+        <span class="valor">${r.qtd || 0}</span>
+      </div>
+      <div class="extrato-kpi ok">
+        <span class="label">Entradas</span>
+        <span class="valor">${formatBRL(r.entradas || 0)}</span>
+      </div>
+      <div class="extrato-kpi saida">
+        <span class="label">Saídas</span>
+        <span class="valor">${formatBRL(r.saidas || 0)}</span>
+      </div>
+      <div class="extrato-kpi ${saldo >= 0 ? 'ok' : 'saida'}">
+        <span class="label">Resultado</span>
+        <span class="valor">${formatBRL(saldo)}</span>
+      </div>
     `;
   }
 
   const movs = data.movimentacoes || [];
   if (!movs.length) {
-    lista.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:16px 0;">Nenhuma movimentação nesse período/conta.</p>';
+    lista.innerHTML = '<div class="extrato-empty">Nenhuma movimentação nesse período ou conta.</div>';
     return;
   }
 
   const porDia = {};
   movs.forEach((m) => {
-    const dia = (m.data || '').slice(0, 10) || 'sem-data';
+    const dia = extratoYmd(m.data) || 'sem-data';
     if (!porDia[dia]) porDia[dia] = [];
     porDia[dia].push(m);
   });
@@ -4688,27 +4777,38 @@ function renderExtrato(data) {
   const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a));
   lista.innerHTML = dias.map((dia) => {
     const itens = porDia[dia];
-    const labelDia = dia === 'sem-data'
-      ? 'Sem data'
-      : new Date(dia + 'T12:00:00').toLocaleDateString('pt-BR', {
-          weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
-        });
+    const diaEnt = itens.filter((t) => t.tipo === 'entrada').reduce((s, t) => s + Math.abs(Number(t.valor) || 0), 0);
+    const diaSai = itens.filter((t) => t.tipo === 'saida').reduce((s, t) => s + Math.abs(Number(t.valor) || 0), 0);
+    const diaNet = diaEnt - diaSai;
     const rows = itens.map((t) => {
       const sinal = t.tipo === 'entrada' ? '+' : '−';
       const banco = t.account_id
         ? `${t.banco || 'Banco'}${t.conta_tipo === 'CREDIT' ? ' · cartão' : ''}`
         : 'Manual';
-      const cat = t.categoria || 'outros';
+      const cat = extratoLabelCat(t.categoria);
+      const desc = extratoLimparDesc(t.descricao);
       return `
         <div class="extrato-item ${t.tipo}">
+          <span class="extrato-dot" aria-hidden="true"></span>
           <div class="extrato-item-info">
-            <div class="extrato-item-desc">${escapeHtml(t.descricao || '(sem descrição)')}</div>
-            <div class="extrato-item-meta">${escapeHtml(banco)} · ${escapeHtml(cat)}</div>
+            <div class="extrato-item-desc" title="${escapeHtml(t.descricao || '')}">${escapeHtml(desc)}</div>
+            <div class="extrato-item-meta">
+              <span>${escapeHtml(banco)}</span>
+              <span class="sep">·</span>
+              <span>${escapeHtml(cat)}</span>
+            </div>
           </div>
-          <div class="extrato-item-valor ${t.tipo}">${sinal} ${formatBRL(Math.abs(Number(t.valor) || 0))}</div>
+          <div class="extrato-item-valor ${t.tipo}">${sinal}${formatBRL(Math.abs(Number(t.valor) || 0))}</div>
         </div>`;
     }).join('');
-    return `<div class="extrato-dia"><h4>${labelDia}</h4>${rows}</div>`;
+    return `
+      <section class="extrato-dia">
+        <header class="extrato-dia-head">
+          <h4>${escapeHtml(extratoLabelDia(dia))}</h4>
+          <span class="extrato-dia-net ${diaNet >= 0 ? 'ok' : 'saida'}">${diaNet >= 0 ? '+' : '−'}${formatBRL(Math.abs(diaNet))}</span>
+        </header>
+        <div class="extrato-dia-lista">${rows}</div>
+      </section>`;
   }).join('');
 }
 

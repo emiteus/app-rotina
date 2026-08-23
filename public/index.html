@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=62">
+  <link rel="stylesheet" href="style.css?v=63">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -505,33 +505,41 @@
 
       <!-- SUB-ABA: Extrato -->
       <div id="fin-extrato" class="fin-subtab" style="display:none;">
-        <div class="extrato-filtros" id="extrato-filtros">
-          <div class="extrato-periodo-chips" id="extrato-periodo-chips">
-            <button type="button" class="extrato-chip" data-periodo="7d" onclick="extratoSetPeriodo('7d')">7 dias</button>
-            <button type="button" class="extrato-chip active" data-periodo="30d" onclick="extratoSetPeriodo('30d')">30 dias</button>
-            <button type="button" class="extrato-chip" data-periodo="mes" onclick="extratoSetPeriodo('mes')">Este mês</button>
-            <button type="button" class="extrato-chip" data-periodo="mes-passado" onclick="extratoSetPeriodo('mes-passado')">Mês passado</button>
-            <button type="button" class="extrato-chip" data-periodo="custom" onclick="extratoSetPeriodo('custom')">Personalizado</button>
+        <div class="extrato-shell">
+          <div class="extrato-filtros" id="extrato-filtros">
+            <div class="extrato-filtros-top">
+              <div>
+                <p class="extrato-kicker">Extrato</p>
+                <p class="extrato-periodo-label" id="extrato-periodo-label">—</p>
+              </div>
+              <div class="extrato-periodo-chips" id="extrato-periodo-chips">
+                <button type="button" class="extrato-chip" data-periodo="7d" onclick="extratoSetPeriodo('7d')">7d</button>
+                <button type="button" class="extrato-chip active" data-periodo="30d" onclick="extratoSetPeriodo('30d')">30d</button>
+                <button type="button" class="extrato-chip" data-periodo="mes" onclick="extratoSetPeriodo('mes')">Mês</button>
+                <button type="button" class="extrato-chip" data-periodo="mes-passado" onclick="extratoSetPeriodo('mes-passado')">Anterior</button>
+                <button type="button" class="extrato-chip" data-periodo="custom" onclick="extratoSetPeriodo('custom')">Custom</button>
+              </div>
+            </div>
+            <div class="extrato-filtros-row">
+              <select id="extrato-conta" onchange="carregarExtrato()" aria-label="Conta">
+                <option value="todas">Todas as contas</option>
+              </select>
+              <select id="extrato-tipo" onchange="carregarExtrato()" aria-label="Tipo">
+                <option value="">Entradas e saídas</option>
+                <option value="entrada">Só entradas</option>
+                <option value="saida">Só saídas</option>
+              </select>
+              <input type="search" id="extrato-busca" placeholder="Buscar…" oninput="extratoBuscaDebounced()" autocomplete="off" />
+            </div>
+            <div class="extrato-datas" id="extrato-datas" hidden>
+              <label>De <input type="date" id="extrato-de" onchange="carregarExtrato()" /></label>
+              <label>Até <input type="date" id="extrato-ate" onchange="carregarExtrato()" /></label>
+            </div>
           </div>
-          <div class="extrato-filtros-row">
-            <select id="extrato-conta" onchange="carregarExtrato()" aria-label="Conta">
-              <option value="todas">Todas as contas</option>
-            </select>
-            <select id="extrato-tipo" onchange="carregarExtrato()" aria-label="Tipo">
-              <option value="">Entradas e saídas</option>
-              <option value="entrada">Só entradas</option>
-              <option value="saida">Só saídas</option>
-            </select>
-            <input type="search" id="extrato-busca" placeholder="Buscar descrição…" oninput="extratoBuscaDebounced()" autocomplete="off" />
-          </div>
-          <div class="extrato-datas" id="extrato-datas" hidden>
-            <label>De <input type="date" id="extrato-de" onchange="carregarExtrato()" /></label>
-            <label>Até <input type="date" id="extrato-ate" onchange="carregarExtrato()" /></label>
-          </div>
-        </div>
 
-        <div class="extrato-resumo" id="extrato-resumo"></div>
-        <div id="lista-extrato" class="extrato-lista"></div>
+          <div class="extrato-resumo" id="extrato-resumo"></div>
+          <div id="lista-extrato" class="extrato-lista"></div>
+        </div>
       </div>
 
       <!-- SUB-ABA: Despesas do mês -->
@@ -883,7 +891,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=62"></script>
+  <script src="app.js?v=63"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

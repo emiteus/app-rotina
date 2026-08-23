@@ -1,7 +1,7 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
-const { hojeStr, ymAtual } = require('../lib/datas');
+const { hojeStr, ymAtual, ymdDe } = require('../lib/datas');
 
 let wsServer; // Será setado pelo server.js
 
@@ -145,7 +145,7 @@ router.get('/extrato', async (req, res) => {
       movimentacoes: (movimentacoes || []).map((m) => ({
         ...m,
         valor: Number(m.valor),
-        data: m.data ? String(m.data).slice(0, 10) : null
+        data: ymdDe(m.data) || null
       })),
       resumo: {
         qtd: Number(resumo?.qtd || 0),
