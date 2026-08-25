@@ -7382,6 +7382,13 @@ async function enviarAssistente(e) {
         else if (a.tipo === 'marcar_habito') {
           const nome = a.titulo || 'Hábito';
           txt = a.ja ? `${nome} já estava marcado hoje` : `${nome} marcado`;
+        } else if (a.tipo === 'criar_categoria') {
+          txt = a.criada
+            ? `Categoria criada: ${a.label || a.categoria}`
+            : `Categoria já existia: ${a.label || a.categoria}`;
+        } else if (a.tipo === 'recategorizar') {
+          const lab = a.label || a.categoria || 'categoria';
+          txt = `${a.qtd || 0} tx → ${lab}`;
         }
         assistAddBubble('acao', txt);
       });
@@ -7397,7 +7404,19 @@ async function enviarAssistente(e) {
       if (feitos.some(a => a.tipo === 'criar_meta') && typeof carregarMetas === 'function') {
         carregarMetas();
       }
+      if (feitos.some(a => a.tipo === 'criar_categoria' || a.tipo === 'recategorizar')) {
+        if (typeof carregarTransacoes === 'function') carregarTransacoes();
+        if (typeof carregarFinanceiro === 'function') carregarFinanceiro();
+        if (typeof carregarCatLista === 'function') carregarCatLista();
+        if (typeof carregarCategorizar === 'function') carregarCategorizar();
+      }
     }
+    const falhas = (data.acoes || []).filter(a => a && a.ok === false);
+    falhas.forEach(a => {
+      if (a.tipo === 'recategorizar' || a.tipo === 'criar_categoria') {
+        assistAddBubble('acao', `Não deu: ${a.erro || a.tipo}`);
+      }
+    });
   } catch (err) {
     if (thinking) thinking.remove();
     assistAddBubble('bot erro', err.message || 'Não consegui responder agora.');

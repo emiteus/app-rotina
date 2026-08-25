@@ -438,6 +438,7 @@ async function snapshotAssistente() {
     fin30,
     finMes,
     txsRecentes,
+    categoriasLista,
     gastosCat,
     despesas,
     metas,
@@ -520,11 +521,12 @@ async function snapshotAssistente() {
       [ym]
     ).catch(() => ({ entradas: 0, saidas: 0 })),
     all(
-      `SELECT descricao, valor, tipo, categoria, data, fonte
+      `SELECT id, descricao, valor, tipo, categoria, data, fonte, chave_categoria
        FROM financeiro
        ORDER BY data DESC
-       LIMIT 25`
+       LIMIT 40`
     ).catch(() => []),
+    all(`SELECT chave, label FROM categorias ORDER BY label LIMIT 80`).catch(() => []),
     all(
       `SELECT COALESCE(NULLIF(categoria,''),'outros') AS categoria,
               SUM(valor)::float AS total, COUNT(*)::int AS qtd
@@ -669,13 +671,16 @@ async function snapshotAssistente() {
         sobra: brlNum(fMes.entradas - fMes.saidas)
       },
       ultimas_transacoes: (txsRecentes || []).map(t => ({
-        desc: String(t.descricao || '').slice(0, 60),
+        id: t.id,
+        desc: String(t.descricao || '').slice(0, 80),
         valor: brlNum(t.valor),
         tipo: t.tipo,
         categoria: t.categoria || 'outros',
         data: t.data ? String(t.data).slice(0, 10) : null,
-        fonte: t.fonte || null
+        fonte: t.fonte || null,
+        chave: t.chave_categoria || null
       })),
+      categorias: (categoriasLista || []).map(c => ({ chave: c.chave, label: c.label })),
       gastos_por_categoria_30d: (gastosCat || []).map(c => ({
         categoria: c.categoria,
         total: brlNum(c.total),
@@ -770,6 +775,83 @@ async function executarAcoes(acoes) {
   const feitos = [];
   const ym = ymAtual();
 
+  const normalizarChave = (label) => String(label || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 40);
+
+  async function garantirCategoria(acao) {
+    const labelHint = String(acao.categoria_label || acao.label || '').trim();
+    const catRaw = String(acao.categoria || '').trim();
+    const label = labelHint || catRaw;
+    let chave = '';
+    if (/^[a-z0-9_]+$/i.test(catRaw)) chave = catRaw.toLowerCase();
+    else chave = normalizarChave(label || catRaw);
+    if (!chave) return null;
+    const existe = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chave]);
+    if (existe) return { chave: existe.chave, label: existe.label, criada: false };
+    const lab = label || chave;
+    await run(
+      `INSERT INTO categorias (chave, label, criado_por_usuario) VALUES ($1,$2,true)
+       ON CONFLICT (chave) DO NOTHING`,
+      [chave, lab]
+    );
+    return { chave, label: lab, criada: true };
+  }
+
+  async function buscarTxsParaRecategorizar(acao) {
+    const ids = Array.isArray(acao.ids) ? acao.ids.map(String).filter(Boolean).slice(0, 40) : [];
+    if (ids.length) {
+      return all(
+        `SELECT id, descricao, valor, tipo, data, chave_categoria, categoria
+         FROM financeiro WHERE id = ANY($1::text[])`,
+        [ids]
+      );
+    }
+    const f = acao.filtros || {};
+    const W = [];
+    const V = [];
+    let p = 1;
+    if (f.data) {
+      W.push(`data::date = $${p++}::date`);
+      V.push(String(f.data).slice(0, 10));
+    } else {
+      if (f.data_de) { W.push(`data::date >= $${p++}::date`); V.push(String(f.data_de).slice(0, 10)); }
+      if (f.data_ate) { W.push(`data::date <= $${p++}::date`); V.push(String(f.data_ate).slice(0, 10)); }
+    }
+    if (f.tipo === 'entrada' || f.tipo === 'saida') {
+      W.push(`tipo = $${p++}`);
+      V.push(f.tipo);
+    }
+    const valores = Array.isArray(f.valores)
+      ? f.valores.map(Number).filter(n => Number.isFinite(n) && n > 0).slice(0, 20)
+      : [];
+    if (valores.length) {
+      W.push(`ROUND(ABS(valor)::numeric, 2) = ANY($${p++}::numeric[])`);
+      V.push(valores.map(v => Number(v).toFixed(2)));
+    }
+    const contem = Array.isArray(f.contem)
+      ? f.contem.map(s => String(s || '').trim()).filter(Boolean).slice(0, 12)
+      : [];
+    if (contem.length) {
+      const parts = [];
+      for (const c of contem) {
+        parts.push(`descricao ILIKE $${p++}`);
+        V.push(`%${c}%`);
+      }
+      W.push(`(${parts.join(' OR ')})`);
+    }
+    if (!W.length) return [];
+    return all(
+      `SELECT id, descricao, valor, tipo, data, chave_categoria, categoria
+       FROM financeiro
+       WHERE ${W.join(' AND ')}
+       ORDER BY data DESC
+       LIMIT 40`,
+      V
+    );
+  }
+
   for (const acao of acoes.slice(0, 8)) {
     const tipo = acao && acao.tipo;
     try {
@@ -826,6 +908,58 @@ async function executarAcoes(acoes) {
           titulo: r.titulo || (r.task && r.task.titulo) || titulo,
           ja: r.ja,
           criada: r.criada
+        });
+      } else if (tipo === 'criar_categoria') {
+        const cat = await garantirCategoria(acao);
+        if (!cat) {
+          feitos.push({ tipo, ok: false, erro: 'label/categoria obrigatórios' });
+          continue;
+        }
+        feitos.push({
+          tipo,
+          ok: true,
+          categoria: cat.chave,
+          label: cat.label,
+          criada: cat.criada
+        });
+      } else if (tipo === 'recategorizar') {
+        const cat = await garantirCategoria(acao);
+        if (!cat) {
+          feitos.push({ tipo, ok: false, erro: 'categoria obrigatória' });
+          continue;
+        }
+        const txs = await buscarTxsParaRecategorizar(acao);
+        if (!txs.length) {
+          feitos.push({ tipo, ok: false, erro: 'nenhuma transação encontrada com esses filtros', categoria: cat.chave });
+          continue;
+        }
+        const ids = txs.map(t => t.id);
+        await run(
+          `UPDATE financeiro
+           SET categoria = $1, categoria_confirmada = true
+           WHERE id = ANY($2::text[])`,
+          [cat.chave, ids]
+        );
+        if (acao.aprender !== false) {
+          for (const t of txs) {
+            const chave = t.chave_categoria || normalizarChave(t.descricao).slice(0, 40);
+            if (!chave) continue;
+            await run(
+              `INSERT INTO categoria_regras (chave, categoria, exemplo)
+               VALUES ($1,$2,$3)
+               ON CONFLICT (chave) DO UPDATE SET categoria = EXCLUDED.categoria`,
+              [chave, cat.chave, String(t.descricao || '').slice(0, 120)]
+            );
+          }
+        }
+        feitos.push({
+          tipo,
+          ok: true,
+          categoria: cat.chave,
+          label: cat.label,
+          qtd: ids.length,
+          ids,
+          exemplos: txs.slice(0, 5).map(t => String(t.descricao || '').slice(0, 40))
         });
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
@@ -965,16 +1099,18 @@ ${JSON.stringify(snap)}
 
 Como usar o contexto:
 - Períodos: "hoje/ontem/amanhã" → tarefas.*; "essa semana" → habitos[].semana_concluidas ou tarefas.stats_7d; "esse mês" → despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas.
-- Finanças: financeiro.d7/d30/mes_atual, ultimas_transacoes, gastos_por_categoria_30d, saldos_contas, plano_financeiro, despesas_mes.
+- Finanças: financeiro.d7/d30/mes_atual, ultimas_transacoes (com id), categorias, gastos_por_categoria_30d, saldos_contas, plano_financeiro, despesas_mes.
 - Produtividade: tarefas (hoje, atrasadas, próximos), stats_7d/30d, streak_dias_completos, historico_tarefas_recentes, recorrentes, consistencia_horario (horário médio e desvio por tarefa).
 - Agenda: eventos_proximos, alarmes.
 - Hábitos: só Academia (feito_hoje, semana e mês).
 - Confirmações ("já paguei X"): diga o status em despesas_mes ou nas transações; se não achar, diga que não encontrou.
 
-Ações (só quando o usuário pedir explicitamente ou confirmar um hábito do dia):
-- registrar pendência/dívida/despesa/tarefa/meta → incluir em acoes
+Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir no Extrato manualmente):
+- registrar pendência/dívida/despesa/tarefa/meta → acoes
 - "fui na academia" → marcar_habito
-- Se faltar valor essencial, pergunte e NÃO emita ação
+- criar categoria / organizar / recategorizar / "joga pra X" / "não bagunçar gasto" → criar_categoria e/ou recategorizar
+- Se faltar dado essencial (qual categoria? quais txs?), pergunte e NÃO emita ação
+- Preferir ids de financeiro.ultimas_transacoes[].id quando bater a descrição/valor/data; senão use filtros
 
 Responda APENAS um JSON válido completo:
 {"resposta":"texto em markdown simples (máx 160 palavras). Use **negrito** em números-chave.","acoes":[]}
@@ -984,12 +1120,17 @@ Tipos de ação:
 - {"tipo":"criar_tarefa","titulo":"...","prioridade":"alta|media|baixa","data_reset":"YYYY-MM-DD"}
 - {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
 - {"tipo":"marcar_habito","titulo":"Academia"}
+- {"tipo":"criar_categoria","categoria_label":"Apostas - Amigos"}
+- {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","ids":["uuid1","uuid2"]}
+- {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","filtros":{"data":"YYYY-MM-DD","valores":[250,400,350],"contem":["Erik","Superbet","Tizon"]}}
 
 Regras:
-- "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela.
+- "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela. Confirme o que foi feito (ex: "categorizei N txs em Apostas - Amigos").
+- Se o usuário pedir organização de categorias, EMITA a ação — não diga "vai no extrato e altera".
+- Use financeiro.categorias (chave/label) se a categoria já existir; senão criar_categoria + recategorizar (ou só recategorizar, que cria a categoria).
 - Responda a pergunta feita; não desvie pra pitch genérico.
 - acoes pode ser [].
-- Não invente números, títulos ou status.
+- Não invente números, títulos, ids ou status.
 - No máximo 1 emoji.
 - Valores em R$ (ex: R$ 1.200).`;
 
