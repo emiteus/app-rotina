@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=74">
+  <link rel="stylesheet" href="style.css?v=76">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -410,12 +410,37 @@
       <!-- Sub-abas do Financeiro -->
       <div class="fin-subtabs">
         <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')">Visão Geral</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-ganhos" onclick="trocarSubAbaFin('fin-ganhos')">Receita</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-extrato" onclick="trocarSubAbaFin('fin-extrato')">Extrato</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-despesas" onclick="trocarSubAbaFin('fin-despesas')">Despesas do mês</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-metas" onclick="trocarSubAbaFin('fin-metas')">Metas</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-invest" onclick="trocarSubAbaFin('fin-invest')">Investimentos</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-patrimonio" onclick="trocarSubAbaFin('fin-patrimonio')">Patrimônio</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')">PJ / MEI</button>
+      </div>
+
+      <!-- SUB-ABA: Ganhos / Entradas -->
+      <div id="fin-ganhos" class="fin-subtab" style="display:none;">
+        <div class="ganhos-shell">
+          <div class="ganhos-toolbar">
+            <div class="despesas-mes-nav">
+              <button type="button" onclick="ganhosMesAnterior()" aria-label="Mês anterior">‹</button>
+              <span class="despesas-mes-label" id="ganhos-mes-label">—</span>
+              <button type="button" onclick="ganhosMesProximo()" aria-label="Próximo mês">›</button>
+            </div>
+          </div>
+          <div class="despesas-resumo" id="ganhos-resumo"></div>
+          <div class="ganhos-grid">
+            <div class="panel ganhos-cat-card">
+              <div class="panel-header"><h3>Por categoria</h3></div>
+              <div id="ganhos-por-categoria" class="ganhos-cat-list"></div>
+            </div>
+            <div class="panel ganhos-lista-card">
+              <div class="panel-header"><h3>Receitas do mês</h3></div>
+              <div id="ganhos-lista" class="ganhos-lista"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- SUB-ABA: Metas financeiras -->
@@ -951,7 +976,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=81"></script>
+  <script src="app.js?v=83"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

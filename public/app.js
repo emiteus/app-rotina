@@ -1135,6 +1135,7 @@ function trocarSubAbaFin(id) {
   if (id === 'fin-metas') carregarMetas();
   if (id === 'fin-invest') carregarInvestimentos();
   if (id === 'fin-patrimonio') carregarPatrimonio();
+  if (id === 'fin-ganhos') carregarGanhos();
   if (id === 'fin-pj') carregarPJ();
   if (id === 'fin-extrato') carregarExtrato();
   if (id === 'fin-visao') {
@@ -4449,6 +4450,7 @@ async function carregarTransacoes() {
     renderFinDonut();
     if (document.getElementById('fin-invest')?.style.display !== 'none') carregarInvestimentos();
     if (document.getElementById('fin-patrimonio')?.style.display !== 'none') carregarPatrimonio();
+    if (document.getElementById('fin-ganhos')?.style.display !== 'none') carregarGanhos();
     aplicarSaldosReais();
   } catch (err) {
     console.error('Erro transações:', err);
@@ -4695,6 +4697,155 @@ function parseBRL(txt) {
   const n = String(txt || '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
   const v = Number(n);
   return Number.isFinite(v) ? v : 0;
+}
+
+// =====================
+//  GANHOS / ENTRADAS
+// =====================
+let _ganhosYm = null;
+
+function _ymRange(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  return {
+    from: `${ym}-01`,
+    to: `${ym}-${String(lastDay).padStart(2, '0')}`
+  };
+}
+
+function ganhosMesAnterior() {
+  _ganhosYm = _shiftYm(_ganhosYm || _ymAgora(), -1);
+  carregarGanhos();
+}
+
+function ganhosMesProximo() {
+  _ganhosYm = _shiftYm(_ganhosYm || _ymAgora(), 1);
+  carregarGanhos();
+}
+
+function _labelGanhosCat(cat) {
+  if (typeof extratoLabelCat === 'function') return extratoLabelCat(cat);
+  return cat || 'Outros';
+}
+
+async function carregarGanhos() {
+  const labelEl = document.getElementById('ganhos-mes-label');
+  const resumoEl = document.getElementById('ganhos-resumo');
+  const catEl = document.getElementById('ganhos-por-categoria');
+  const listaEl = document.getElementById('ganhos-lista');
+  if (!resumoEl || !catEl || !listaEl) return;
+
+  const ym = _ganhosYm || _ymAgora();
+  if (labelEl) labelEl.textContent = _labelYm(ym);
+
+  resumoEl.innerHTML = '<div class="despesas-kpi"><span class="label">Carregando…</span><span class="valor">—</span></div>';
+  catEl.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:8px 4px;">Carregando…</p>';
+  listaEl.innerHTML = '<div class="extrato-loading">Carregando entradas…</div>';
+
+  const { from, to } = _ymRange(ym);
+
+  try {
+    const [statsRes, extratoRes] = await Promise.all([
+      fetch(`/api/financeiro/stats?ym=${encodeURIComponent(ym)}`),
+      fetch(`/api/financeiro/extrato?from=${from}&to=${to}&tipo=entrada&limit=1500`)
+    ]);
+    const stats = await statsRes.json();
+    const extrato = await extratoRes.json();
+    if (!statsRes.ok) throw new Error(stats.erro || 'Erro ao carregar resumo');
+    if (!extratoRes.ok) throw new Error(extrato.erro || 'Erro ao carregar entradas');
+
+    const porCat = (stats.porCategoria || [])
+      .filter((c) => c.tipo === 'entrada')
+      .map((c) => ({
+        categoria: c.categoria || 'outros',
+        total: Number(c.total || 0)
+      }))
+      .filter((c) => c.total > 0)
+      .sort((a, b) => b.total - a.total);
+
+    const movs = extrato.movimentacoes || [];
+    const total = porCat.reduce((s, c) => s + c.total, 0);
+    const qtd = movs.length;
+    const media = qtd ? total / qtd : 0;
+    const maior = porCat[0];
+
+    resumoEl.innerHTML = `
+      <div class="despesas-kpi ok"><span class="label">Total do mês</span><span class="valor">${formatBRL(total)}</span></div>
+      <div class="despesas-kpi"><span class="label">Entradas</span><span class="valor">${qtd}</span></div>
+      <div class="despesas-kpi"><span class="label">Média por entrada</span><span class="valor">${formatBRL(media)}</span></div>
+      <div class="despesas-kpi"><span class="label">Principal origem</span><span class="valor">${maior ? escapeHtml(_labelGanhosCat(maior.categoria)) : '—'}</span></div>
+    `;
+
+    if (!porCat.length) {
+      catEl.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:8px 4px;">Nenhuma entrada neste mês.</p>';
+    } else {
+      const pct = (v) => (total > 0 ? Math.round((v / total) * 100) : 0);
+      catEl.innerHTML = `
+        ${porCat.map((c) => `
+          <div class="ganhos-cat-row">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="name">${escapeHtml(_labelGanhosCat(c.categoria))}</span>
+            <span class="pct">${pct(c.total)}%</span>
+            <span class="valor">+${formatBRL(c.total)}</span>
+          </div>
+        `).join('')}
+        <div class="ganhos-cat-total">
+          <span>Total</span>
+          <span class="valor">+${formatBRL(total)}</span>
+        </div>
+      `;
+    }
+
+    if (!movs.length) {
+      listaEl.innerHTML = '<div class="extrato-empty">Nenhuma entrada neste mês.</div>';
+      return;
+    }
+
+    const porDia = {};
+    movs.forEach((m) => {
+      const dia = extratoYmd(m.data) || 'sem-data';
+      if (!porDia[dia]) porDia[dia] = [];
+      porDia[dia].push(m);
+    });
+
+    const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a));
+    listaEl.innerHTML = dias.map((dia) => {
+      const itens = porDia[dia];
+      const diaTotal = itens.reduce((s, t) => s + Math.abs(Number(t.valor) || 0), 0);
+      const rows = itens.map((t) => {
+        const banco = t.account_id
+          ? `${t.banco || 'Banco'}${t.conta_tipo === 'CREDIT' ? ' · cartão' : ''}`
+          : 'Manual';
+        const cat = _labelGanhosCat(t.categoria);
+        const desc = extratoLimparDesc(t.descricao);
+        return `
+          <div class="extrato-item entrada">
+            <span class="extrato-dot" aria-hidden="true"></span>
+            <div class="extrato-item-info">
+              <div class="extrato-item-desc" title="${escapeHtml(t.descricao || '')}">${escapeHtml(desc)}</div>
+              <div class="extrato-item-meta">
+                <span>${escapeHtml(banco)}</span>
+                <span class="sep">·</span>
+                <span>${escapeHtml(cat)}</span>
+              </div>
+            </div>
+            <div class="extrato-item-valor entrada">+${formatBRL(Math.abs(Number(t.valor) || 0))}</div>
+          </div>`;
+      }).join('');
+      return `
+        <section class="extrato-dia">
+          <header class="extrato-dia-head">
+            <h4>${escapeHtml(extratoLabelDia(dia))}</h4>
+            <span class="extrato-dia-net ok">+${formatBRL(diaTotal)}</span>
+          </header>
+          <div class="extrato-dia-lista">${rows}</div>
+        </section>`;
+    }).join('');
+  } catch (e) {
+    resumoEl.innerHTML = '';
+    catEl.innerHTML = '';
+    listaEl.innerHTML = `<div class="extrato-empty">${escapeHtml(e.message)}</div>`;
+  }
 }
 
 async function abrirRevisaoCategoria(catEncoded) {
