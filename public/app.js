@@ -7138,16 +7138,24 @@ function assistFecharHistorico() {
   _assistHistOpen = false;
   const el = document.getElementById('assist-historico');
   const btn = document.getElementById('assist-hist-btn');
+  const panel = document.getElementById('assist-panel');
+  const backdrop = document.getElementById('assist-hist-backdrop');
   if (el) el.hidden = true;
   if (btn) btn.setAttribute('aria-expanded', 'false');
+  if (panel) panel.classList.remove('hist-open');
+  if (backdrop) backdrop.hidden = true;
 }
 
 async function assistAbrirHistorico() {
   _assistHistOpen = true;
   const el = document.getElementById('assist-historico');
   const btn = document.getElementById('assist-hist-btn');
+  const panel = document.getElementById('assist-panel');
+  const backdrop = document.getElementById('assist-hist-backdrop');
   if (el) el.hidden = false;
   if (btn) btn.setAttribute('aria-expanded', 'true');
+  if (panel) panel.classList.add('hist-open');
+  if (backdrop) backdrop.hidden = false;
   await assistRenderHistorico();
 }
 

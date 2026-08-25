@@ -5814,6 +5814,7 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
 /* ===== Assistente global — dock desktop (Cursor) + aba mobile ===== */
 :root {
   --assist-dock-w: min(520px, 48vw);
+  --assist-hist-w: 260px;
 }
 
 .assist-fab {
@@ -5850,12 +5851,12 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   position: fixed;
   z-index: 2400;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
   overflow: hidden;
   background: linear-gradient(180deg, #121214 0%, #0C0C0E 100%);
   border: 1px solid var(--border-strong);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
-  /* desktop dock: off-canvas à direita */
   top: 0;
   right: 0;
   bottom: 0;
@@ -5872,20 +5873,38 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   visibility: hidden;
   transition:
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.28s;
+    visibility 0.28s,
+    width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .assist-panel.open {
   transform: translateX(0);
   pointer-events: auto;
   visibility: visible;
 }
+.assist-panel.hist-open {
+  width: calc(var(--assist-dock-w) + var(--assist-hist-w));
+}
 body.assist-open {
   padding-right: var(--assist-dock-w);
   transition: padding-right 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
+body.assist-open:has(.assist-panel.hist-open) {
+  padding-right: calc(var(--assist-dock-w) + var(--assist-hist-w));
+}
 @media (prefers-reduced-motion: reduce) {
   .assist-panel,
   body.assist-open { transition: none; }
+}
+
+.assist-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background: linear-gradient(180deg, #121214 0%, #0C0C0E 100%);
 }
 
 /* Nav Chat ativo no desktop quando dock aberto */
@@ -5969,42 +5988,81 @@ body.assist-open {
 .assist-close:hover { color: var(--text-primary); border-color: var(--border-strong); }
 
 .assist-historico {
-  border-bottom: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.25);
-  max-height: 42%;
+  flex: 0 0 var(--assist-hist-w);
+  width: var(--assist-hist-w);
+  max-width: var(--assist-hist-w);
+  height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex-shrink: 0;
+  background: #0A0A0C;
+  border-right: 1px solid var(--border);
+  order: -1;
 }
-.assist-historico[hidden] { display: none !important; }
+.assist-historico[hidden] {
+  display: none !important;
+}
 .assist-historico-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 10px 14px 6px;
+  gap: 8px;
+  padding: 16px 14px 10px;
+  flex-shrink: 0;
+}
+.assist-historico-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.assist-historico-sub {
+  display: block;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--text-muted);
+  margin-top: 3px;
 }
 .assist-hist-nova {
-  background: transparent;
+  margin: 0 12px 10px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 11px;
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
+  text-align: left;
+  font-family: var(--font-ui);
 }
-.assist-hist-nova:hover { color: var(--text-primary); }
+.assist-hist-nova:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.22);
+}
 .assist-historico-lista {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: 4px 8px 10px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 4px 8px 16px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+.assist-hist-backdrop {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
 }
 .assist-hist-item {
   display: flex;
@@ -6051,10 +6109,11 @@ body.assist-open {
 }
 .assist-hist-del:hover { opacity: 1; color: #fecaca; background: rgba(248, 113, 113, 0.1); }
 .assist-hist-empty {
-  padding: 16px 12px;
+  padding: 24px 12px;
   font-size: 13px;
   color: var(--text-muted);
   text-align: center;
+  line-height: 1.45;
 }
 
 .assist-msgs {
@@ -6237,13 +6296,16 @@ body.assist-open {
   body.assist-open {
     padding-right: 0 !important;
   }
+  body.assist-open:has(.assist-panel.hist-open) {
+    padding-right: 0 !important;
+  }
 
   .assist-panel {
     top: 0;
     left: 0;
     right: 0;
     bottom: calc(58px + env(safe-area-inset-bottom, 0px));
-    width: 100%;
+    width: 100% !important;
     height: auto;
     border: none;
     border-radius: 0;
@@ -6258,6 +6320,44 @@ body.assist-open {
   .assist-panel.open {
     transform: translateY(0);
     opacity: 1;
+  }
+  .assist-panel.hist-open {
+    width: 100% !important;
+  }
+
+  .assist-main {
+    width: 100%;
+  }
+
+  /* Drawer de conversas à esquerda, rolável */
+  .assist-historico {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 8;
+    width: min(300px, 84vw);
+    max-width: min(300px, 84vw);
+    flex: none;
+    height: auto;
+    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.45);
+    transform: translateX(-105%);
+    transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .assist-panel.hist-open .assist-historico:not([hidden]) {
+    transform: translateX(0);
+  }
+  .assist-historico[hidden] {
+    display: flex !important;
+    transform: translateX(-105%);
+    pointer-events: none;
+    visibility: hidden;
+  }
+  .assist-panel.hist-open .assist-hist-backdrop {
+    display: block;
+  }
+  .assist-historico-head {
+    padding-top: max(14px, env(safe-area-inset-top, 0px));
   }
 
   body.assist-mobile-tab .main > .tab-content:not(#assistente) {
