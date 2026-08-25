@@ -147,7 +147,11 @@ router.get('/extrato', async (req, res) => {
               COALESCE(i.apelido, i.connector_nome, 'Banco') AS banco
        FROM openfinance_accounts a
        JOIN openfinance_items i ON i.item_id = a.item_id
-       ORDER BY i.pessoa NULLS LAST, i.apelido NULLS LAST, a.tipo, a.nome`
+       ORDER BY
+         CASE WHEN a.tipo = 'CREDIT' THEN 1 ELSE 0 END,
+         CASE WHEN i.pessoa = 'PJ' THEN 1 ELSE 0 END,
+         COALESCE(i.apelido, i.connector_nome, a.nome),
+         a.nome`
     );
 
     const entradas = Number(resumo?.entradas || 0);
