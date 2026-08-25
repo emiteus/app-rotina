@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 const { hojeStr, ymAtual, ymdDe } = require('../lib/datas');
+const { nomeBancoDisplay, labelContaExtrato } = require('../lib/banco-nome');
 
 let wsServer; // Será setado pelo server.js
 
@@ -117,6 +118,7 @@ router.get('/extrato', async (req, res) => {
     const movimentacoes = await all(
       `SELECT f.id, f.tipo, f.valor, f.descricao, f.data, f.categoria, f.fonte, f.account_id,
               a.nome AS conta_nome, a.tipo AS conta_tipo, a.item_id,
+              i.apelido, i.connector_nome, i.pessoa,
               COALESCE(i.apelido, i.connector_nome, 'Manual') AS banco
        FROM financeiro f
        LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
@@ -141,11 +143,11 @@ router.get('/extrato', async (req, res) => {
 
     const contas = await all(
       `SELECT a.account_id, a.tipo, a.nome, a.item_id,
-              COALESCE(i.apelido, i.connector_nome, 'Banco') AS banco,
-              i.pessoa
+              i.apelido, i.connector_nome, i.pessoa,
+              COALESCE(i.apelido, i.connector_nome, 'Banco') AS banco
        FROM openfinance_accounts a
        JOIN openfinance_items i ON i.item_id = a.item_id
-       ORDER BY i.apelido NULLS LAST, a.tipo, a.nome`
+       ORDER BY i.pessoa NULLS LAST, i.apelido NULLS LAST, a.tipo, a.nome`
     );
 
     const entradas = Number(resumo?.entradas || 0);
@@ -153,29 +155,45 @@ router.get('/extrato', async (req, res) => {
     res.json({
       from,
       to,
-      movimentacoes: (movimentacoes || []).map((m) => ({
-        ...m,
-        valor: Number(m.valor),
-        data: ymdDe(m.data) || null
-      })),
+      movimentacoes: (movimentacoes || []).map((m) => {
+        const banco = m.account_id
+          ? nomeBancoDisplay({
+              apelido: m.apelido,
+              connector_nome: m.connector_nome,
+              pessoa: m.pessoa,
+              contasNomes: m.conta_nome
+            })
+          : 'Manual';
+        return {
+          ...m,
+          banco,
+          valor: Number(m.valor),
+          data: ymdDe(m.data) || null
+        };
+      }),
       resumo: {
         qtd: Number(resumo?.qtd || 0),
         entradas,
         saidas,
         saldo: Math.round((entradas - saidas) * 100) / 100
       },
-      contas: (contas || []).map((c) => ({
-        account_id: c.account_id,
-        item_id: c.item_id,
-        tipo: c.tipo,
-        nome: c.nome,
-        banco: c.banco,
-        pessoa: c.pessoa,
-        label:
-          c.tipo === 'CREDIT'
-            ? `${c.banco} · Cartão`
-            : `${c.banco}${c.pessoa === 'PJ' ? ' · PJ' : ''}`
-      }))
+      contas: (contas || []).map((c) => {
+        const banco = nomeBancoDisplay({
+          apelido: c.apelido,
+          connector_nome: c.connector_nome,
+          pessoa: c.pessoa,
+          contasNomes: c.nome
+        });
+        return {
+          account_id: c.account_id,
+          item_id: c.item_id,
+          tipo: c.tipo,
+          nome: c.nome,
+          banco,
+          pessoa: c.pessoa,
+          label: labelContaExtrato({ ...c, banco, tipo: c.tipo, pessoa: c.pessoa })
+        };
+      })
     });
   } catch (err) {
     res.status(500).json({ erro: err.message });

@@ -4,6 +4,7 @@ const axios = require('axios');
 const { run, get, all } = require('../lib/db');
 const { hojeStr, addDias } = require('../lib/datas');
 const { categoriaObvia } = require('../lib/categoria-heuristica');
+const { nomeBancoDisplay } = require('../lib/banco-nome');
 
 const router = express.Router();
 const PLUGGY_BASE = 'https://api.pluggy.ai';
@@ -95,7 +96,7 @@ router.get('/status', async (req, res) => {
     // Sempre lista itens do DB (mesmo se Pluggy env falhar) pra UI não sumir
     const items = await all(`SELECT * FROM openfinance_items ORDER BY criado_em DESC`).catch(() => []);
 
-    // Corrige PF/PJ óbvios (ex.: conector "Inter Empresas" ainda marcado PF)
+    // Corrige PF/PJ óbvios e apelidos MeuPluggy → Inter/Nubank
     for (const it of items || []) {
       const inferida = inferirPessoa(it.connector_nome, it.apelido);
       if (inferida === 'PJ' && it.pessoa !== 'PJ') {
@@ -106,6 +107,24 @@ router.get('/status', async (req, res) => {
         ).catch(() => {});
         it.pessoa = 'PJ';
         if (apelido) it.apelido = apelido;
+      }
+
+      const precisaApelido = !it.apelido || /meu\s*pluggy/i.test(String(it.apelido));
+      if (precisaApelido) {
+        const contas = await all(
+          `SELECT nome, tipo FROM openfinance_accounts WHERE item_id = $1`,
+          [it.item_id]
+        ).catch(() => []);
+        const bom = nomeBancoDisplay({
+          apelido: it.apelido,
+          connector_nome: it.connector_nome,
+          pessoa: it.pessoa,
+          contasNomes: (contas || []).map(c => c.nome)
+        });
+        if (bom && !/meu\s*pluggy/i.test(bom)) {
+          await run(`UPDATE openfinance_items SET apelido = $1 WHERE item_id = $2`, [bom, it.item_id]).catch(() => {});
+          it.apelido = bom;
+        }
       }
     }
 
