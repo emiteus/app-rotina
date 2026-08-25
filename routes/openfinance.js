@@ -63,6 +63,30 @@ function chaveCategoria(t) {
     .slice(0, 40) || 'semchave';
 }
 
+/** Detecta PJ pelo nome do conector/apelido (Inter Empresas, MEI, etc.) */
+function inferirPessoa(...nomes) {
+  const t = nomes.filter(Boolean).join(' ').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/\bempresas?\b|\bpj\b|\bmei\b|pessoa\s*juridica|business|cnpj|conta\s*pj|inter\s*pj|banco\s*inter\s*empresas/.test(t)) {
+    return 'PJ';
+  }
+  return 'PF';
+}
+
+function apelidoPadrao(pessoa, connectorNome, apelidoAtual) {
+  const atual = String(apelidoAtual || '').trim();
+  const conn = String(connectorNome || '');
+  if (atual && !/meu\s*pluggy/i.test(atual)) return atual;
+  if (pessoa === 'PJ') {
+    if (/inter|meu\s*pluggy/i.test(conn + ' ' + atual)) return 'Inter empresas';
+    return atual || 'Empresa (PJ)';
+  }
+  if (/nu|nubank/i.test(conn)) return atual || 'Nubank';
+  if (/inter/i.test(conn)) return atual || 'Inter';
+  if (/meu\s*pluggy/i.test(conn)) return atual || null;
+  return atual || null;
+}
+
 // =====================================================
 // STATUS — frontend checa se Open Finance está disponível
 // =====================================================
@@ -70,6 +94,21 @@ router.get('/status', async (req, res) => {
   try {
     // Sempre lista itens do DB (mesmo se Pluggy env falhar) pra UI não sumir
     const items = await all(`SELECT * FROM openfinance_items ORDER BY criado_em DESC`).catch(() => []);
+
+    // Corrige PF/PJ óbvios (ex.: conector "Inter Empresas" ainda marcado PF)
+    for (const it of items || []) {
+      const inferida = inferirPessoa(it.connector_nome, it.apelido);
+      if (inferida === 'PJ' && it.pessoa !== 'PJ') {
+        const apelido = apelidoPadrao('PJ', it.connector_nome, it.apelido);
+        await run(
+          `UPDATE openfinance_items SET pessoa = 'PJ', apelido = COALESCE($1, apelido) WHERE item_id = $2`,
+          [apelido, it.item_id]
+        ).catch(() => {});
+        it.pessoa = 'PJ';
+        if (apelido) it.apelido = apelido;
+      }
+    }
+
     const itemsOut = (items || []).map(it => {
       const nome = String(it.connector_nome || '');
       const ehMeuPluggy = /meu\s*pluggy/i.test(nome);
@@ -267,16 +306,50 @@ router.get('/contas', async (req, res) => {
   }
 });
 
-// PATCH — marcar PF/PJ e apelido de um banco
+// PATCH — marcar PF/PJ e/ou apelido de um banco (só campos enviados)
 router.patch('/contas/:itemId', async (req, res) => {
   try {
     const { pessoa, apelido } = req.body || {};
-    const p = pessoa === 'PJ' ? 'PJ' : 'PF';
-    await run(
-      `UPDATE openfinance_items SET pessoa = $1, apelido = COALESCE($2, apelido) WHERE item_id = $3`,
-      [p, apelido || null, req.params.itemId]
-    );
-    res.json({ ok: true });
+    const it = await get(`SELECT item_id, connector_nome, apelido, pessoa FROM openfinance_items WHERE item_id = $1`, [req.params.itemId]);
+    if (!it) return res.status(404).json({ erro: 'Banco não encontrado' });
+
+    const sets = [];
+    const params = [];
+
+    if (pessoa === 'PJ' || pessoa === 'PF') {
+      params.push(pessoa);
+      sets.push(`pessoa = $${params.length}`);
+      // Ao marcar PJ, dá nome claro se ainda estiver genérico
+      if (pessoa === 'PJ') {
+        const novoApelido = apelido != null && String(apelido).trim()
+          ? String(apelido).trim()
+          : apelidoPadrao('PJ', it.connector_nome, it.apelido);
+        if (novoApelido) {
+          params.push(novoApelido);
+          sets.push(`apelido = $${params.length}`);
+        }
+      } else if (pessoa === 'PF' && /empresas|empresa\s*\(pj\)/i.test(String(it.apelido || ''))) {
+        // Voltou pra PF: tira apelido de empresa genérico
+        const limpo = apelidoPadrao('PF', it.connector_nome, null) || 'Inter';
+        params.push(limpo);
+        sets.push(`apelido = $${params.length}`);
+      }
+    }
+
+    if (apelido != null && String(apelido).trim() && !(pessoa === 'PJ' || pessoa === 'PF')) {
+      params.push(String(apelido).trim());
+      sets.push(`apelido = $${params.length}`);
+    } else if (apelido != null && String(apelido).trim() && pessoa !== 'PJ') {
+      // Renomear explícito junto com troca de pessoa (exceto PJ que já setou acima)
+      params.push(String(apelido).trim());
+      sets.push(`apelido = $${params.length}`);
+    }
+
+    if (!sets.length) return res.status(400).json({ erro: 'Nada pra atualizar' });
+    params.push(req.params.itemId);
+    await run(`UPDATE openfinance_items SET ${sets.join(', ')} WHERE item_id = $${params.length}`, params);
+    const atualizado = await get(`SELECT item_id, connector_nome, apelido, pessoa FROM openfinance_items WHERE item_id = $1`, [req.params.itemId]);
+    res.json({ ok: true, item: atualizado });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -309,13 +382,23 @@ router.post('/items', async (req, res) => {
   const { itemId, connectorNome } = req.body;
   if (!itemId) return res.status(400).json({ erro: 'itemId obrigatório' });
   try {
+    const nome = connectorNome || 'Banco';
+    const pessoa = inferirPessoa(nome);
+    const apelido = apelidoPadrao(pessoa, nome, null);
     await run(
-      `INSERT INTO openfinance_items (item_id, connector_nome, status)
-       VALUES ($1, $2, 'ativo')
-       ON CONFLICT (item_id) DO UPDATE SET connector_nome = EXCLUDED.connector_nome, status = 'ativo'`,
-      [itemId, connectorNome || 'Banco']
+      `INSERT INTO openfinance_items (item_id, connector_nome, status, pessoa, apelido)
+       VALUES ($1, $2, 'ativo', $3, $4)
+       ON CONFLICT (item_id) DO UPDATE SET
+         connector_nome = EXCLUDED.connector_nome,
+         status = 'ativo',
+         pessoa = CASE
+           WHEN openfinance_items.pessoa = 'PJ' THEN openfinance_items.pessoa
+           ELSE EXCLUDED.pessoa
+         END,
+         apelido = COALESCE(openfinance_items.apelido, EXCLUDED.apelido)`,
+      [itemId, nome, pessoa, apelido]
     );
-    res.status(201).json({ ok: true });
+    res.status(201).json({ ok: true, pessoa, apelido });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -341,15 +424,24 @@ router.post('/import-item', async (req, res) => {
       throw e;
     }
     const nome = (item.connector && item.connector.name) || 'Banco';
+    const pessoa = inferirPessoa(nome);
+    const apelido = apelidoPadrao(pessoa, nome, null);
     await run(
-      `INSERT INTO openfinance_items (item_id, connector_nome, status)
-       VALUES ($1, $2, 'ativo')
-       ON CONFLICT (item_id) DO UPDATE SET connector_nome = EXCLUDED.connector_nome, status = 'ativo'`,
-      [itemId, nome]
+      `INSERT INTO openfinance_items (item_id, connector_nome, status, pessoa, apelido)
+       VALUES ($1, $2, 'ativo', $3, $4)
+       ON CONFLICT (item_id) DO UPDATE SET
+         connector_nome = EXCLUDED.connector_nome,
+         status = 'ativo',
+         pessoa = CASE
+           WHEN openfinance_items.pessoa = 'PJ' THEN openfinance_items.pessoa
+           ELSE EXCLUDED.pessoa
+         END,
+         apelido = COALESCE(openfinance_items.apelido, EXCLUDED.apelido)`,
+      [itemId, nome, pessoa, apelido]
     );
     const r = await syncItem(apiKey, itemId);
     if (r.importadas > 0) emitUpdate('sync', { importadas: r.importadas });
-    res.json({ ok: true, connectorNome: nome, importadas: r.importadas, ignoradas: r.ignoradas });
+    res.json({ ok: true, connectorNome: nome, pessoa, apelido, importadas: r.importadas, ignoradas: r.ignoradas });
   } catch (err) {
     if (err.code === 'PLUGGY_NAO_CONFIGURADO') {
       return res.status(400).json({ erro: 'Open Finance não configurado no .env.' });

@@ -2919,30 +2919,36 @@ function renderContas() {
 
 async function definirPessoaConta(itemId, pessoa) {
   try {
-    await fetch(`/api/openfinance/contas/${itemId}`, {
+    const res = await fetch(`/api/openfinance/contas/${itemId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pessoa })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || 'Falha ao salvar');
     toast(`Marcado como ${pessoa}`, 'success');
-    carregarContas();
+    if (typeof carregarContas === 'function') carregarContas();
+    if (typeof carregarBancos === 'function') carregarBancos();
   } catch (e) { toast('Erro ao salvar: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
 async function renomearConta(itemId) {
   const r = await promptModal({
     titulo: 'Renomear banco',
-    campos: [{ name: 'apelido', label: 'Novo nome (ex: Nubank, Inter, Inter Empresas)' }]
+    campos: [{ name: 'apelido', label: 'Novo nome (ex: Inter, Inter empresas, Nubank)' }]
   });
   if (!r) return;
   const nome = (r.apelido || '').trim();
   if (!nome) return;
   try {
-    await fetch(`/api/openfinance/contas/${itemId}`, {
+    const res = await fetch(`/api/openfinance/contas/${itemId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ apelido: nome })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || 'Falha ao renomear');
     toast('Renomeado', 'success');
-    carregarContas();
+    if (typeof carregarContas === 'function') carregarContas();
+    if (typeof carregarBancos === 'function') carregarBancos();
   } catch (e) { toast('Erro ao renomear: ' + (e.message || 'sem conexão'), 'error'); }
 }
 
@@ -3499,18 +3505,26 @@ async function atualizarSaldosSilencioso(opts = {}) {
 }
 
 function nomeBancoItem(it) {
-  if (it.apelido) return it.apelido;
+  if (it.apelido && !/meu\s*pluggy/i.test(it.apelido)) return it.apelido;
   const nome = String(it.connector_nome || '');
+  const ehPJ = it.pessoa === 'PJ';
   if (/nu|nubank/i.test(nome)) return 'Nubank';
+  if (/inter/i.test(nome)) return ehPJ ? 'Inter empresas' : 'Inter';
   if (/meu\s*pluggy/i.test(nome)) {
-    // fallback visual enquanto apelido carrega
     const contas = (_ofSaldos && _ofSaldos.contas) || [];
     const minhas = contas.filter(c => c.item_id === it.item_id);
     if (minhas.some(c => /nu pagamentos|nubank|gold/i.test(c.nome || ''))) return 'Nubank';
-    if (it.pessoa === 'PJ') return 'Inter empresas';
-    return 'Inter';
+    return ehPJ ? 'Inter empresas' : 'Inter';
   }
-  return nome || 'Banco';
+  if (ehPJ && nome) return `${nome} · PJ`;
+  return nome || (ehPJ ? 'Empresa (PJ)' : 'Banco');
+}
+
+function badgePessoaHtml(pessoa) {
+  const ehPJ = pessoa === 'PJ';
+  const bg = ehPJ ? 'rgba(96,165,250,0.14)' : 'rgba(49,162,76,0.14)';
+  const fg = ehPJ ? '#93c5fd' : '#3fb950';
+  return `<span style="font-size:10px; font-weight:650; letter-spacing:0.04em; background:${bg}; color:${fg}; padding:2px 7px; border-radius:6px;">${ehPJ ? 'PJ' : 'PF'}</span>`;
 }
 
 function toggleMenuBanco(btn, ev) {
@@ -3582,16 +3596,22 @@ function renderBancos() {
 
   const itemsHtml = items.length ? items.map(it => {
     const sync = it.ultima_sync ? new Date(it.ultima_sync).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'nunca';
-    const pessoa = it.pessoa === 'PJ' ? 'PJ' : 'PF';
+    const ehPJ = it.pessoa === 'PJ';
+    const outraPessoa = ehPJ ? 'PF' : 'PJ';
     const nome = nomeBancoItem(it);
     return `
       <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(15,23,42,0.03); border-radius:8px; margin-bottom:6px;">
         <span style="font-size:16px;">🏦</span>
-        <span style="flex:1; font-size:13px;">${escapeHtml(nome)} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span></span>
-        <span style="font-size:11px; color:var(--text-muted);">sync: ${sync}</span>
+        <span style="flex:1; font-size:13px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="font-weight:550;">${escapeHtml(nome)}</span>
+          ${badgePessoaHtml(ehPJ ? 'PJ' : 'PF')}
+        </span>
+        <span style="font-size:11px; color:var(--text-muted); flex-shrink:0;">sync: ${sync}</span>
         <div class="banco-menu" onclick="event.stopPropagation()">
           <button type="button" class="banco-menu-btn" aria-label="Opções" onclick="toggleMenuBanco(this, event)">⋯</button>
           <div class="banco-menu-drop">
+            <button type="button" onclick="definirPessoaConta('${it.item_id}','${outraPessoa}')">Marcar como ${outraPessoa}</button>
+            <button type="button" onclick="renomearConta('${it.item_id}')">Renomear</button>
             <button type="button" onclick="desconectarBanco('${it.item_id}')">Remover</button>
           </div>
         </div>
@@ -3607,21 +3627,33 @@ function renderBancos() {
     const pp = _ofSaldos.porPessoa || {};
     const pfBanco = (pp.PF && pp.PF.totalBanco) != null ? pp.PF.totalBanco : (_ofSaldos.emConta != null ? _ofSaldos.emConta : _ofSaldos.totalBanco);
     const pjBanco = (pp.PJ && pp.PJ.totalBanco) || 0;
-    const contasHtml = _ofSaldos.contas.map(c => {
+
+    const renderLinhaConta = (c) => {
       const ehCartao = c.tipo === 'CREDIT';
-      const pessoa = c.pessoa === 'PJ' ? 'PJ' : 'PF';
       const dataSaldo = c.saldo_em ? new Date(c.saldo_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
       const bancoNome = apelidoPorItem[c.item_id] || c.banco || '';
-      const banco = bancoNome ? `${escapeHtml(bancoNome)} · ` : '';
       const contaLabel = ehCartao
         ? ( /gold/i.test(c.nome || '') ? 'Cartão gold' : 'Cartão' )
         : (c.nome || 'Conta');
       return `
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:5px 0; gap:8px;">
-          <span style="min-width:0;">${ehCartao ? '💳' : '🏦'} <span style="font-size:10px; color:var(--text-muted);">${pessoa}</span> ${banco}${escapeHtml(contaLabel)}${dataSaldo ? ` <span style="color:var(--text-muted); font-size:10px;">(${dataSaldo})</span>` : ''}</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:6px 0; gap:8px;">
+          <span style="min-width:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span>${ehCartao ? '💳' : '🏦'}</span>
+            <span>${bancoNome ? `${escapeHtml(bancoNome)} · ` : ''}${escapeHtml(contaLabel)}</span>
+            ${dataSaldo ? `<span style="color:var(--text-muted); font-size:10px;">(${dataSaldo})</span>` : ''}
+          </span>
           <span style="flex-shrink:0; color:${ehCartao ? '#f5a623' : 'var(--text)'};">${ehCartao ? '−' : ''}${formatBRL(Math.abs(Number(c.saldo)))}</span>
         </div>`;
-    }).join('');
+    };
+
+    const contasPf = _ofSaldos.contas.filter(c => c.pessoa !== 'PJ');
+    const contasPj = _ofSaldos.contas.filter(c => c.pessoa === 'PJ');
+    const bloco = (titulo, cor, lista) => lista.length ? `
+      <div style="margin-top:10px;">
+        <div style="font-size:11px; font-weight:650; letter-spacing:0.04em; text-transform:uppercase; color:${cor}; margin-bottom:4px;">${titulo}</div>
+        ${lista.map(renderLinhaConta).join('')}
+      </div>` : '';
+
     let avisoStale = '';
     if (_ofSaldos.saldoEmMaisAntigo) {
       const diasAtras = Math.floor((Date.now() - new Date(_ofSaldos.saldoEmMaisAntigo).getTime()) / 86400000);
@@ -3629,24 +3661,33 @@ function renderBancos() {
         avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">Saldo de até ${diasAtras} dias atrás. Use "Atualizar saldos".</div>`;
       }
     }
+    const avisoMistura = (!contasPj.length && contasPf.filter(c => c.tipo !== 'CREDIT').length > 1)
+      ? `<div style="background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.25); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#93c5fd;">Tem mais de uma conta corrente. No ⋯ de cada banco, use <b>Marcar como PJ</b> na Inter empresas.</div>`
+      : '';
+
     saldoHtml += `
       ${avisoStale}
+      ${avisoMistura}
       <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:14px; margin-bottom:14px;">
         <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
           <div style="flex:1; min-width:90px; text-align:center;">
             <div style="font-size:11px; color:var(--text-muted);">PF (pessoal)</div>
             <div style="font-size:18px; font-weight:700; color:#31a24c;">${formatBRL(pfBanco)}</div>
           </div>
-          ${pjBanco ? `<div style="flex:1; min-width:90px; text-align:center;">
+          <div style="flex:1; min-width:90px; text-align:center;">
             <div style="font-size:11px; color:var(--text-muted);">PJ (empresa)</div>
-            <div style="font-size:18px; font-weight:700; color:var(--text-primary);">${formatBRL(pjBanco)}</div>
-          </div>` : ''}
+            <div style="font-size:18px; font-weight:700; color:#60a5fa;">${formatBRL(pjBanco)}</div>
+          </div>
           <div style="flex:1; min-width:90px; text-align:center;">
             <div style="font-size:11px; color:var(--text-muted);">Faturas</div>
             <div style="font-size:18px; font-weight:700; color:#f5a623;">${formatBRL(_ofSaldos.totalCredito)}</div>
           </div>
         </div>
-        <div style="border-top:1px solid rgba(15,23,42,0.08); padding-top:8px;">${contasHtml}</div>
+        <div style="border-top:1px solid rgba(15,23,42,0.08); padding-top:4px;">
+          ${bloco('Pessoal · PF', '#3fb950', contasPf)}
+          ${bloco('Empresa · PJ', '#60a5fa', contasPj)}
+          ${!contasPj.length ? `<p style="font-size:11px; color:var(--text-muted); margin:10px 0 0;">Nenhuma conta marcada como PJ ainda.</p>` : ''}
+        </div>
       </div>`;
   }
 
