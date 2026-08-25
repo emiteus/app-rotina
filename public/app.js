@@ -7397,22 +7397,53 @@ async function enviarAssistente(e) {
           txt = `Renomeada: ${a.label || a.categoria}`;
         } else if (a.tipo === 'fundir_categorias') {
           txt = `Unificadas → ${a.label || a.categoria} (${a.qtd || 0} tx)`;
+        } else if (a.tipo === 'confirmar_despesa') {
+          txt = a.ja ? `Já paga: ${a.titulo}` : `Paga: ${a.titulo}`;
+        } else if (a.tipo === 'depositar_meta') {
+          txt = `+R$ ${Number(a.valor).toFixed(2)} em ${a.meta}`;
+        } else if (a.tipo === 'concluir_tarefa') {
+          txt = a.ja ? `Já concluída: ${a.titulo}` : `Concluída: ${a.titulo}`;
+        } else if (a.tipo === 'criar_evento') {
+          txt = `Evento: ${a.titulo} (${a.data})`;
+        } else if (a.tipo === 'criar_alarme') {
+          txt = `Alarme ${a.hora}`;
+        } else if (a.tipo === 'criar_transacao') {
+          txt = `${a.sentido === 'entrada' ? '+' : '-'}R$ ${Number(a.valor).toFixed(2)}`;
+        } else if (a.tipo === 'deletar_transacao') {
+          txt = `Apagadas ${a.qtd || 0} tx`;
+        } else if (a.tipo === 'corrigir_data_tx') {
+          txt = `Data → ${a.data} (${a.qtd || 0} tx)`;
+        } else if (a.tipo === 'marcar_das') {
+          txt = a.pago ? `DAS ${a.ym} pago` : `DAS ${a.ym} reaberto`;
         }
         assistAddBubble('acao', txt);
       });
-      if (feitos.some(a => a.tipo === 'criar_despesa') && typeof carregarDespesasMes === 'function') {
+      if (feitos.some(a => a.tipo === 'criar_despesa' || a.tipo === 'confirmar_despesa') && typeof carregarDespesasMes === 'function') {
         carregarDespesasMes();
       }
-      if (feitos.some(a => a.tipo === 'criar_tarefa' || a.tipo === 'marcar_habito') && typeof carregarTarefas === 'function') {
+      if (feitos.some(a => a.tipo === 'criar_tarefa' || a.tipo === 'marcar_habito' || a.tipo === 'concluir_tarefa') && typeof carregarTarefas === 'function') {
         carregarTarefas();
       }
-      if (feitos.some(a => a.tipo === 'marcar_habito') && typeof carregarDashboardExtras === 'function') {
+      if (feitos.some(a => a.tipo === 'marcar_habito' || a.tipo === 'concluir_tarefa') && typeof carregarDashboardExtras === 'function') {
         carregarDashboardExtras();
       }
-      if (feitos.some(a => a.tipo === 'criar_meta') && typeof carregarMetas === 'function') {
+      if (feitos.some(a => a.tipo === 'criar_meta' || a.tipo === 'depositar_meta') && typeof carregarMetas === 'function') {
         carregarMetas();
       }
-      if (feitos.some(a => a.tipo === 'criar_categoria' || a.tipo === 'recategorizar' || a.tipo === 'renomear_categoria' || a.tipo === 'fundir_categorias')) {
+      if (feitos.some(a => a.tipo === 'criar_evento') && typeof carregarEventos === 'function') {
+        carregarEventos();
+      }
+      if (feitos.some(a => a.tipo === 'criar_alarme') && typeof carregarAlarmes === 'function') {
+        carregarAlarmes();
+      }
+      if (feitos.some(a => a.tipo === 'marcar_das') && typeof carregarPJ === 'function') {
+        carregarPJ();
+      }
+      if (feitos.some(a =>
+        a.tipo === 'criar_categoria' || a.tipo === 'recategorizar' || a.tipo === 'renomear_categoria'
+        || a.tipo === 'fundir_categorias' || a.tipo === 'criar_transacao' || a.tipo === 'deletar_transacao'
+        || a.tipo === 'corrigir_data_tx'
+      )) {
         if (typeof carregarCatListaForcado === 'function') await carregarCatListaForcado();
         else if (typeof carregarCatLista === 'function') await carregarCatLista();
         if (typeof carregarTransacoes === 'function') carregarTransacoes();
@@ -7422,9 +7453,7 @@ async function enviarAssistente(e) {
     }
     const falhas = (data.acoes || []).filter(a => a && a.ok === false);
     falhas.forEach(a => {
-      if (a.tipo === 'recategorizar' || a.tipo === 'criar_categoria' || a.tipo === 'renomear_categoria' || a.tipo === 'fundir_categorias') {
-        assistAddBubble('acao', `Não deu: ${a.erro || a.tipo}`);
-      }
+      if (a.tipo) assistAddBubble('acao', `Não deu: ${a.erro || a.tipo}`);
     });
   } catch (err) {
     if (thinking) thinking.remove();

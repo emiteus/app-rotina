@@ -195,13 +195,14 @@ function textoAssistenteSeguro(textoBruto, parsed) {
 function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const oks = (acoesExec || []).filter(a => a && a.ok);
   const fails = (acoesExec || []).filter(a => a && a.ok === false);
-  const finOk = oks.filter(a =>
-    a.tipo === 'recategorizar'
-    || a.tipo === 'criar_categoria'
-    || a.tipo === 'renomear_categoria'
-    || a.tipo === 'fundir_categorias'
-  );
-  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|renomeei|renomear|unifiquei|fundi|ajustei|já (está|esta|ficou)|alterei|atualizei/i.test(String(resposta || ''));
+  const acaoTipos = new Set([
+    'recategorizar', 'criar_categoria', 'renomear_categoria', 'fundir_categorias',
+    'confirmar_despesa', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
+    'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
+    'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito'
+  ]);
+  const finOk = oks.filter(a => acaoTipos.has(a.tipo));
+  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|renomeei|renomear|unifiquei|fundi|confirm|paguei|depositei|conclu[ií]|agendei|alarme|ajustei|já (está|esta|ficou|paguei)|alterei|atualizei|deletei|apag|corrig/i.test(String(resposta || ''));
 
   if (finOk.length) {
     const partes = [];
@@ -217,6 +218,36 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       } else if (a.tipo === 'fundir_categorias') {
         const fontes = (a.de || []).join(', ') || 'as categorias';
         partes.push(`Unifiquei **${fontes}** em **${a.label || a.categoria}** (${a.qtd || 0} txs).`);
+      } else if (a.tipo === 'confirmar_despesa') {
+        partes.push(a.ja
+          ? `**${a.titulo}** já estava paga.`
+          : `Marquei **${a.titulo}** como paga.`);
+      } else if (a.tipo === 'depositar_meta') {
+        partes.push(`Depositei **R$ ${Number(a.valor).toFixed(2)}** em **${a.meta}**${a.concluida ? ' (meta concluída!)' : ''}.`);
+      } else if (a.tipo === 'concluir_tarefa') {
+        partes.push(a.ja
+          ? `**${a.titulo}** já estava concluída.`
+          : `Concluí **${a.titulo}**.`);
+      } else if (a.tipo === 'criar_evento') {
+        partes.push(`Agendei **${a.titulo}** em **${a.data}**${a.hora ? ` às ${a.hora}` : ''}.`);
+      } else if (a.tipo === 'criar_alarme') {
+        partes.push(`Alarme **${a.hora}** — ${a.mensagem}.`);
+      } else if (a.tipo === 'criar_transacao') {
+        partes.push(`Lancei ${a.sentido} de **R$ ${Number(a.valor).toFixed(2)}** (${a.descricao}).`);
+      } else if (a.tipo === 'deletar_transacao') {
+        partes.push(`Apaguei **${a.qtd || 0}** transação(ões).`);
+      } else if (a.tipo === 'corrigir_data_tx') {
+        partes.push(`Corrigi a data de **${a.qtd || 0}** tx(s) pra **${a.data}**.`);
+      } else if (a.tipo === 'marcar_das') {
+        partes.push(a.pago ? `DAS **${a.ym}** marcado como pago.` : `DAS **${a.ym}** desmarcado.`);
+      } else if (a.tipo === 'criar_despesa') {
+        partes.push(`Despesa **${a.titulo}** registrada.`);
+      } else if (a.tipo === 'criar_tarefa') {
+        partes.push(`Tarefa **${a.titulo}** criada.`);
+      } else if (a.tipo === 'criar_meta') {
+        partes.push(`Meta **${a.nome}** criada.`);
+      } else if (a.tipo === 'marcar_habito') {
+        partes.push(a.ja ? `**${a.titulo}** já estava marcado.` : `**${a.titulo}** marcado.`);
       }
     }
     return partes.join(' ');
@@ -465,6 +496,7 @@ function brlNum(v) {
 
 function mapTarefa(t) {
   return {
+    id: t.id || null,
     titulo: t.titulo,
     concluida: !!t.concluida,
     prioridade: t.prioridade || 'media',
@@ -511,32 +543,32 @@ async function snapshotAssistente() {
     consistencia
   ] = await Promise.all([
     all(
-      `SELECT titulo, concluida, prioridade, hora, concluida_em, categoria, data_reset
+      `SELECT id, titulo, concluida, prioridade, hora, concluida_em, categoria, data_reset
        FROM tasks WHERE data_reset::date = $1
        ORDER BY concluida, prioridade, hora NULLS LAST LIMIT 50`,
       [hoje]
     ).catch(() => []),
     all(
-      `SELECT titulo, concluida, prioridade, hora, concluida_em, categoria
+      `SELECT id, titulo, concluida, prioridade, hora, concluida_em, categoria
        FROM tasks WHERE data_reset::date = $1
        ORDER BY concluida, prioridade LIMIT 30`,
       [ontem]
     ).catch(() => []),
     all(
-      `SELECT titulo, concluida, prioridade, hora, categoria
+      `SELECT id, titulo, concluida, prioridade, hora, categoria
        FROM tasks WHERE data_reset::date = $1
        ORDER BY prioridade, hora NULLS LAST LIMIT 30`,
       [amanha]
     ).catch(() => []),
     all(
-      `SELECT titulo, concluida, prioridade, hora, categoria, data_reset
+      `SELECT id, titulo, concluida, prioridade, hora, categoria, data_reset
        FROM tasks
        WHERE data_reset::date > $1::date AND data_reset::date <= $2::date
        ORDER BY data_reset, prioridade LIMIT 40`,
       [hoje, fim14]
     ).catch(() => []),
     all(
-      `SELECT titulo, prioridade, hora, data_reset
+      `SELECT id, titulo, prioridade, hora, data_reset
        FROM tasks
        WHERE concluida = false
          AND data_reset IS NOT NULL
@@ -595,7 +627,7 @@ async function snapshotAssistente() {
       [inicio30]
     ).catch(() => []),
     all(
-      `SELECT titulo, valor_esperado, dia_vencimento, categoria, status, pago_em, confirmado_por
+      `SELECT id, titulo, valor_esperado, dia_vencimento, categoria, status, pago_em, confirmado_por
        FROM despesas_mes WHERE ym = $1
        ORDER BY CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'pago' THEN 2 ELSE 3 END,
                 dia_vencimento NULLS LAST
@@ -603,13 +635,13 @@ async function snapshotAssistente() {
       [ym]
     ).catch(() => []),
     all(
-      `SELECT m.nome, m.valor_total, m.prazo, m.concluida,
+      `SELECT m.id, m.nome, m.valor_total, m.prazo, m.concluida,
               COALESCE((SELECT SUM(valor) FROM metas_depositos d WHERE d.meta_id = m.id),0) AS guardado
        FROM metas m
        ORDER BY m.concluida ASC, m.prazo NULLS LAST
        LIMIT 20`
     ).catch(() => []),
-    all(`SELECT hora, mensagem, ativo FROM alarmes ORDER BY ativo DESC, hora LIMIT 20`).catch(() => []),
+    all(`SELECT id, hora, mensagem, ativo FROM alarmes ORDER BY ativo DESC, hora LIMIT 20`).catch(() => []),
     listarHabitos().catch(() => ({ habitos: [] })),
     all(
       `SELECT titulo, prioridade, categoria, frequencia, dias_semana, ativa
@@ -617,7 +649,7 @@ async function snapshotAssistente() {
        ORDER BY titulo LIMIT 30`
     ).catch(() => []),
     all(
-      `SELECT titulo, tipo, data, hora, cor
+      `SELECT id, titulo, tipo, data, hora, cor
        FROM eventos
        WHERE data::date >= $1::date AND data::date <= $2::date
        ORDER BY data, hora NULLS LAST
@@ -698,6 +730,7 @@ async function snapshotAssistente() {
       amanha: (tarefasAmanha || []).map(mapTarefa),
       proximos_dias: (tarefasProx || []).map(mapTarefa),
       atrasadas: (tarefasAtrasadas || []).map(t => ({
+        id: t.id || null,
         titulo: t.titulo,
         data: String(t.data_reset).slice(0, 10),
         prioridade: t.prioridade
@@ -761,6 +794,7 @@ async function snapshotAssistente() {
         atrasado: brlNum(resumoDesp.atrasado)
       },
       itens: desp.map(d => ({
+        id: d.id,
         titulo: d.titulo,
         valor: brlNum(d.valor_esperado),
         dia: d.dia_vencimento,
@@ -783,6 +817,7 @@ async function snapshotAssistente() {
       }))
     },
     metas: (metas || []).map(m => ({
+      id: m.id,
       nome: m.nome,
       total: brlNum(m.valor_total),
       guardado: brlNum(m.guardado),
@@ -791,11 +826,13 @@ async function snapshotAssistente() {
       concluida: !!m.concluida
     })),
     alarmes: (alarmes || []).map(a => ({
+      id: a.id || null,
       hora: a.hora,
       msg: a.mensagem,
       ativo: a.ativo !== false
     })),
     eventos_proximos: (eventos || []).map(e => ({
+      id: e.id || null,
       titulo: e.titulo,
       tipo: e.tipo,
       data: e.data ? String(e.data).slice(0, 10) : null,
@@ -1228,6 +1265,219 @@ async function executarAcoes(acoes) {
           de: chavesOrigem,
           qtd: Number(updFin && updFin.rowCount) || 0
         });
+      } else if (tipo === 'confirmar_despesa') {
+        const titulo = String(acao.titulo || acao.nome || '').trim();
+        const id = acao.id ? String(acao.id) : null;
+        let row = null;
+        if (id) row = await get(`SELECT id, titulo, status FROM despesas_mes WHERE id = $1`, [id]);
+        if (!row && titulo) {
+          row = await get(
+            `SELECT id, titulo, status FROM despesas_mes
+             WHERE ym = $1 AND status IN ('pendente','atrasado')
+               AND (lower(titulo) = lower($2) OR titulo ILIKE $3)
+             ORDER BY CASE WHEN lower(titulo) = lower($2) THEN 0 ELSE 1 END, dia_vencimento NULLS LAST
+             LIMIT 1`,
+            [acao.ym || ym, titulo, `%${titulo}%`]
+          );
+        }
+        if (!row) {
+          feitos.push({ tipo, ok: false, erro: 'despesa não encontrada' });
+          continue;
+        }
+        if (row.status === 'pago') {
+          feitos.push({ tipo, ok: true, titulo: row.titulo, ja: true });
+          continue;
+        }
+        const pagoEm = (acao.pago_em && String(acao.pago_em).slice(0, 10)) || hojeStr();
+        await run(
+          `UPDATE despesas_mes SET
+             status = 'pago',
+             pago_em = $1::date,
+             confirmado_por = 'assistente',
+             dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
+           WHERE id = $2`,
+          [pagoEm, row.id]
+        );
+        feitos.push({ tipo, ok: true, titulo: row.titulo, id: row.id, pago_em: pagoEm });
+      } else if (tipo === 'depositar_meta') {
+        const valor = Number(acao.valor);
+        if (!Number.isFinite(valor) || valor <= 0) {
+          feitos.push({ tipo, ok: false, erro: 'valor inválido' });
+          continue;
+        }
+        let meta = null;
+        if (acao.id) meta = await get(`SELECT id, nome, valor_total, concluida FROM metas WHERE id = $1`, [acao.id]);
+        const nome = String(acao.nome || acao.titulo || acao.meta || '').trim();
+        if (!meta && nome) {
+          meta = await get(
+            `SELECT id, nome, valor_total, concluida FROM metas
+             WHERE lower(nome) = lower($1) OR nome ILIKE $2
+             ORDER BY CASE WHEN lower(nome) = lower($1) THEN 0 ELSE 1 END, concluida ASC
+             LIMIT 1`,
+            [nome, `%${nome}%`]
+          );
+        }
+        if (!meta) {
+          feitos.push({ tipo, ok: false, erro: 'meta não encontrada' });
+          continue;
+        }
+        await run(
+          `INSERT INTO metas_depositos (meta_id, valor, descricao) VALUES ($1,$2,$3)`,
+          [meta.id, valor, acao.descricao || 'via assistente']
+        );
+        const soma = await get(`SELECT COALESCE(SUM(valor),0) AS s FROM metas_depositos WHERE meta_id = $1`, [meta.id]);
+        let concluidaAgora = false;
+        if (Number(soma.s) >= Number(meta.valor_total) && !meta.concluida) {
+          await run(`UPDATE metas SET concluida = true WHERE id = $1`, [meta.id]);
+          concluidaAgora = true;
+        }
+        feitos.push({
+          tipo,
+          ok: true,
+          meta: meta.nome,
+          valor,
+          guardado: brlNum(soma.s),
+          concluida: concluidaAgora || !!meta.concluida
+        });
+      } else if (tipo === 'concluir_tarefa') {
+        const titulo = String(acao.titulo || acao.nome || '').trim();
+        const id = acao.id ? String(acao.id) : null;
+        const dataAlvo = (acao.data_reset || acao.data || hojeStr()).slice(0, 10);
+        let row = null;
+        if (id) row = await get(`SELECT id, titulo, concluida FROM tasks WHERE id = $1`, [id]);
+        if (!row && titulo) {
+          row = await get(
+            `SELECT id, titulo, concluida FROM tasks
+             WHERE data_reset::date = $1::date AND concluida = false
+               AND (lower(titulo) = lower($2) OR titulo ILIKE $3)
+             ORDER BY CASE WHEN lower(titulo) = lower($2) THEN 0 ELSE 1 END
+             LIMIT 1`,
+            [dataAlvo, titulo, `%${titulo}%`]
+          );
+        }
+        if (!row) {
+          feitos.push({ tipo, ok: false, erro: 'tarefa não encontrada' });
+          continue;
+        }
+        if (row.concluida) {
+          feitos.push({ tipo, ok: true, titulo: row.titulo, ja: true });
+          continue;
+        }
+        await run(
+          `UPDATE tasks SET concluida = true, concluida_em = COALESCE(concluida_em, CURRENT_TIMESTAMP) WHERE id = $1`,
+          [row.id]
+        );
+        persistirHistoricoDia(hojeStr()).catch(() => {});
+        feitos.push({ tipo, ok: true, titulo: row.titulo, id: row.id });
+      } else if (tipo === 'criar_evento') {
+        const titulo = String(acao.titulo || '').trim();
+        const data = String(acao.data || '').slice(0, 10);
+        if (!titulo || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+          feitos.push({ tipo, ok: false, erro: 'titulo e data (YYYY-MM-DD) obrigatórios' });
+          continue;
+        }
+        const id = uuid();
+        await run(
+          `INSERT INTO eventos (id, titulo, descricao, data, hora, tipo, cor)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [id, titulo, acao.descricao || '', data, acao.hora || null, acao.tipo_evento || acao.tipo || 'evento', acao.cor || 'blue']
+        );
+        feitos.push({ tipo, ok: true, titulo, data, hora: acao.hora || null, id });
+      } else if (tipo === 'criar_alarme') {
+        const hora = String(acao.hora || '').trim();
+        const mensagem = String(acao.mensagem || acao.titulo || '').trim();
+        if (!/^\d{2}:\d{2}$/.test(hora) || !mensagem) {
+          feitos.push({ tipo, ok: false, erro: 'hora (HH:MM) e mensagem obrigatórios' });
+          continue;
+        }
+        const id = uuid();
+        await run(`INSERT INTO alarmes (id, hora, mensagem) VALUES ($1,$2,$3)`, [id, hora, mensagem]);
+        feitos.push({ tipo, ok: true, hora, mensagem, id });
+      } else if (tipo === 'criar_transacao') {
+        const rawSentido = String(acao.tipo_tx || acao.sentido || acao.movimento || '').toLowerCase();
+        const sentido = rawSentido === 'entrada' ? 'entrada' : 'saida';
+        const valor = Math.abs(Number(acao.valor));
+        if (!Number.isFinite(valor) || valor <= 0) {
+          feitos.push({ tipo, ok: false, erro: 'valor inválido' });
+          continue;
+        }
+        const desc = String(acao.descricao || acao.titulo || '').trim() || 'Manual';
+        const data = (acao.data && String(acao.data).slice(0, 10)) || hojeStr();
+        let cat = String(acao.categoria || '').trim() || 'outros';
+        if (cat && !/^[a-z0-9_]+$/i.test(cat)) {
+          const g = await garantirCategoria({ categoria_label: cat });
+          cat = g ? g.chave : normalizarChave(cat) || 'outros';
+        }
+        const id = uuid();
+        await run(
+          `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, fonte, categoria_confirmada)
+           VALUES ($1,$2,$3,$4,$5,$6,'manual',true)`,
+          [id, sentido, valor, desc, data, cat]
+        );
+        feitos.push({
+          tipo,
+          ok: true,
+          id,
+          sentido,
+          valor,
+          descricao: desc,
+          data,
+          categoria: cat
+        });
+      } else if (tipo === 'deletar_transacao') {
+        const txs = await buscarTxsComFallback(acao);
+        if (!txs.length) {
+          feitos.push({ tipo, ok: false, erro: 'nenhuma transação encontrada' });
+          continue;
+        }
+        const ids = txs.map(t => t.id);
+        await run(`DELETE FROM financeiro WHERE id = ANY($1::text[])`, [ids]);
+        feitos.push({
+          tipo,
+          ok: true,
+          qtd: ids.length,
+          ids,
+          exemplos: txs.slice(0, 3).map(t => String(t.descricao || '').slice(0, 40))
+        });
+      } else if (tipo === 'corrigir_data_tx') {
+        const novaData = String(acao.data || acao.nova_data || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(novaData)) {
+          feitos.push({ tipo, ok: false, erro: 'data (YYYY-MM-DD) obrigatória' });
+          continue;
+        }
+        const txs = await buscarTxsComFallback(acao);
+        if (!txs.length) {
+          feitos.push({ tipo, ok: false, erro: 'nenhuma transação encontrada' });
+          continue;
+        }
+        const ids = txs.map(t => t.id);
+        await run(`UPDATE financeiro SET data = $1::date WHERE id = ANY($2::text[])`, [novaData, ids]);
+        feitos.push({
+          tipo,
+          ok: true,
+          data: novaData,
+          qtd: ids.length,
+          ids,
+          exemplos: txs.slice(0, 3).map(t => String(t.descricao || '').slice(0, 40))
+        });
+      } else if (tipo === 'marcar_das') {
+        const ymDas = String(acao.ym || ym).slice(0, 7);
+        if (!/^\d{4}-\d{2}$/.test(ymDas)) {
+          feitos.push({ tipo, ok: false, erro: 'ym inválido' });
+          continue;
+        }
+        const pago = acao.pago === false ? false : true;
+        const valor = acao.valor != null ? Number(acao.valor) : null;
+        await run(
+          `INSERT INTO mei_das (ym, valor, pago, data_pagamento)
+           VALUES ($1, $2, $3, CASE WHEN $3 THEN CURRENT_DATE ELSE NULL END)
+           ON CONFLICT (ym) DO UPDATE
+             SET valor = COALESCE(EXCLUDED.valor, mei_das.valor),
+                 pago = EXCLUDED.pago,
+                 data_pagamento = CASE WHEN EXCLUDED.pago THEN CURRENT_DATE ELSE NULL END`,
+          [ymDas, Number.isFinite(valor) ? valor : null, pago]
+        );
+        feitos.push({ tipo, ok: true, ym: ymDas, pago, valor: Number.isFinite(valor) ? valor : null });
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
       }
@@ -1350,6 +1600,48 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       de: fontes,
       categoria_label: list[0].categoria_label || list[0].label
     });
+  }
+
+  // "já paguei Netflix" / "paguei a luz"
+  if (!acoes.some(a => a.tipo === 'confirmar_despesa')) {
+    const mPago = msg.match(/\b(?:j[aá]\s+)?paguei\s+(?:a\s+|o\s+)?(.+?)(?:\s+hoje|\s+ontem)?$/i)
+      || msg.match(/\bconfirm[ao]\s+(?:pagamento\s+(?:d[aeo]\s+)?)?(.+)$/i);
+    if (mPago) {
+      const titulo = mPago[1].replace(/[.!?]+$/, '').trim();
+      if (titulo.length >= 2 && titulo.length <= 80) {
+        acoes.push({ tipo: 'confirmar_despesa', titulo });
+      }
+    }
+  }
+
+  // "guardei 200 na viagem" / "depositei 50 na meta X"
+  if (!acoes.some(a => a.tipo === 'depositar_meta')) {
+    const mDep = msg.match(/\b(?:guardei|depositei|botei|coloquei)\s+(?:r\$\s*)?(\d+(?:[.,]\d+)?)\s+(?:na|no|em)\s+(?:meta\s+)?(.+)$/i);
+    if (mDep) {
+      const valor = Number(String(mDep[1]).replace(',', '.'));
+      const nome = mDep[2].replace(/[.!?]+$/, '').trim();
+      if (Number.isFinite(valor) && valor > 0 && nome.length >= 2) {
+        acoes.push({ tipo: 'depositar_meta', nome, valor });
+      }
+    }
+  }
+
+  // "concluí X" / "terminei a tarefa X"
+  if (!acoes.some(a => a.tipo === 'concluir_tarefa')) {
+    const mConc = msg.match(/\b(?:conclu[ií]|terminei|fiz)\s+(?:a\s+)?(?:tarefa\s+)?(.+)$/i);
+    if (mConc && !/\bacademia\b/i.test(msg) && !/\bpaguei\b/i.test(msg)) {
+      const titulo = mConc[1].replace(/[.!?]+$/, '').trim();
+      if (titulo.length >= 2 && titulo.length <= 80 && !/^(hoje|ontem|isso)$/i.test(titulo)) {
+        acoes.push({ tipo: 'concluir_tarefa', titulo });
+      }
+    }
+  }
+
+  // "DAS pago" / "paguei o DAS"
+  if (!acoes.some(a => a.tipo === 'marcar_das')) {
+    if (/\bdas\b/i.test(msg) && /\b(paguei|pago|marquei|confirmei)\b/i.test(msg)) {
+      acoes.push({ tipo: 'marcar_das', ym: (snap && snap.agora && snap.agora.mes) || undefined, pago: true });
+    }
   }
 
   return acoes;
@@ -1489,36 +1781,48 @@ Como usar o contexto:
 - Hábitos: só Academia (feito_hoje, semana e mês).
 - Confirmações ("já paguei X"): diga o status em despesas_mes ou nas transações; se não achar, diga que não encontrou.
 
-Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir no Extrato manualmente):
-- registrar pendência/dívida/despesa/tarefa/meta → acoes
+Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir na tela manualmente):
+- registrar pendência/dívida/despesa/tarefa/meta → criar_*
+- "já paguei X" / confirmar conta → confirmar_despesa
+- "guardei R$Y na meta Z" → depositar_meta
+- "concluí a tarefa X" → concluir_tarefa
 - "fui na academia" → marcar_habito
-- criar categoria / renomear / unificar(fundir) / organizar / recategorizar / "joga pra X" / "ajusta o nome" → criar_categoria, renomear_categoria, fundir_categorias e/ou recategorizar
-- Se faltar dado essencial (qual categoria? quais txs?), pergunte e NÃO emita ação
-- Preferir ids de financeiro.ultimas_transacoes[].id quando bater a descrição/valor/data; senão use filtros
+- criar evento/alarme → criar_evento / criar_alarme
+- lançar entrada/saída manual → criar_transacao
+- apagar tx / corrigir data de tx → deletar_transacao / corrigir_data_tx
+- DAS pago → marcar_das
+- criar/renomear/unificar/recategorizar categorias → ações de categoria
+- Preferir ids do contexto (despesas_mes.itens[].id, metas[].id, tarefas.*.id, ultimas_transacoes[].id)
+- Se faltar dado essencial, pergunte e NÃO emita ação
 
 Responda APENAS um JSON válido completo:
 {"resposta":"texto em markdown simples (máx 160 palavras). Use **negrito** em números-chave.","acoes":[]}
 
 Tipos de ação:
-- {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|assinaturas|transporte|saude|outros|projetos|faturas"}
+- {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|outros"}
+- {"tipo":"confirmar_despesa","titulo":"Netflix"} ou {"tipo":"confirmar_despesa","id":"..."}
 - {"tipo":"criar_tarefa","titulo":"...","prioridade":"alta|media|baixa","data_reset":"YYYY-MM-DD"}
+- {"tipo":"concluir_tarefa","titulo":"..."} ou {"tipo":"concluir_tarefa","id":"..."}
 - {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
+- {"tipo":"depositar_meta","nome":"Viagem","valor":200}
 - {"tipo":"marcar_habito","titulo":"Academia"}
+- {"tipo":"criar_evento","titulo":"...","data":"YYYY-MM-DD","hora":"HH:MM"|null}
+- {"tipo":"criar_alarme","hora":"07:30","mensagem":"..."}
+- {"tipo":"criar_transacao","tipo_tx":"entrada|saida","valor":50,"descricao":"...","data":"YYYY-MM-DD","categoria":"outros"}
+- {"tipo":"deletar_transacao","ids":["uuid"]} ou com "filtros"
+- {"tipo":"corrigir_data_tx","data":"YYYY-MM-DD","ids":["uuid"]} ou com "filtros"
+- {"tipo":"marcar_das","ym":"2026-08","pago":true,"valor":null}
 - {"tipo":"criar_categoria","categoria_label":"Apostas - Amigos"}
 - {"tipo":"renomear_categoria","de":"alimentacao","categoria_label":"Mercado"}
 - {"tipo":"fundir_categorias","de":["pai","mae"],"categoria_label":"Pai e Mãe"}
-- {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","ids":["uuid1","uuid2"]}
-- {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","filtros":{"data":"YYYY-MM-DD","valores":[250,400,350],"contem":["Erik","SPRBT","TIZON"]}}
+- {"tipo":"recategorizar","categoria_label":"...","ids":["uuid"]} ou "filtros":{"data":"YYYY-MM-DD","valores":[250],"contem":["ERIK"]}
 
 Regras:
-- "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela. Confirme o que foi feito.
-- NUNCA diga que criou/moveu/renomeou/unificou se não emitir a ação correspondente em "acoes". Sem ação = não aconteceu.
-- "unifica / funde / junta / soma categorias / deixa só 1" → fundir_categorias (NÃO renomear as duas pro mesmo label).
-- "ajusta/renomeia / muda X pra Y" → renomear_categoria.
-- Use financeiro.categorias (chave/label) se a categoria já existir.
-- Em filtros.contem use pedaços reais da descrição (ex: "ERIK", "SPRBT", "TIZON").
-- Prefira ids de ultimas_transacoes quando bater.
-- Responda a pergunta feita; não desvie pra pitch genérico.
+- "resposta" é o texto que o usuário lê — nunca JSON cru. Confirme o que foi feito.
+- NUNCA diga que fez se não emitir a ação em "acoes".
+- "unifica/funde" → fundir_categorias (não renomear as duas pro mesmo label).
+- "já paguei / confirmo pagamento" → confirmar_despesa.
+- Use ids do contexto quando existir.
 - acoes pode ser [].
 - Não invente números, títulos, ids ou status.
 - No máximo 1 emoji.
