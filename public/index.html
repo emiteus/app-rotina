@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=76">
+  <link rel="stylesheet" href="style.css?v=77">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -419,25 +419,48 @@
         <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')">PJ / MEI</button>
       </div>
 
-      <!-- SUB-ABA: Ganhos / Entradas -->
+      <!-- SUB-ABA: Receita (cadastro manual) -->
       <div id="fin-ganhos" class="fin-subtab" style="display:none;">
-        <div class="ganhos-shell">
-          <div class="ganhos-toolbar">
+        <div class="receitas-shell">
+          <div class="receitas-toolbar">
             <div class="despesas-mes-nav">
               <button type="button" onclick="ganhosMesAnterior()" aria-label="Mês anterior">‹</button>
               <span class="despesas-mes-label" id="ganhos-mes-label">—</span>
               <button type="button" onclick="ganhosMesProximo()" aria-label="Próximo mês">›</button>
             </div>
+            <button class="btn-primary" type="button" onclick="abrirModalNovaReceita()" style="font-size:13px;">+ Nova receita</button>
           </div>
+          <p class="receitas-hint">Só receitas registradas manualmente. PIX, transferências, apostas e entradas do banco ficam no Extrato.</p>
           <div class="despesas-resumo" id="ganhos-resumo"></div>
-          <div class="ganhos-grid">
-            <div class="panel ganhos-cat-card">
-              <div class="panel-header"><h3>Por categoria</h3></div>
-              <div id="ganhos-por-categoria" class="ganhos-cat-list"></div>
-            </div>
-            <div class="panel ganhos-lista-card">
-              <div class="panel-header"><h3>Receitas do mês</h3></div>
-              <div id="ganhos-lista" class="ganhos-lista"></div>
+          <div id="painel-receitas"></div>
+        </div>
+      </div>
+
+      <!-- Modal Nova Receita -->
+      <div id="modal-nova-receita" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova receita</h3>
+            <button type="button" onclick="fecharModalNovaReceita()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <select id="receita-chave" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);">
+              <option value="cortes">Competição de cortes</option>
+              <option value="infoproduto">Infoproduto</option>
+              <option value="pj">PJ / MEI</option>
+              <option value="outro" selected>Outra receita</option>
+            </select>
+            <input type="text" id="receita-titulo" placeholder="Título (opcional se escolher tipo acima)"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
+            <input type="number" id="receita-valor" placeholder="Valor recebido" step="0.01"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
+            <input type="date" id="receita-data"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
+            <input type="text" id="receita-notas" placeholder="Notas (opcional)"
+              style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
+            <div style="display:flex; gap:8px; margin-top:6px;">
+              <button type="button" onclick="fecharModalNovaReceita()" style="flex:1; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px; font-size:13px; font-weight:500; cursor:pointer; font-family:var(--font-ui);">Cancelar</button>
+              <button class="btn-primary" type="button" onclick="criarReceitaManual()" style="flex:1; border:none; border-radius:8px; padding:10px; font-size:13px; font-weight:600; cursor:pointer;">Adicionar</button>
             </div>
           </div>
         </div>
@@ -976,7 +999,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=83"></script>
+  <script src="app.js?v=84"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

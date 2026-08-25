@@ -4700,17 +4700,24 @@ function parseBRL(txt) {
 }
 
 // =====================
-//  GANHOS / ENTRADAS
+//  RECEITA (cadastro manual)
 // =====================
 let _ganhosYm = null;
+let _receitasData = null;
 
-function _ymRange(ym) {
-  const [y, m] = ym.split('-').map(Number);
-  const lastDay = new Date(y, m, 0).getDate();
-  return {
-    from: `${ym}-01`,
-    to: `${ym}-${String(lastDay).padStart(2, '0')}`
-  };
+const LABELS_RECEITA_CHAVE = {
+  laranjeira: 'Laranjeira',
+  tylty: 'Lucas Tylty',
+  cortes: 'Competição de cortes',
+  infoproduto: 'Infoproduto',
+  pj: 'PJ / MEI',
+  outro: 'Outra receita'
+};
+
+const ORDEM_STATUS_RECEITA = { atrasado: 0, pendente: 1, recebido: 2 };
+
+function labelReceitaChave(chave) {
+  return LABELS_RECEITA_CHAVE[chave] || (chave || 'Receita').replace(/_/g, ' ');
 }
 
 function ganhosMesAnterior() {
@@ -4723,128 +4730,197 @@ function ganhosMesProximo() {
   carregarGanhos();
 }
 
-function _labelGanhosCat(cat) {
-  if (typeof extratoLabelCat === 'function') return extratoLabelCat(cat);
-  return cat || 'Outros';
+function abrirModalNovaReceita() {
+  const m = document.getElementById('modal-nova-receita');
+  const dataEl = document.getElementById('receita-data');
+  if (dataEl && !dataEl.value) dataEl.value = new Date().toISOString().slice(0, 10);
+  if (m) m.style.display = 'flex';
+}
+
+function fecharModalNovaReceita() {
+  const m = document.getElementById('modal-nova-receita');
+  if (m) m.style.display = 'none';
+}
+
+async function criarReceitaManual() {
+  const chave = document.getElementById('receita-chave')?.value || 'outro';
+  const titulo = document.getElementById('receita-titulo')?.value?.trim();
+  const valor = parseFloat(document.getElementById('receita-valor')?.value);
+  const recebidoEm = document.getElementById('receita-data')?.value || new Date().toISOString().slice(0, 10);
+  const notas = document.getElementById('receita-notas')?.value?.trim();
+  if (!Number.isFinite(valor) || valor <= 0) {
+    toast('Informe o valor recebido', 'error');
+    return;
+  }
+  try {
+    const res = await fetch('/api/receitas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ym: _ganhosYm || _ymAgora(),
+        chave,
+        titulo: titulo || labelReceitaChave(chave),
+        valor,
+        recebido_em: recebidoEm,
+        notas: notas || null,
+        origem: 'manual'
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro');
+    fecharModalNovaReceita();
+    ['receita-titulo', 'receita-valor', 'receita-notas'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    toast('Receita registrada', 'success');
+    await carregarGanhos();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function confirmarReceita(id) {
+  const el = document.getElementById(`receita-${id}`);
+  if (el) el.classList.add('confirmando');
+  try {
+    const item = (_receitasData?.receitas || []).find((r) => r.id === id);
+    const valor = item?.valor_esperado || item?.valor_recebido;
+    let res = await fetch(`/api/receitas/${encodeURIComponent(id)}/confirmar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ valor_recebido: valor, confirmado_por: 'manual' })
+    });
+    if (res.status === 404) {
+      res = await fetch(`/api/receitas/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao: 'confirmar', confirmado_por: 'manual', valor_recebido: valor })
+      });
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || `Erro ao confirmar (${res.status})`);
+    toast('Receita confirmada', 'success');
+    await carregarGanhos();
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    if (el) el.classList.remove('confirmando');
+  }
+}
+
+async function reabrirReceita(id) {
+  try {
+    const res = await fetch(`/api/receitas/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acao: 'reabrir' })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || 'Erro');
+    toast(data.removida ? 'Receita removida' : 'Receita reaberta', 'success');
+    await carregarGanhos();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function renderReceitas() {
+  const data = _receitasData;
+  const painel = document.getElementById('painel-receitas');
+  const resumoEl = document.getElementById('ganhos-resumo');
+  if (!painel || !data) return;
+
+  const r = data.resumo || {};
+  const totalRecebido = Number(r.recebido || 0);
+  if (resumoEl) {
+    resumoEl.innerHTML = `
+      <div class="despesas-kpi ok"><span class="label">Recebido</span><span class="valor">${formatBRL(totalRecebido)}</span></div>
+      <div class="despesas-kpi"><span class="label">Piso fixo</span><span class="valor">${formatBRL(r.piso || 0)}</span></div>
+      <div class="despesas-kpi pendente"><span class="label">Pendente</span><span class="valor">${formatBRL(r.pendente || 0)}</span></div>
+      <div class="despesas-kpi"><span class="label">Variável</span><span class="valor">${formatBRL(r.variavel || 0)}</span></div>
+    `;
+  }
+
+  const fixas = (data.receitas || []).filter((x) => x.tipo === 'fixa').sort((a, b) => {
+    const sa = ORDEM_STATUS_RECEITA[a.status] ?? 9;
+    const sb = ORDEM_STATUS_RECEITA[b.status] ?? 9;
+    if (sa !== sb) return sa - sb;
+    return (a.dia_previsto ?? 99) - (b.dia_previsto ?? 99);
+  });
+  const variaveis = (data.receitas || []).filter((x) => x.tipo === 'variavel').sort((a, b) => {
+    const da = a.recebido_em || '';
+    const db = b.recebido_em || '';
+    return db.localeCompare(da);
+  });
+
+  const cardReceita = (item) => {
+    const dia = item.dia_previsto ? `previsto dia ${item.dia_previsto}` : 'sem data prevista';
+    const recebidoInfo = item.recebido_em
+      ? ` · recebido ${new Date(`${String(item.recebido_em).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR')}`
+      : '';
+    const valorShow = item.status === 'recebido'
+      ? Number(item.valor_recebido ?? item.valor_esperado)
+      : Number(item.valor_esperado);
+    let acoes = '';
+    if (item.status === 'recebido') {
+      acoes = `<button type="button" onclick="reabrirReceita('${item.id}')">${item.tipo === 'fixa' ? 'Reabrir' : 'Remover'}</button>`;
+    } else {
+      acoes = `<button type="button" class="btn-primary" style="padding:6px 10px; font-size:12px;" onclick="confirmarReceita('${item.id}')">Recebi</button>`;
+    }
+    const sub = item.tipo === 'variavel'
+      ? `${escapeHtml(labelReceitaChave(item.chave))}${recebidoInfo}${item.notas ? ` · ${escapeHtml(item.notas)}` : ''}`
+      : `${dia}${recebidoInfo}`;
+    return `
+      <div class="receita-item" id="receita-${item.id}">
+        <div class="info">
+          <div class="titulo">${escapeHtml(item.titulo)}</div>
+          <div class="meta">${sub}</div>
+        </div>
+        <span class="badge-status ${item.status === 'recebido' ? 'pago' : item.status}">${item.status}</span>
+        <div class="valor">${formatBRL(valorShow)}</div>
+        <div class="acoes">${acoes}</div>
+      </div>`;
+  };
+
+  let html = '';
+  html += `<div class="receitas-grupo">
+    <h3><span>Renda fixa</span><span class="receitas-grupo-meta">${fixas.length} · piso ${formatBRL(r.piso || 0)}</span></h3>`;
+  html += fixas.length
+    ? fixas.map(cardReceita).join('')
+    : '<p class="receitas-empty">Nenhuma renda fixa neste mês.</p>';
+  html += '</div>';
+
+  html += `<div class="receitas-grupo">
+    <h3><span>Renda variável</span><span class="receitas-grupo-meta">${variaveis.length} · ${formatBRL(r.variavel || 0)}</span></h3>`;
+  html += variaveis.length
+    ? variaveis.map(cardReceita).join('')
+    : '<p class="receitas-empty">Nenhuma receita variável. Use + Nova receita ou peça pro assistente.</p>';
+  html += '</div>';
+
+  painel.innerHTML = html;
 }
 
 async function carregarGanhos() {
   const labelEl = document.getElementById('ganhos-mes-label');
   const resumoEl = document.getElementById('ganhos-resumo');
-  const catEl = document.getElementById('ganhos-por-categoria');
-  const listaEl = document.getElementById('ganhos-lista');
-  if (!resumoEl || !catEl || !listaEl) return;
+  const painel = document.getElementById('painel-receitas');
+  if (!resumoEl || !painel) return;
 
   const ym = _ganhosYm || _ymAgora();
   if (labelEl) labelEl.textContent = _labelYm(ym);
 
   resumoEl.innerHTML = '<div class="despesas-kpi"><span class="label">Carregando…</span><span class="valor">—</span></div>';
-  catEl.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:8px 4px;">Carregando…</p>';
-  listaEl.innerHTML = '<div class="extrato-loading">Carregando entradas…</div>';
-
-  const { from, to } = _ymRange(ym);
+  painel.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Carregando receitas…</p>';
 
   try {
-    const [statsRes, extratoRes] = await Promise.all([
-      fetch(`/api/financeiro/stats?ym=${encodeURIComponent(ym)}`),
-      fetch(`/api/financeiro/extrato?from=${from}&to=${to}&tipo=entrada&limit=1500`)
-    ]);
-    const stats = await statsRes.json();
-    const extrato = await extratoRes.json();
-    if (!statsRes.ok) throw new Error(stats.erro || 'Erro ao carregar resumo');
-    if (!extratoRes.ok) throw new Error(extrato.erro || 'Erro ao carregar entradas');
-
-    const porCat = (stats.porCategoria || [])
-      .filter((c) => c.tipo === 'entrada')
-      .map((c) => ({
-        categoria: c.categoria || 'outros',
-        total: Number(c.total || 0)
-      }))
-      .filter((c) => c.total > 0)
-      .sort((a, b) => b.total - a.total);
-
-    const movs = extrato.movimentacoes || [];
-    const total = porCat.reduce((s, c) => s + c.total, 0);
-    const qtd = movs.length;
-    const media = qtd ? total / qtd : 0;
-    const maior = porCat[0];
-
-    resumoEl.innerHTML = `
-      <div class="despesas-kpi ok"><span class="label">Total do mês</span><span class="valor">${formatBRL(total)}</span></div>
-      <div class="despesas-kpi"><span class="label">Entradas</span><span class="valor">${qtd}</span></div>
-      <div class="despesas-kpi"><span class="label">Média por entrada</span><span class="valor">${formatBRL(media)}</span></div>
-      <div class="despesas-kpi"><span class="label">Principal origem</span><span class="valor">${maior ? escapeHtml(_labelGanhosCat(maior.categoria)) : '—'}</span></div>
-    `;
-
-    if (!porCat.length) {
-      catEl.innerHTML = '<p style="color:var(--text-muted); font-size:13px; padding:8px 4px;">Nenhuma entrada neste mês.</p>';
-    } else {
-      const pct = (v) => (total > 0 ? Math.round((v / total) * 100) : 0);
-      catEl.innerHTML = `
-        ${porCat.map((c) => `
-          <div class="ganhos-cat-row">
-            <span class="dot" aria-hidden="true"></span>
-            <span class="name">${escapeHtml(_labelGanhosCat(c.categoria))}</span>
-            <span class="pct">${pct(c.total)}%</span>
-            <span class="valor">+${formatBRL(c.total)}</span>
-          </div>
-        `).join('')}
-        <div class="ganhos-cat-total">
-          <span>Total</span>
-          <span class="valor">+${formatBRL(total)}</span>
-        </div>
-      `;
-    }
-
-    if (!movs.length) {
-      listaEl.innerHTML = '<div class="extrato-empty">Nenhuma entrada neste mês.</div>';
-      return;
-    }
-
-    const porDia = {};
-    movs.forEach((m) => {
-      const dia = extratoYmd(m.data) || 'sem-data';
-      if (!porDia[dia]) porDia[dia] = [];
-      porDia[dia].push(m);
-    });
-
-    const dias = Object.keys(porDia).sort((a, b) => b.localeCompare(a));
-    listaEl.innerHTML = dias.map((dia) => {
-      const itens = porDia[dia];
-      const diaTotal = itens.reduce((s, t) => s + Math.abs(Number(t.valor) || 0), 0);
-      const rows = itens.map((t) => {
-        const banco = t.account_id
-          ? `${t.banco || 'Banco'}${t.conta_tipo === 'CREDIT' ? ' · cartão' : ''}`
-          : 'Manual';
-        const cat = _labelGanhosCat(t.categoria);
-        const desc = extratoLimparDesc(t.descricao);
-        return `
-          <div class="extrato-item entrada">
-            <span class="extrato-dot" aria-hidden="true"></span>
-            <div class="extrato-item-info">
-              <div class="extrato-item-desc" title="${escapeHtml(t.descricao || '')}">${escapeHtml(desc)}</div>
-              <div class="extrato-item-meta">
-                <span>${escapeHtml(banco)}</span>
-                <span class="sep">·</span>
-                <span>${escapeHtml(cat)}</span>
-              </div>
-            </div>
-            <div class="extrato-item-valor entrada">+${formatBRL(Math.abs(Number(t.valor) || 0))}</div>
-          </div>`;
-      }).join('');
-      return `
-        <section class="extrato-dia">
-          <header class="extrato-dia-head">
-            <h4>${escapeHtml(extratoLabelDia(dia))}</h4>
-            <span class="extrato-dia-net ok">+${formatBRL(diaTotal)}</span>
-          </header>
-          <div class="extrato-dia-lista">${rows}</div>
-        </section>`;
-    }).join('');
+    const data = await fetch(`/api/receitas?ym=${encodeURIComponent(ym)}`).then((r) => r.json());
+    if (data.erro) throw new Error(data.erro);
+    _receitasData = data;
+    renderReceitas();
   } catch (e) {
     resumoEl.innerHTML = '';
-    catEl.innerHTML = '';
-    listaEl.innerHTML = `<div class="extrato-empty">${escapeHtml(e.message)}</div>`;
+    painel.innerHTML = `<div class="extrato-empty">${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -7648,6 +7724,10 @@ async function enviarAssistente(e) {
           txt = `Unificadas → ${a.label || a.categoria} (${a.qtd || 0} tx)`;
         } else if (a.tipo === 'confirmar_despesa') {
           txt = a.ja ? `Já paga: ${a.titulo}` : `Paga: ${a.titulo}`;
+        } else if (a.tipo === 'confirmar_receita') {
+          txt = a.ja ? `Já recebida: ${a.titulo}` : `Recebida: ${a.titulo}`;
+        } else if (a.tipo === 'criar_receita') {
+          txt = `Receita: ${a.titulo} (+R$ ${Number(a.valor).toFixed(2)})`;
         } else if (a.tipo === 'depositar_meta') {
           txt = `+R$ ${Number(a.valor).toFixed(2)} em ${a.meta}`;
         } else if (a.tipo === 'concluir_tarefa') {
@@ -7669,6 +7749,9 @@ async function enviarAssistente(e) {
       });
       if (feitos.some(a => a.tipo === 'criar_despesa' || a.tipo === 'confirmar_despesa') && typeof carregarDespesasMes === 'function') {
         carregarDespesasMes();
+      }
+      if (feitos.some(a => a.tipo === 'criar_receita' || a.tipo === 'confirmar_receita') && typeof carregarGanhos === 'function') {
+        carregarGanhos();
       }
       if (feitos.some(a => a.tipo === 'criar_tarefa' || a.tipo === 'marcar_habito' || a.tipo === 'concluir_tarefa') && typeof carregarTarefas === 'function') {
         carregarTarefas();

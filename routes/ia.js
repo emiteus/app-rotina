@@ -197,7 +197,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const fails = (acoesExec || []).filter(a => a && a.ok === false);
   const acaoTipos = new Set([
     'recategorizar', 'criar_categoria', 'renomear_categoria', 'fundir_categorias',
-    'confirmar_despesa', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
+    'confirmar_despesa', 'confirmar_receita', 'criar_receita', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
     'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
     'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito'
   ]);
@@ -222,6 +222,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(a.ja
           ? `**${a.titulo}** já estava paga.`
           : `Marquei **${a.titulo}** como paga.`);
+      } else if (a.tipo === 'confirmar_receita') {
+        partes.push(a.ja
+          ? `**${a.titulo}** já estava recebida.`
+          : `Marquei **${a.titulo}** como recebida.`);
+      } else if (a.tipo === 'criar_receita') {
+        partes.push(`Registrei receita **${a.titulo}** de **R$ ${Number(a.valor).toFixed(2)}**.`);
       } else if (a.tipo === 'depositar_meta') {
         partes.push(`Depositei **R$ ${Number(a.valor).toFixed(2)}** em **${a.meta}**${a.concluida ? ' (meta concluída!)' : ''}.`);
       } else if (a.tipo === 'concluir_tarefa') {
@@ -532,6 +538,7 @@ async function snapshotAssistente() {
     categoriasLista,
     gastosCat,
     despesas,
+    receitas,
     metas,
     alarmes,
     habitosLista,
@@ -635,6 +642,15 @@ async function snapshotAssistente() {
       [ym]
     ).catch(() => []),
     all(
+      `SELECT id, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, origem, notas
+       FROM receitas_mes WHERE ym = $1
+       ORDER BY CASE tipo WHEN 'fixa' THEN 0 ELSE 1 END,
+                CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'recebido' THEN 2 ELSE 3 END,
+                dia_previsto NULLS LAST
+       LIMIT 40`,
+      [ym]
+    ).catch(() => []),
+    all(
       `SELECT m.id, m.nome, m.valor_total, m.prazo, m.concluida,
               COALESCE((SELECT SUM(valor) FROM metas_depositos d WHERE d.meta_id = m.id),0) AS guardado
        FROM metas m
@@ -686,6 +702,7 @@ async function snapshotAssistente() {
   const f30 = fin30 || { entradas: 0, saidas: 0 };
   const fMes = finMes || { entradas: 0, saidas: 0 };
   const desp = despesas || [];
+  const rec = receitas || [];
 
   const resumoDesp = desp.reduce((acc, d) => {
     if ((d.categoria || '') === 'faturas') return acc;
@@ -696,6 +713,21 @@ async function snapshotAssistente() {
     else if (d.status !== 'ignorado') acc.pendente += v;
     return acc;
   }, { esperado: 0, pago: 0, pendente: 0, atrasado: 0 });
+
+  const resumoRec = rec.reduce((acc, r) => {
+    if (r.tipo === 'fixa') {
+      const v = brlNum(r.valor_esperado);
+      acc.piso += v;
+      if (r.status === 'recebido') acc.recebido += brlNum(r.valor_recebido ?? r.valor_esperado);
+      else if (r.status === 'atrasado') acc.atrasado += v;
+      else acc.pendente += v;
+    } else {
+      const v = brlNum(r.valor_recebido ?? r.valor_esperado);
+      acc.variavel += v;
+      if (r.status === 'recebido') acc.recebido += v;
+    }
+    return acc;
+  }, { piso: 0, recebido: 0, pendente: 0, atrasado: 0, variavel: 0 });
 
   const taxa = (c, t) => (t > 0 ? Math.round((c / t) * 100) : 0);
   let streak = 0;
@@ -802,6 +834,28 @@ async function snapshotAssistente() {
         categoria: d.categoria,
         pago_em: d.pago_em ? String(d.pago_em).slice(0, 10) : null
       }))
+    },
+    receitas_mes: {
+      resumo: {
+        piso: brlNum(resumoRec.piso),
+        recebido: brlNum(resumoRec.recebido),
+        pendente: brlNum(resumoRec.pendente),
+        atrasado: brlNum(resumoRec.atrasado),
+        variavel: brlNum(resumoRec.variavel)
+      },
+      itens: rec.map(r => ({
+        id: r.id,
+        titulo: r.titulo,
+        tipo: r.tipo,
+        chave: r.chave,
+        valor_esperado: brlNum(r.valor_esperado),
+        valor_recebido: r.valor_recebido != null ? brlNum(r.valor_recebido) : null,
+        dia_previsto: r.dia_previsto,
+        status: r.status,
+        recebido_em: r.recebido_em ? String(r.recebido_em).slice(0, 10) : null
+      })),
+      renda_fixa: (plano.rendaFixa || []).map(r => ({ chave: r.chave, nome: r.nome, valor: r.valor, dia: r.dia })),
+      tipos_variavel: (plano.rendaVariavelTipos || []).map(t => ({ chave: t.chave, label: t.label }))
     },
     plano_financeiro: {
       renda_piso: rendaPiso,
@@ -1299,6 +1353,96 @@ async function executarAcoes(acoes) {
           [pagoEm, row.id]
         );
         feitos.push({ tipo, ok: true, titulo: row.titulo, id: row.id, pago_em: pagoEm });
+      } else if (tipo === 'confirmar_receita') {
+        const ymRec = String(acao.ym || ym).slice(0, 7);
+        const titulo = String(acao.titulo || acao.nome || '').trim();
+        const chave = String(acao.chave || '').trim() || null;
+        const id = acao.id ? String(acao.id) : null;
+
+        const countRec = await get(`SELECT COUNT(*)::int AS n FROM receitas_mes WHERE ym = $1`, [ymRec]);
+        if (!countRec?.n) {
+          for (const item of plano.rendaFixa || []) {
+            const dia = item.dia != null ? Number(item.dia) : null;
+            await run(
+              `INSERT INTO receitas_mes
+                (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, origem)
+               VALUES ($1,$2,$3,$4,NULL,$5,'fixa',$6,'pendente',NULL,'plano')`,
+              [uuid(), ymRec, item.nome, item.valor, dia, item.chave]
+            );
+          }
+        }
+
+        let row = null;
+        if (id) row = await get(`SELECT * FROM receitas_mes WHERE id = $1`, [id]);
+        if (!row && chave) {
+          row = await get(
+            `SELECT * FROM receitas_mes WHERE ym = $1 AND chave = $2 AND status IN ('pendente','atrasado')
+             ORDER BY CASE tipo WHEN 'fixa' THEN 0 ELSE 1 END LIMIT 1`,
+            [acao.ym || ymRec, chave]
+          );
+        }
+        if (!row && titulo) {
+          row = await get(
+            `SELECT * FROM receitas_mes
+             WHERE ym = $1 AND status IN ('pendente','atrasado')
+               AND (lower(titulo) = lower($2) OR titulo ILIKE $3)
+             ORDER BY CASE WHEN lower(titulo) = lower($2) THEN 0 ELSE 1 END, dia_previsto NULLS LAST
+             LIMIT 1`,
+            [ymRec, titulo, `%${titulo}%`]
+          );
+        }
+        if (!row) {
+          feitos.push({ tipo, ok: false, erro: 'receita não encontrada' });
+          continue;
+        }
+        if (row.status === 'recebido') {
+          feitos.push({ tipo, ok: true, titulo: row.titulo, ja: true });
+          continue;
+        }
+        const valor = Number(acao.valor_recebido ?? acao.valor ?? row.valor_esperado);
+        const recebidoEm = (acao.recebido_em && String(acao.recebido_em).slice(0, 10)) || hojeStr();
+        await run(
+          `UPDATE receitas_mes SET
+             status = 'recebido',
+             valor_recebido = $1,
+             recebido_em = $2::date,
+             origem = CASE WHEN origem = 'plano' THEN origem ELSE 'assistente' END,
+             dia_previsto = COALESCE(dia_previsto, EXTRACT(DAY FROM $2::date)::int)
+           WHERE id = $3`,
+          [valor, recebidoEm, row.id]
+        );
+        feitos.push({ tipo, ok: true, titulo: row.titulo, id: row.id, valor, recebido_em: recebidoEm });
+      } else if (tipo === 'criar_receita') {
+        const ymRec = String(acao.ym || ym).slice(0, 7);
+        const chave = String(acao.chave || '').trim() || 'outro';
+        const tituloBody = String(acao.titulo || acao.nome || '').trim();
+        const fixa = (plano.rendaFixa || []).find(r => r.chave === chave);
+        const varr = (plano.rendaVariavelTipos || []).find(r => r.chave === chave);
+        const titulo = tituloBody || (fixa && fixa.nome) || (varr && varr.label) || 'Receita';
+        const valor = Number(acao.valor_recebido ?? acao.valor);
+        if (!Number.isFinite(valor) || valor <= 0) {
+          feitos.push({ tipo, ok: false, erro: 'valor inválido' });
+          continue;
+        }
+        const recebidoEm = (acao.recebido_em && String(acao.recebido_em).slice(0, 10)) || hojeStr();
+        const id = uuid();
+        await run(
+          `INSERT INTO receitas_mes
+            (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, notas, origem)
+           VALUES ($1,$2,$3,$4,$5,$6,'variavel',$7,'recebido',$8,$9,'assistente')`,
+          [
+            id,
+            ymRec,
+            titulo,
+            valor,
+            valor,
+            recebidoEm ? Number(String(recebidoEm).slice(8, 10)) : null,
+            chave,
+            recebidoEm,
+            acao.notas ? String(acao.notas).trim() : null
+          ]
+        );
+        feitos.push({ tipo, ok: true, id, titulo, valor, chave, recebido_em: recebidoEm });
       } else if (tipo === 'depositar_meta') {
         const valor = Number(acao.valor);
         if (!Number.isFinite(valor) || valor <= 0) {
@@ -1602,6 +1746,45 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     });
   }
 
+  // "recebi Laranjeira" / "caiu o Tylty"
+  if (!acoes.some(a => a.tipo === 'confirmar_receita')) {
+    const mRec = msg.match(/\b(?:recebi|caiu|entrou)\s+(?:a\s+|o\s+)?(.+?)(?:\s+hoje|\s+ontem)?$/i)
+      || msg.match(/\bconfirm[ao]\s+(?:receita|pagamento)\s+(?:d[aeo]\s+)?(.+)$/i);
+    if (mRec) {
+      const titulo = mRec[1].replace(/[.!?]+$/, '').trim();
+      if (titulo.length >= 2 && titulo.length <= 80) {
+        const chaves = { laranjeira: 'laranjeira', tylty: 'tylty', lucastylty: 'tylty' };
+        const chave = chaves[norm(titulo)] || null;
+        acoes.push(chave ? { tipo: 'confirmar_receita', chave } : { tipo: 'confirmar_receita', titulo });
+      }
+    }
+  }
+
+  // "ganhei 4000 no corte" / "receita de infoproduto 1200"
+  if (!acoes.some(a => a.tipo === 'criar_receita')) {
+    const mVar = msg.match(/\b(?:ganhei|recebi|faturei|vendi)\s+(?:r\$\s*)?(\d+(?:[.,]\d+)?)\s+(?:no|na|em|de|com)\s+(.+)$/i)
+      || msg.match(/\breceita\s+(?:de\s+)?(.+?)\s+(?:r\$\s*)?(\d+(?:[.,]\d+)?)$/i);
+    if (mVar) {
+      let valor;
+      let raw;
+      if (/^\d/.test(String(mVar[1] || '').trim())) {
+        valor = Number(String(mVar[1]).replace(',', '.'));
+        raw = String(mVar[2] || '');
+      } else {
+        raw = String(mVar[1] || '');
+        valor = Number(String(mVar[2] || '').replace(',', '.'));
+      }
+      raw = raw.replace(/[.!?]+$/, '').trim().toLowerCase();
+      let chave = 'outro';
+      if (/corte|competi|attracione/i.test(raw)) chave = 'cortes';
+      else if (/infoprod|curso|ebook|produto/i.test(raw)) chave = 'infoproduto';
+      else if (/\bpj\b|mei|servi[cç]o/i.test(raw)) chave = 'pj';
+      if (Number.isFinite(valor) && valor > 0) {
+        acoes.push({ tipo: 'criar_receita', valor, chave, titulo: raw });
+      }
+    }
+  }
+
   // "já paguei Netflix" / "paguei a luz"
   if (!acoes.some(a => a.tipo === 'confirmar_despesa')) {
     const mPago = msg.match(/\b(?:j[aá]\s+)?paguei\s+(?:a\s+|o\s+)?(.+?)(?:\s+hoje|\s+ontem)?$/i)
@@ -1775,7 +1958,9 @@ ${JSON.stringify(snap)}
 
 Como usar o contexto:
 - Períodos: "hoje/ontem/amanhã" → tarefas.*; "essa semana" → habitos[].semana_concluidas ou tarefas.stats_7d; "esse mês" → despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas.
-- Finanças: financeiro.d7/d30/mes_atual, ultimas_transacoes (com id), categorias, gastos_por_categoria_30d, saldos_contas, plano_financeiro, despesas_mes.
+- Finanças: financeiro.d7/d30/mes_atual, ultimas_transacoes (com id), categorias, gastos_por_categoria_30d, saldos_contas, plano_financeiro, despesas_mes, receitas_mes.
+- Receita ≠ entrada do banco: receitas_mes é manual (Laranjeira, Tylty, cortes, infoproduto). Entradas do extrato NÃO são receita.
+- Confirmações ("já paguei X"): despesas_mes. ("recebi Laranjeira"): confirmar_receita. Receita variável: criar_receita.
 - Produtividade: tarefas (hoje, atrasadas, próximos), stats_7d/30d, streak_dias_completos, historico_tarefas_recentes, recorrentes, consistencia_horario (horário médio e desvio por tarefa).
 - Agenda: eventos_proximos, alarmes.
 - Hábitos: só Academia (feito_hoje, semana e mês).
@@ -1784,6 +1969,8 @@ Como usar o contexto:
 Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir na tela manualmente):
 - registrar pendência/dívida/despesa/tarefa/meta → criar_*
 - "já paguei X" / confirmar conta → confirmar_despesa
+- "recebi Laranjeira/Tylty" / confirmar renda fixa → confirmar_receita
+- registrar receita variável (corte, infoproduto, PJ) → criar_receita
 - "guardei R$Y na meta Z" → depositar_meta
 - "concluí a tarefa X" → concluir_tarefa
 - "fui na academia" → marcar_habito
@@ -1792,7 +1979,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - apagar tx / corrigir data de tx → deletar_transacao / corrigir_data_tx
 - DAS pago → marcar_das
 - criar/renomear/unificar/recategorizar categorias → ações de categoria
-- Preferir ids do contexto (despesas_mes.itens[].id, metas[].id, tarefas.*.id, ultimas_transacoes[].id)
+- Preferir ids do contexto (despesas_mes.itens[].id, receitas_mes.itens[].id, metas[].id, tarefas.*.id, ultimas_transacoes[].id)
 - Se faltar dado essencial, pergunte e NÃO emita ação
 
 Responda APENAS um JSON válido completo:
@@ -1801,6 +1988,8 @@ Responda APENAS um JSON válido completo:
 Tipos de ação:
 - {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|outros"}
 - {"tipo":"confirmar_despesa","titulo":"Netflix"} ou {"tipo":"confirmar_despesa","id":"..."}
+- {"tipo":"confirmar_receita","titulo":"Laranjeira"} ou {"tipo":"confirmar_receita","chave":"tylty","valor":1000}
+- {"tipo":"criar_receita","titulo":"Attracione","valor":4000,"chave":"cortes","recebido_em":"YYYY-MM-DD"}
 - {"tipo":"criar_tarefa","titulo":"...","prioridade":"alta|media|baixa","data_reset":"YYYY-MM-DD"}
 - {"tipo":"concluir_tarefa","titulo":"..."} ou {"tipo":"concluir_tarefa","id":"..."}
 - {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
@@ -1822,6 +2011,8 @@ Regras:
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - "unifica/funde" → fundir_categorias (não renomear as duas pro mesmo label).
 - "já paguei / confirmo pagamento" → confirmar_despesa.
+- "recebi / caiu (Laranjeira, Tylty…)" → confirmar_receita. NÃO use criar_transacao entrada pra isso.
+- receita variável (corte, infoproduto) → criar_receita.
 - Use ids do contexto quando existir.
 - acoes pode ser [].
 - Não invente números, títulos, ids ou status.
