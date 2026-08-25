@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=69">
+  <link rel="stylesheet" href="style.css?v=70">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -69,6 +69,12 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
         </span>
         <span>Histórico</span>
+      </button>
+      <button class="nav-btn" data-tab="assistente" id="nav-assistente">
+        <span class="nav-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <span>Chat</span>
       </button>
     </nav>
 
@@ -797,6 +803,9 @@
       </div>
     </section>
 
+    <!-- TAB: Assistente (conteúdo real fica no painel fixo; section só pra ativar a aba no mobile) -->
+    <section id="assistente" class="tab-content assistente-placeholder" aria-hidden="true"></section>
+
   </main>
 
   <!-- Modal revisar categoria (ex.: Outros) -->
@@ -865,7 +874,7 @@
       <div class="assist-header-actions">
         <button type="button" class="assist-icon-btn" onclick="assistNovaConversa()" title="Nova conversa" aria-label="Nova conversa">＋</button>
         <button type="button" class="assist-icon-btn" id="assist-hist-btn" onclick="assistToggleHistorico()" title="Conversas antigas" aria-label="Conversas antigas" aria-expanded="false">☰</button>
-        <button type="button" class="assist-close" onclick="toggleAssistente()" aria-label="Fechar">×</button>
+        <button type="button" class="assist-close" id="assist-close" onclick="fecharAssistente()" aria-label="Fechar">×</button>
       </div>
     </div>
     <div class="assist-historico" id="assist-historico" hidden>
@@ -916,7 +925,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=69"></script>
+  <script src="app.js?v=70"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

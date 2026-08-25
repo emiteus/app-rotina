@@ -3958,6 +3958,25 @@ function saudacao() {
 //  TABS NAVIGATION
 // =====================
 function trocarAba(tab) {
+  if (tab === 'assistente') {
+    if (typeof isAssistMobile === 'function' && isAssistMobile()) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.nav-btn[data-tab="assistente"]')?.classList.add('active');
+      document.getElementById('assistente')?.classList.add('active');
+      if (typeof abrirAssistente === 'function') abrirAssistente();
+      return;
+    }
+    // Desktop: Chat no nav só abre/fecha o dock
+    if (typeof toggleAssistente === 'function') toggleAssistente();
+    return;
+  }
+
+  // Saindo do chat no mobile
+  if (typeof isAssistMobile === 'function' && isAssistMobile() && typeof _assistOpen !== 'undefined' && _assistOpen) {
+    if (typeof fecharAssistente === 'function') fecharAssistente({ manterAba: true });
+  }
+
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.querySelector(`.nav-btn[data-tab="${tab}"]`)?.classList.add('active');
@@ -7030,22 +7049,57 @@ function assistBoasVindas() {
 }
 
 function toggleAssistente() {
-  _assistOpen = !_assistOpen;
+  if (_assistOpen) fecharAssistente();
+  else abrirAssistente();
+}
+
+function isAssistMobile() {
+  return window.matchMedia('(max-width: 768px)').matches;
+}
+
+function abrirAssistente() {
+  _assistOpen = true;
   const panel = document.getElementById('assist-panel');
   const fab = document.getElementById('assist-fab');
-  if (!panel) return;
-  panel.classList.toggle('open', _assistOpen);
-  if (fab) fab.classList.toggle('hidden', _assistOpen);
-  if (_assistOpen) {
-    if (!_assistCarregado) {
-      _assistCarregado = true;
-      assistAbrirUltimaOuNova();
-    }
-    setTimeout(() => document.getElementById('assist-input')?.focus(), 50);
-  } else if (_assistHistOpen) {
-    assistFecharHistorico();
+  const mobile = isAssistMobile();
+  document.body.classList.toggle('assist-open', true);
+  document.body.classList.toggle('assist-mobile-tab', mobile);
+  if (panel) panel.classList.add('open');
+  if (fab) fab.classList.toggle('hidden', true);
+
+  if (mobile) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('.nav-btn[data-tab="assistente"]')?.classList.add('active');
+    document.getElementById('assistente')?.classList.add('active');
+  }
+
+  if (!_assistCarregado) {
+    _assistCarregado = true;
+    assistAbrirUltimaOuNova();
+  }
+  setTimeout(() => document.getElementById('assist-input')?.focus(), 50);
+}
+
+function fecharAssistente(opts) {
+  _assistOpen = false;
+  const panel = document.getElementById('assist-panel');
+  const fab = document.getElementById('assist-fab');
+  document.body.classList.remove('assist-open', 'assist-mobile-tab');
+  if (panel) panel.classList.remove('open');
+  if (fab) fab.classList.toggle('hidden', isAssistMobile());
+  if (_assistHistOpen) assistFecharHistorico();
+
+  // Mobile: × volta pro dashboard (a menos que outra aba esteja sendo aberta)
+  if (!opts?.manterAba && isAssistMobile()) {
+    const dash = document.querySelector('.nav-btn[data-tab="dashboard"]');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    dash?.classList.add('active');
+    document.getElementById('dashboard')?.classList.add('active');
   }
 }
+
 
 async function assistAbrirUltimaOuNova() {
   const salva = assistLerConversaLocal();
@@ -7213,7 +7267,10 @@ function assistAddBubble(kind, text) {
   if (!box) return;
   const el = document.createElement('div');
   el.className = 'assist-bubble ' + kind;
-  if (kind.includes('bot') || kind === 'acao') {
+  if (kind.includes('thinking')) {
+    el.innerHTML = '<span class="assist-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="assist-thinking-label">Pensando</span>';
+    el.setAttribute('aria-label', 'Assistente pensando');
+  } else if (kind.includes('bot') || kind === 'acao') {
     el.innerHTML = assistFormatHtml(text);
   } else {
     el.textContent = text;
