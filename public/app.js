@@ -4466,6 +4466,10 @@ async function renderFinDonut() {
   }
 
   try {
+    // Garante labels do catálogo (senão aparece a chave crua tipo "apostasamigos")
+    if (!_catLista.length && typeof carregarCatListaForcado === 'function') {
+      await carregarCatListaForcado();
+    }
     const res = await fetch('/api/financeiro/stats');
     if (!res.ok) return;
     const data = await res.json();
@@ -7389,6 +7393,8 @@ async function enviarAssistente(e) {
         } else if (a.tipo === 'recategorizar') {
           const lab = a.label || a.categoria || 'categoria';
           txt = `${a.qtd || 0} tx → ${lab}`;
+        } else if (a.tipo === 'renomear_categoria') {
+          txt = `Renomeada: ${a.label || a.categoria}`;
         }
         assistAddBubble('acao', txt);
       });
@@ -7404,10 +7410,11 @@ async function enviarAssistente(e) {
       if (feitos.some(a => a.tipo === 'criar_meta') && typeof carregarMetas === 'function') {
         carregarMetas();
       }
-      if (feitos.some(a => a.tipo === 'criar_categoria' || a.tipo === 'recategorizar')) {
+      if (feitos.some(a => a.tipo === 'criar_categoria' || a.tipo === 'recategorizar' || a.tipo === 'renomear_categoria')) {
+        if (typeof carregarCatListaForcado === 'function') await carregarCatListaForcado();
+        else if (typeof carregarCatLista === 'function') await carregarCatLista();
         if (typeof carregarTransacoes === 'function') carregarTransacoes();
         if (typeof renderFinDonut === 'function') renderFinDonut();
-        if (typeof carregarCatLista === 'function') carregarCatLista();
         if (typeof carregarCategorizar === 'function') carregarCategorizar();
       }
     }

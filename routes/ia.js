@@ -195,8 +195,10 @@ function textoAssistenteSeguro(textoBruto, parsed) {
 function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const oks = (acoesExec || []).filter(a => a && a.ok);
   const fails = (acoesExec || []).filter(a => a && a.ok === false);
-  const finOk = oks.filter(a => a.tipo === 'recategorizar' || a.tipo === 'criar_categoria');
-  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|já (está|esta|ficou)|alterei|atualizei/i.test(String(resposta || ''));
+  const finOk = oks.filter(a =>
+    a.tipo === 'recategorizar' || a.tipo === 'criar_categoria' || a.tipo === 'renomear_categoria'
+  );
+  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|renomeei|renomear|ajustei|já (está|esta|ficou)|alterei|atualizei/i.test(String(resposta || ''));
 
   if (finOk.length) {
     const partes = [];
@@ -207,6 +209,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           : `Categoria **${a.label || a.categoria}** ok.`);
       } else if (a.tipo === 'recategorizar') {
         partes.push(`Movi **${a.qtd || 0}** transações pra **${a.label || a.categoria}**.`);
+      } else if (a.tipo === 'renomear_categoria') {
+        partes.push(`Renomeei pra **${a.label || a.categoria}**.`);
       }
     }
     return partes.join(' ');
@@ -215,9 +219,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   if (claim) {
     const err = fails.map(f => f.erro).filter(Boolean)[0];
     if (err) {
-      return `Tentei organizar, mas não consegui: ${err}. Manda de novo com data/valores ou ids.`;
+      return `Tentei alterar, mas não consegui: ${err}.`;
     }
-    return 'Ainda **não alterei** nada no Extrato — a ação não chegou a rodar. Repete: “organiza as txs do domingo em Apostas - Amigos”.';
+    return 'Ainda **não alterei** nada — a ação não chegou a rodar. Pode repetir o pedido?';
   }
 
   return resposta;
@@ -1023,6 +1027,45 @@ async function executarAcoes(acoes) {
           ids,
           exemplos: txs.slice(0, 5).map(t => String(t.descricao || '').slice(0, 40))
         });
+      } else if (tipo === 'renomear_categoria') {
+        const novoLabel = String(acao.categoria_label || acao.label || acao.novo_nome || '').trim();
+        if (!novoLabel) {
+          feitos.push({ tipo, ok: false, erro: 'novo nome obrigatório' });
+          continue;
+        }
+        const deRaw = String(acao.de || acao.categoria || acao.chave || acao.categoria_antiga || '').trim();
+        let row = null;
+        if (deRaw) {
+          const chaveTry = /^[a-z0-9_]+$/i.test(deRaw) ? deRaw.toLowerCase() : normalizarChave(deRaw);
+          row = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chaveTry]);
+          if (!row) {
+            row = await get(`SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`, [deRaw]);
+          }
+          if (!row) {
+            row = await get(
+              `SELECT chave, label FROM categorias
+               WHERE label ILIKE $1 OR chave ILIKE $2
+               ORDER BY length(label) ASC LIMIT 1`,
+              [`%${deRaw}%`, `%${chaveTry}%`]
+            );
+          }
+        }
+        if (!row) {
+          const chaveNovo = normalizarChave(novoLabel);
+          row = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chaveNovo]);
+        }
+        if (!row) {
+          feitos.push({ tipo, ok: false, erro: 'categoria não encontrada pra renomear' });
+          continue;
+        }
+        await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [novoLabel, row.chave]);
+        feitos.push({
+          tipo,
+          ok: true,
+          categoria: row.chave,
+          label: novoLabel,
+          label_antes: row.label
+        });
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
       }
@@ -1170,7 +1213,7 @@ Como usar o contexto:
 Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir no Extrato manualmente):
 - registrar pendência/dívida/despesa/tarefa/meta → acoes
 - "fui na academia" → marcar_habito
-- criar categoria / organizar / recategorizar / "joga pra X" / "não bagunçar gasto" → criar_categoria e/ou recategorizar
+- criar categoria / renomear / organizar / recategorizar / "joga pra X" / "não bagunçar gasto" / "ajusta o nome" → criar_categoria, renomear_categoria e/ou recategorizar
 - Se faltar dado essencial (qual categoria? quais txs?), pergunte e NÃO emita ação
 - Preferir ids de financeiro.ultimas_transacoes[].id quando bater a descrição/valor/data; senão use filtros
 
@@ -1183,13 +1226,15 @@ Tipos de ação:
 - {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
 - {"tipo":"marcar_habito","titulo":"Academia"}
 - {"tipo":"criar_categoria","categoria_label":"Apostas - Amigos"}
+- {"tipo":"renomear_categoria","de":"apostasamigos","categoria_label":"Apostas - Amigos"}
 - {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","ids":["uuid1","uuid2"]}
 - {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","filtros":{"data":"YYYY-MM-DD","valores":[250,400,350],"contem":["Erik","Superbet","Tizon"]}}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela. Confirme o que foi feito (ex: "categorizei N txs em Apostas - Amigos").
-- NUNCA diga que criou/moveu/categorizou se não emitir a ação correspondente em "acoes". Sem ação = não aconteceu.
+- NUNCA diga que criou/moveu/renomeou/categorizou se não emitir a ação correspondente em "acoes". Sem ação = não aconteceu.
 - Se o usuário pedir organização de categorias, EMITA a ação — não diga "vai no extrato e altera".
+- "ajusta/renomeia o nome da categoria" → renomear_categoria (use chave de financeiro.categorias; "de" = chave ou label atual).
 - Use financeiro.categorias (chave/label) se a categoria já existir; senão criar_categoria + recategorizar (ou só recategorizar, que cria a categoria).
 - Em filtros.contem use pedaços reais da descrição (ex: "ERIK", "SPRBT", "TIZON"), não apelidos inventados.
 - Prefira ids de ultimas_transacoes quando bater.
