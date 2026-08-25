@@ -7420,7 +7420,7 @@ async function enviarAssistente(e) {
     }
     const falhas = (data.acoes || []).filter(a => a && a.ok === false);
     falhas.forEach(a => {
-      if (a.tipo === 'recategorizar' || a.tipo === 'criar_categoria') {
+      if (a.tipo === 'recategorizar' || a.tipo === 'criar_categoria' || a.tipo === 'renomear_categoria') {
         assistAddBubble('acao', `Não deu: ${a.erro || a.tipo}`);
       }
     });
