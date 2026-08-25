@@ -4397,9 +4397,10 @@ async function renderFinDonut() {
   const mesLabel = document.getElementById('fin-cat-list-mes');
   if (!grid || !card || !canvas || !legend || !totalEl || !catList) return;
 
-  // Rótulo do mês corrente ("julho de 2026")
+  // Rótulo do mês corrente ("agosto de 2026")
   if (mesLabel) {
-    mesLabel.textContent = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const mes = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    mesLabel.textContent = `${mes} · sem pagamento de fatura`;
   }
 
   try {
@@ -4431,10 +4432,11 @@ async function renderFinDonut() {
       || ({ faturas: 'Faturas', projetos: 'Projetos', iof: 'IOF', compras: 'Compras', demais: 'Demais' }[k])
       || k;
 
-    // Agrupa por categoria
+    // Agrupa por categoria — ignora pagamento de fatura (já contado nas compras do cartão)
     const agrupado = {};
     saidas.forEach(r => {
       const k = aliasCat(r.categoria);
+      if (k === 'faturas') return;
       agrupado[k] = (agrupado[k] || 0) + Number(r.total || 0);
     });
     const entries = Object.entries(agrupado).sort((a,b) => b[1] - a[1]);

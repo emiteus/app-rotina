@@ -7,6 +7,17 @@ let wsServer; // Será setado pelo server.js
 
 const router = express.Router();
 
+// Pagamento de fatura / rotativo = quitação do cartão, não gasto novo
+// (o gasto já entra nas compras/assinaturas individuais do cartão)
+const SQL_EXCLUI_FATURA = `
+  NOT (
+    lower(COALESCE(categoria,'')) = 'faturas'
+    OR lower(COALESCE(categoria,'')) LIKE 'fatura%'
+    OR lower(COALESCE(categoria,'')) LIKE '%cartaointer%'
+    OR lower(COALESCE(categoria,'')) LIKE '%rotativo%'
+  )
+`;
+
 // Função pra emitir eventos WebSocket
 function emitFinanceiroUpdate(tipo, dados) {
   if (wsServer) {
@@ -29,7 +40,7 @@ router.get('/', async (req, res) => {
     const periodo = await get(`
       SELECT
         COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as entradas,
-        COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as saidas
+        COALESCE(SUM(CASE WHEN tipo = 'saida' AND ${SQL_EXCLUI_FATURA} THEN valor ELSE 0 END), 0) as saidas
       FROM financeiro
       WHERE data >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
     `, [dias]);
@@ -189,6 +200,7 @@ router.get('/stats', async (req, res) => {
       SELECT categoria, tipo, SUM(valor) as total
       FROM financeiro
       WHERE data >= DATE_TRUNC('month', CURRENT_DATE)
+        AND ${SQL_EXCLUI_FATURA}
       GROUP BY categoria, tipo
       ORDER BY total DESC
     `);
