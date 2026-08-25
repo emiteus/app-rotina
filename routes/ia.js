@@ -1053,6 +1053,31 @@ async function executarAcoes(acoes) {
         if (!row) {
           const chaveNovo = normalizarChave(novoLabel);
           row = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chaveNovo]);
+          // "Apostas - Amigo" → apostasamigo vs chave apostasamigos
+          if (!row && chaveNovo.length >= 6) {
+            row = await get(
+              `SELECT chave, label FROM categorias
+               WHERE chave LIKE $1 OR $2 LIKE (chave || '%')
+               ORDER BY ABS(length(chave) - length($3)) ASC, length(chave) DESC
+               LIMIT 1`,
+              [`${chaveNovo}%`, chaveNovo, chaveNovo]
+            );
+          }
+          if (!row && /amigo/i.test(novoLabel)) {
+            row = await get(
+              `SELECT chave, label FROM categorias
+               WHERE chave ILIKE '%amigo%' OR label ILIKE '%amigo%'
+               ORDER BY length(label) ASC LIMIT 1`
+            );
+          }
+          if (!row && /aposta/i.test(novoLabel)) {
+            row = await get(
+              `SELECT chave, label FROM categorias
+               WHERE chave ILIKE '%aposta%' OR label ILIKE '%aposta%'
+               ORDER BY CASE WHEN chave = 'apostas' THEN 1 ELSE 0 END, length(label) ASC
+               LIMIT 1`
+            );
+          }
         }
         if (!row) {
           feitos.push({ tipo, ok: false, erro: 'categoria não encontrada pra renomear' });
@@ -1074,6 +1099,43 @@ async function executarAcoes(acoes) {
     }
   }
   return feitos;
+}
+
+/** Se a IA esquecer de emitir acao, inferimos pedidos claros de rename/criar. */
+function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
+  const acoes = Array.isArray(acoesParsed) ? acoesParsed.filter(Boolean) : [];
+  const msg = String(mensagem || '').replace(/\s+/g, ' ').trim();
+  if (!msg) return acoes;
+
+  const temRename = acoes.some(a => a.tipo === 'renomear_categoria');
+  const pedeRename = /(?:ajust|renome|mud[aeo]|alter|troc).{0,50}(?:nome|categoria)/i.test(msg)
+    || /(?:nome da categoria|categoria).{0,30}(?:pra|para|pro)/i.test(msg);
+
+  if (pedeRename && !temRename) {
+    let novo = null;
+    const m1 = msg.match(/(?:pra|para|pro|=|:)\s*[\"“']?([^\"”'\n.!?]{2,60})\s*$/i);
+    const m2 = msg.match(/(?:categoria|nome).{0,20}?(?:pra|para|pro)\s*[\"“']?([^\"”'\n.!?]+)/i);
+    novo = ((m2 && m2[1]) || (m1 && m1[1]) || '').trim().replace(/^["“']+|["”']+$/g, '');
+    // fallback: texto após "pra "
+    if (!novo || novo.length < 2) {
+      const m3 = msg.match(/\bpra\s+(.+)$/i);
+      if (m3) novo = m3[1].trim();
+    }
+    if (novo && novo.length >= 2 && novo.length <= 60) {
+      const cats = (snap && snap.financeiro && snap.financeiro.categorias) || [];
+      let de = cats.find(c => /amigo/i.test(c.label || '') || /amigo/i.test(c.chave || ''));
+      if (!de && /aposta/i.test(novo)) {
+        de = cats.find(c => /aposta/i.test(c.chave || '') && c.chave !== 'apostas')
+          || cats.find(c => /aposta/i.test(c.label || '') && !/^apostas$/i.test(c.chave || ''));
+      }
+      acoes.push({
+        tipo: 'renomear_categoria',
+        de: de ? de.chave : undefined,
+        categoria_label: novo
+      });
+    }
+  }
+  return acoes;
 }
 
 function tituloDeMensagem(msg) {
@@ -1258,7 +1320,8 @@ Regras:
     catch (e) { parsed = null; }
 
     const respostaBruta = textoAssistenteSeguro(texto, parsed);
-    const acoesExec = await executarAcoes(parsed && parsed.acoes);
+    const acoesMerged = inferirAcoesDaMensagem(mensagem, snap, parsed && parsed.acoes);
+    const acoesExec = await executarAcoes(acoesMerged);
     const resposta = reconciliarRespostaComAcoes(respostaBruta, acoesExec);
     await salvarMensagem(conversaId, 'assistant', resposta);
 
