@@ -413,12 +413,24 @@
         <button class="fin-subtab-btn" data-fin-tab="fin-extrato" onclick="trocarSubAbaFin('fin-extrato')">Extrato</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-despesas" onclick="trocarSubAbaFin('fin-despesas')">Despesas do mês</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-metas" onclick="trocarSubAbaFin('fin-metas')">Metas</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-invest" onclick="trocarSubAbaFin('fin-invest')">Investimentos</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-patrimonio" onclick="trocarSubAbaFin('fin-patrimonio')">Patrimônio</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')">PJ / MEI</button>
       </div>
 
       <!-- SUB-ABA: Metas financeiras -->
       <div id="fin-metas" class="fin-subtab" style="display:none;">
         <div id="painel-metas"></div>
+      </div>
+
+      <!-- SUB-ABA: Investimentos -->
+      <div id="fin-invest" class="fin-subtab" style="display:none;">
+        <div id="painel-investimentos"></div>
+      </div>
+
+      <!-- SUB-ABA: Patrimônio -->
+      <div id="fin-patrimonio" class="fin-subtab" style="display:none;">
+        <div id="painel-patrimonio"></div>
       </div>
 
       <!-- SUB-ABA: PJ / MEI -->
@@ -461,6 +473,13 @@
         <div class="visao-sobra" id="visao-sobra">
           <span class="label">Sobra estimada (entradas − gastos, 30d · sem pagamento de fatura)</span>
           <span class="valor" id="visao-sobra-valor">R$ 0,00</span>
+        </div>
+
+        <div class="fin-visao-filtros">
+          <label for="fin-visao-mes">Mês da análise</label>
+          <select id="fin-visao-mes" onchange="onTrocarMesVisao()">
+            <option value="atual">Mês atual</option>
+          </select>
         </div>
 
         <div class="fin-visao-grid" id="fin-visao-grid" style="display:none;">
@@ -932,7 +951,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=80"></script>
+  <script src="app.js?v=81"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

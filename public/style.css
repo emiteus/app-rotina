@@ -598,6 +598,25 @@ body {
 .visao-sobra .valor.positivo { color: var(--ok); }
 .visao-sobra .valor.negativo { color: var(--danger); }
 
+.fin-visao-filtros {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -6px 0 16px;
+}
+.fin-visao-filtros label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.fin-visao-filtros select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

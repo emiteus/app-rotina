@@ -1133,12 +1133,21 @@ function trocarSubAbaFin(id) {
   });
   if (id === 'fin-despesas') carregarDespesasMes();
   if (id === 'fin-metas') carregarMetas();
+  if (id === 'fin-invest') carregarInvestimentos();
+  if (id === 'fin-patrimonio') carregarPatrimonio();
   if (id === 'fin-pj') carregarPJ();
   if (id === 'fin-extrato') carregarExtrato();
   if (id === 'fin-visao') {
+    carregarMesesVisao();
     // Saldo de banco primeiro (evita flash da sobra 30d no Em conta)
     carregarBancos().then(() => carregarTransacoes());
   }
+}
+
+function _fmtYmLabel(ym) {
+  if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) return 'Mês atual';
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 }
 
 // =====================
@@ -4438,6 +4447,8 @@ async function carregarTransacoes() {
     carregarAlertas();
     atualizarDashboard();
     renderFinDonut();
+    if (document.getElementById('fin-invest')?.style.display !== 'none') carregarInvestimentos();
+    if (document.getElementById('fin-patrimonio')?.style.display !== 'none') carregarPatrimonio();
     aplicarSaldosReais();
   } catch (err) {
     console.error('Erro transações:', err);
@@ -4446,6 +4457,37 @@ async function carregarTransacoes() {
 
 /* === Donut + Lista de categorias na Visão Geral (Multicap-style) === */
 let _finDonutChart = null;
+let _finVisaoMes = 'atual';
+let _finVisaoMeses = [];
+
+async function carregarMesesVisao() {
+  const sel = document.getElementById('fin-visao-mes');
+  if (!sel) return;
+  try {
+    const res = await fetch('/api/financeiro/stats');
+    const data = await res.json();
+    if (!res.ok) return;
+    const meses = (data.stats || [])
+      .map((s) => s.mes)
+      .filter((m) => /^\d{4}-\d{2}$/.test(String(m)))
+      .sort((a, b) => b.localeCompare(a));
+    _finVisaoMeses = meses;
+    const atual = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const opts = ['<option value="atual">Mês atual</option>']
+      .concat(meses.map((ym) => `<option value="${ym}">${escapeHtml(_fmtYmLabel(ym))}</option>`));
+    const prev = sel.value || _finVisaoMes || 'atual';
+    sel.innerHTML = opts.join('');
+    sel.value = [...sel.options].some((o) => o.value === prev) ? prev : (meses.includes(atual) ? atual : 'atual');
+    _finVisaoMes = sel.value || 'atual';
+  } catch (_) { /* noop */ }
+}
+
+function onTrocarMesVisao() {
+  const sel = document.getElementById('fin-visao-mes');
+  _finVisaoMes = sel?.value || 'atual';
+  renderFinDonut();
+}
+
 async function renderFinDonut() {
   const grid = document.getElementById('fin-visao-grid');
   const emptyEl = document.getElementById('fin-cat-empty');
@@ -4461,8 +4503,10 @@ async function renderFinDonut() {
 
   // Rótulo do mês corrente ("agosto de 2026")
   if (mesLabel) {
-    const mes = new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    mesLabel.textContent = `${mes} · sem pagamento de fatura`;
+    const mesRef = (_finVisaoMes && _finVisaoMes !== 'atual')
+      ? _finVisaoMes
+      : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    mesLabel.textContent = `${_fmtYmLabel(mesRef)} · sem pagamento de fatura`;
   }
 
   try {
@@ -4470,7 +4514,8 @@ async function renderFinDonut() {
     if (!_catLista.length && typeof carregarCatListaForcado === 'function') {
       await carregarCatListaForcado();
     }
-    const res = await fetch('/api/financeiro/stats');
+    const ymParam = (_finVisaoMes && _finVisaoMes !== 'atual') ? `?ym=${encodeURIComponent(_finVisaoMes)}` : '';
+    const res = await fetch(`/api/financeiro/stats${ymParam}`);
     if (!res.ok) return;
     const data = await res.json();
     const saidas = (data.porCategoria || []).filter(r => r.tipo === 'saida');
@@ -4597,6 +4642,59 @@ async function renderFinDonut() {
   } catch (e) {
     console.error('Erro donut fin:', e);
   }
+}
+
+function _isInvestimentoCat(cat) {
+  const c = String(cat || '').toLowerCase();
+  return c.includes('invest') || c.includes('acao') || c.includes('ações') || c.includes('cripto') || c.includes('tesouro') || c.includes('cdb');
+}
+
+function carregarInvestimentos() {
+  const painel = document.getElementById('painel-investimentos');
+  if (!painel) return;
+  const txs = (allTransactions || []).filter((t) => _isInvestimentoCat(t.categoria));
+  const entradas = txs.filter((t) => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const saidas = txs.filter((t) => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+  const saldo = entradas - saidas;
+  painel.innerHTML = `
+    <div class="panel">
+      <div class="panel-header"><h3>Investimentos</h3></div>
+      <p class="page-subtitle" style="margin-bottom:14px;">Resumo por transações categorizadas como investimento.</p>
+      <div class="despesas-resumo" style="margin-bottom:0;">
+        <div class="despesas-kpi"><span class="label">Movimentações</span><span class="valor">${txs.length}</span></div>
+        <div class="despesas-kpi ok"><span class="label">Entradas</span><span class="valor">${formatBRL(entradas)}</span></div>
+        <div class="despesas-kpi atrasado"><span class="label">Saídas</span><span class="valor">${formatBRL(saidas)}</span></div>
+        <div class="despesas-kpi ${saldo >= 0 ? 'ok' : 'atrasado'}"><span class="label">Saldo</span><span class="valor">${formatBRL(saldo)}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function carregarPatrimonio() {
+  const painel = document.getElementById('painel-patrimonio');
+  if (!painel) return;
+  const saldoContaTxt = document.getElementById('saldo-total')?.textContent || 'R$ 0,00';
+  const investTx = (allTransactions || []).filter((t) => _isInvestimentoCat(t.categoria));
+  const investSaldo = investTx.filter((t) => t.tipo === 'entrada').reduce((s, t) => s + Number(t.valor || 0), 0)
+    - investTx.filter((t) => t.tipo === 'saida').reduce((s, t) => s + Number(t.valor || 0), 0);
+  painel.innerHTML = `
+    <div class="panel">
+      <div class="panel-header"><h3>Patrimônio</h3></div>
+      <p class="page-subtitle" style="margin-bottom:14px;">Visão consolidada simples (caixa + saldo de investimentos).</p>
+      <div class="despesas-resumo" style="margin-bottom:0;">
+        <div class="despesas-kpi"><span class="label">Em conta (PF)</span><span class="valor">${escapeHtml(saldoContaTxt)}</span></div>
+        <div class="despesas-kpi"><span class="label">Investimentos</span><span class="valor">${formatBRL(investSaldo)}</span></div>
+        <div class="despesas-kpi ${investSaldo >= 0 ? 'ok' : 'atrasado'}"><span class="label">Total estimado</span><span class="valor">${formatBRL((parseBRL(saldoContaTxt) || 0) + investSaldo)}</span></div>
+        <div class="despesas-kpi"><span class="label">Obs</span><span class="valor">MVP</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function parseBRL(txt) {
+  const n = String(txt || '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
+  const v = Number(n);
+  return Number.isFinite(v) ? v : 0;
 }
 
 async function abrirRevisaoCategoria(catEncoded) {
@@ -4900,7 +4998,7 @@ async function carregarExtrato() {
   const tipo = document.getElementById('extrato-tipo')?.value || '';
   const q = (document.getElementById('extrato-busca')?.value || '').trim();
 
-  const params = new URLSearchParams({ from: range.from, to: range.to, limit: '300' });
+  const params = new URLSearchParams({ from: range.from, to: range.to, limit: '1500' });
   if (conta === 'manual') params.set('account_id', 'manual');
   else if (conta && conta !== 'todas') params.set('account_id', conta);
   if (tipo) params.set('tipo', tipo);

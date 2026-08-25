@@ -73,7 +73,7 @@ router.get('/extrato', async (req, res) => {
     const itemId = String(req.query.item_id || '').trim();
     const tipo = String(req.query.tipo || '').trim(); // entrada|saida|''
     const q = String(req.query.q || '').trim();
-    const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 500, 1), 5000);
 
     if (!from && !to && dias > 0) {
       const d = new Date();
@@ -88,7 +88,7 @@ router.get('/extrato', async (req, res) => {
     }
     if (!to) to = hoje;
 
-    const where = ['f.data::date >= $1::date', 'f.data::date <= $2::date'];
+    const where = ['COALESCE(f.data::date, f.criado_em::date) >= $1::date', 'COALESCE(f.data::date, f.criado_em::date) <= $2::date'];
     const vals = [from, to];
     let i = 3;
 
@@ -116,7 +116,7 @@ router.get('/extrato', async (req, res) => {
     const limitIdx = i;
 
     const movimentacoes = await all(
-      `SELECT f.id, f.tipo, f.valor, f.descricao, TO_CHAR(f.data, 'YYYY-MM-DD') AS data,
+      `SELECT f.id, f.tipo, f.valor, f.descricao, TO_CHAR(COALESCE(f.data::date, f.criado_em::date), 'YYYY-MM-DD') AS data,
               f.categoria, f.fonte, f.account_id,
               a.nome AS conta_nome, a.tipo AS conta_tipo, a.item_id,
               i.apelido, i.connector_nome, i.pessoa,
@@ -205,30 +205,34 @@ router.get('/extrato', async (req, res) => {
   }
 });
 
-// GET stats mensais (últimos 6 meses)
+// GET stats mensais (últimos 18 meses)
 router.get('/stats', async (req, res) => {
   try {
+    const ymFiltro = /^\d{4}-\d{2}$/.test(String(req.query.ym || '')) ? String(req.query.ym) : null;
     const stats = await all(`
       SELECT
         TO_CHAR(data, 'YYYY-MM') as mes,
         COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as entradas,
         COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as saidas
       FROM financeiro
-      WHERE data >= CURRENT_DATE - INTERVAL '6 months'
+      WHERE data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '18 months'
       GROUP BY TO_CHAR(data, 'YYYY-MM')
       ORDER BY mes ASC
     `);
 
-    const porCategoria = await all(`
+    const porCategoria = await all(
+      `
       SELECT categoria, tipo, SUM(valor) as total
       FROM financeiro
-      WHERE data >= DATE_TRUNC('month', CURRENT_DATE)
+      WHERE TO_CHAR(data, 'YYYY-MM') = $1
         AND ${SQL_EXCLUI_FATURA}
       GROUP BY categoria, tipo
       ORDER BY total DESC
-    `);
+    `,
+      [ymFiltro || ymAtual()]
+    );
 
-    res.json({ stats, porCategoria });
+    res.json({ ym: ymFiltro || ymAtual(), stats, porCategoria });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
