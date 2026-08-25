@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=68">
+  <link rel="stylesheet" href="style.css?v=69">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -858,11 +858,22 @@
   </button>
   <div class="assist-panel" id="assist-panel" role="dialog" aria-label="Assistente">
     <div class="assist-header">
-      <div>
-        <h3>Assistente</h3>
-        <span>Pergunta qualquer coisa dos seus dados</span>
+      <div class="assist-header-main">
+        <h3 id="assist-titulo">Assistente</h3>
+        <span id="assist-subtitulo">Pergunta qualquer coisa dos seus dados</span>
       </div>
-      <button type="button" class="assist-close" onclick="toggleAssistente()" aria-label="Fechar">×</button>
+      <div class="assist-header-actions">
+        <button type="button" class="assist-icon-btn" onclick="assistNovaConversa()" title="Nova conversa" aria-label="Nova conversa">＋</button>
+        <button type="button" class="assist-icon-btn" id="assist-hist-btn" onclick="assistToggleHistorico()" title="Conversas antigas" aria-label="Conversas antigas" aria-expanded="false">☰</button>
+        <button type="button" class="assist-close" onclick="toggleAssistente()" aria-label="Fechar">×</button>
+      </div>
+    </div>
+    <div class="assist-historico" id="assist-historico" hidden>
+      <div class="assist-historico-head">
+        <span>Conversas</span>
+        <button type="button" class="assist-hist-nova" onclick="assistNovaConversa()">Nova</button>
+      </div>
+      <div class="assist-historico-lista" id="assist-historico-lista"></div>
     </div>
     <div class="assist-msgs" id="assist-msgs"></div>
     <div class="assist-chips">
@@ -905,7 +916,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="app.js?v=68"></script>
+  <script src="app.js?v=69"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

@@ -837,14 +837,124 @@ async function executarAcoes(acoes) {
   return feitos;
 }
 
+function tituloDeMensagem(msg) {
+  const t = String(msg || '').replace(/\s+/g, ' ').trim();
+  if (!t) return 'Nova conversa';
+  return t.length > 56 ? t.slice(0, 53) + '…' : t;
+}
+
+async function garantirConversa(conversaId, primeiraMsg) {
+  if (conversaId) {
+    const existe = await get(`SELECT id FROM assist_conversas WHERE id = $1`, [conversaId]);
+    if (existe) return conversaId;
+  }
+  const id = uuid();
+  await run(
+    `INSERT INTO assist_conversas (id, titulo) VALUES ($1, $2)`,
+    [id, tituloDeMensagem(primeiraMsg)]
+  );
+  return id;
+}
+
+async function salvarMensagem(conversaId, role, content) {
+  const id = uuid();
+  await run(
+    `INSERT INTO assist_mensagens (id, conversa_id, role, content) VALUES ($1, $2, $3, $4)`,
+    [id, conversaId, role, String(content || '')]
+  );
+  await run(
+    `UPDATE assist_conversas SET atualizado_em = CURRENT_TIMESTAMP WHERE id = $1`,
+    [conversaId]
+  );
+  return id;
+}
+
+// GET /api/ia/conversas — lista conversas recentes
+router.get('/conversas', async (req, res) => {
+  try {
+    const rows = await all(`
+      SELECT c.id, c.titulo, c.criado_em, c.atualizado_em,
+             (SELECT COUNT(*)::int FROM assist_mensagens m WHERE m.conversa_id = c.id) AS msgs
+      FROM assist_conversas c
+      ORDER BY c.atualizado_em DESC
+      LIMIT 40
+    `);
+    res.json({ conversas: rows });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// GET /api/ia/conversas/:id — mensagens de uma conversa
+router.get('/conversas/:id', async (req, res) => {
+  try {
+    const conv = await get(`SELECT id, titulo, criado_em, atualizado_em FROM assist_conversas WHERE id = $1`, [req.params.id]);
+    if (!conv) return res.status(404).json({ erro: 'Conversa não encontrada' });
+    const mensagens = await all(`
+      SELECT id, role, content, criado_em
+      FROM assist_mensagens
+      WHERE conversa_id = $1
+      ORDER BY criado_em ASC, id ASC
+      LIMIT 200
+    `, [req.params.id]);
+    res.json({ conversa: conv, mensagens });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// POST /api/ia/conversas — nova conversa vazia
+router.post('/conversas', async (req, res) => {
+  try {
+    const id = uuid();
+    const titulo = String(req.body?.titulo || 'Nova conversa').trim() || 'Nova conversa';
+    await run(`INSERT INTO assist_conversas (id, titulo) VALUES ($1, $2)`, [id, titulo]);
+    res.json({ id, titulo });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// DELETE /api/ia/conversas/:id
+router.delete('/conversas/:id', async (req, res) => {
+  try {
+    await run(`DELETE FROM assist_conversas WHERE id = $1`, [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // POST /api/ia/chat — assistente global
 router.post('/chat', async (req, res) => {
   if (!providerAtivo()) return res.status(400).json({ erro: 'IA não configurada. Defina GEMINI_API_KEY ou ANTHROPIC_API_KEY.' });
   const mensagem = String(req.body?.mensagem || '').trim();
   if (!mensagem) return res.status(400).json({ erro: 'mensagem é obrigatória' });
-  const historico = Array.isArray(req.body?.historico) ? req.body.historico : [];
+  let historico = Array.isArray(req.body?.historico) ? req.body.historico : [];
+  let conversaId = req.body?.conversa_id ? String(req.body.conversa_id) : null;
 
   try {
+    conversaId = await garantirConversa(conversaId, mensagem);
+
+    // Se o cliente não mandou histórico, monta pelos últimos turns no banco
+    if (!historico.length) {
+      const msgsDb = await all(`
+        SELECT role, content FROM assist_mensagens
+        WHERE conversa_id = $1 AND role IN ('user','assistant')
+        ORDER BY criado_em DESC, id DESC
+        LIMIT 12
+      `, [conversaId]);
+      historico = msgsDb.reverse().map(m => ({ role: m.role, content: m.content }));
+    }
+
+    await salvarMensagem(conversaId, 'user', mensagem);
+
+    // Título = primeira pergunta do usuário (se ainda for genérico)
+    const conv = await get(`SELECT titulo FROM assist_conversas WHERE id = $1`, [conversaId]);
+    if (conv && (!conv.titulo || conv.titulo === 'Nova conversa')) {
+      await run(`UPDATE assist_conversas SET titulo = $1 WHERE id = $2`, [tituloDeMensagem(mensagem), conversaId]);
+    }
+
     const snap = await snapshotAssistente();
     const systemPrompt = `Você é o assistente pessoal do App Rotina. Português brasileiro, direto, tom de amigo útil. Trata o usuário por "você".
 
@@ -898,7 +1008,9 @@ Regras:
 
     const resposta = textoAssistenteSeguro(texto, parsed);
     const acoesExec = await executarAcoes(parsed && parsed.acoes);
-    res.json({ resposta, acoes: acoesExec, snapshot: snap, provider, usage });
+    await salvarMensagem(conversaId, 'assistant', resposta);
+
+    res.json({ resposta, acoes: acoesExec, snapshot: snap, provider, usage, conversa_id: conversaId });
   } catch (err) {
     res.status(503).json({
       erro: mensagemGemini(err)

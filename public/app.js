@@ -6979,6 +6979,55 @@ function sugerirMelhorHorario() {
 let _assistOpen = false;
 let _assistHist = [];
 let _assistBusy = false;
+let _assistConversaId = null;
+let _assistHistOpen = false;
+let _assistCarregado = false;
+const ASSIST_CONV_KEY = 'assist_conversa_id_v1';
+
+function assistLerConversaLocal() {
+  try { return localStorage.getItem(ASSIST_CONV_KEY) || null; }
+  catch (e) { return null; }
+}
+function assistSalvarConversaLocal(id) {
+  try {
+    if (id) localStorage.setItem(ASSIST_CONV_KEY, id);
+    else localStorage.removeItem(ASSIST_CONV_KEY);
+  } catch (e) { /* ignore */ }
+}
+
+function assistFmtRelativo(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const agora = Date.now();
+  const diff = agora - d.getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h}h`;
+  const dias = Math.floor(h / 24);
+  if (dias === 1) return 'ontem';
+  if (dias < 7) return `${dias}d`;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
+function assistSetTitulo(titulo, sub) {
+  const t = document.getElementById('assist-titulo');
+  const s = document.getElementById('assist-subtitulo');
+  if (t) t.textContent = titulo || 'Assistente';
+  if (s) s.textContent = sub || 'Pergunta qualquer coisa dos seus dados';
+}
+
+function assistLimparMsgs() {
+  const box = document.getElementById('assist-msgs');
+  if (box) box.innerHTML = '';
+}
+
+function assistBoasVindas() {
+  assistAddBubble('bot', 'Pergunta qualquer coisa dos seus dados: tarefas, hábitos, gastos, despesas, metas, agenda… Ou pede pra registrar — tipo “boleto de 240 no dia 18”.');
+  verificarStatusIA();
+}
 
 function toggleAssistente() {
   _assistOpen = !_assistOpen;
@@ -6988,12 +7037,140 @@ function toggleAssistente() {
   panel.classList.toggle('open', _assistOpen);
   if (fab) fab.classList.toggle('hidden', _assistOpen);
   if (_assistOpen) {
-    const msgs = document.getElementById('assist-msgs');
-    if (msgs && msgs.childElementCount === 0) {
-      assistAddBubble('bot', 'Pergunta qualquer coisa dos seus dados: tarefas, hábitos, gastos, despesas, metas, agenda… Ou pede pra registrar — tipo “boleto de 240 no dia 18”.');
-      verificarStatusIA();
+    if (!_assistCarregado) {
+      _assistCarregado = true;
+      assistAbrirUltimaOuNova();
     }
     setTimeout(() => document.getElementById('assist-input')?.focus(), 50);
+  } else if (_assistHistOpen) {
+    assistFecharHistorico();
+  }
+}
+
+async function assistAbrirUltimaOuNova() {
+  const salva = assistLerConversaLocal();
+  if (salva) {
+    try {
+      await assistCarregarConversa(salva, { silencioso: true });
+      return;
+    } catch (e) {
+      assistSalvarConversaLocal(null);
+    }
+  }
+  assistNovaConversa({ semFoco: true });
+}
+
+function assistNovaConversa(opts) {
+  _assistConversaId = null;
+  _assistHist = [];
+  assistSalvarConversaLocal(null);
+  assistLimparMsgs();
+  assistSetTitulo('Assistente', 'Nova conversa');
+  assistBoasVindas();
+  assistFecharHistorico();
+  if (!opts?.semFoco) {
+    setTimeout(() => document.getElementById('assist-input')?.focus(), 40);
+  }
+  // Marca lista se estiver aberta
+  document.querySelectorAll('.assist-hist-item').forEach(el => el.classList.remove('active'));
+}
+
+function assistToggleHistorico() {
+  if (_assistHistOpen) assistFecharHistorico();
+  else assistAbrirHistorico();
+}
+
+function assistFecharHistorico() {
+  _assistHistOpen = false;
+  const el = document.getElementById('assist-historico');
+  const btn = document.getElementById('assist-hist-btn');
+  if (el) el.hidden = true;
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+async function assistAbrirHistorico() {
+  _assistHistOpen = true;
+  const el = document.getElementById('assist-historico');
+  const btn = document.getElementById('assist-hist-btn');
+  if (el) el.hidden = false;
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  await assistRenderHistorico();
+}
+
+async function assistRenderHistorico() {
+  const lista = document.getElementById('assist-historico-lista');
+  if (!lista) return;
+  lista.innerHTML = '<div class="assist-hist-empty">Carregando…</div>';
+  try {
+    const res = await fetch('/api/ia/conversas');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Falha ao listar');
+    const conversas = data.conversas || [];
+    if (!conversas.length) {
+      lista.innerHTML = '<div class="assist-hist-empty">Nenhuma conversa ainda.</div>';
+      return;
+    }
+    lista.innerHTML = conversas.map(c => {
+      const active = c.id === _assistConversaId ? ' active' : '';
+      const meta = `${assistFmtRelativo(c.atualizado_em)}${c.msgs ? ` · ${c.msgs} msg` : ''}`;
+      const titulo = escapeHtml(c.titulo || 'Conversa');
+      return `<div class="assist-hist-item${active}" data-id="${escapeHtml(c.id)}">
+        <button type="button" class="assist-hist-item-body" onclick="assistCarregarConversa('${escapeHtml(c.id)}')">
+          <span class="assist-hist-item-title">${titulo}</span>
+          <span class="assist-hist-item-meta">${escapeHtml(meta)}</span>
+        </button>
+        <button type="button" class="assist-hist-del" title="Apagar" aria-label="Apagar" onclick="assistApagarConversa('${escapeHtml(c.id)}', event)">×</button>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    lista.innerHTML = `<div class="assist-hist-empty">${escapeHtml(e.message || 'Erro')}</div>`;
+  }
+}
+
+async function assistCarregarConversa(id, opts) {
+  if (!id) return;
+  const res = await fetch(`/api/ia/conversas/${encodeURIComponent(id)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.erro || 'Conversa não encontrada');
+
+  _assistConversaId = id;
+  assistSalvarConversaLocal(id);
+  assistLimparMsgs();
+
+  const msgs = data.mensagens || [];
+  _assistHist = msgs
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => ({ role: m.role, content: m.content }));
+
+  if (!msgs.length) {
+    assistSetTitulo(data.conversa?.titulo || 'Assistente', 'Nova conversa');
+    assistBoasVindas();
+  } else {
+    assistSetTitulo(data.conversa?.titulo || 'Assistente', 'Conversa salva');
+    msgs.forEach(m => {
+      if (m.role === 'user') assistAddBubble('user', m.content);
+      else if (m.role === 'assistant') assistAddBubble('bot', m.content);
+    });
+  }
+
+  if (!opts?.silencioso) assistFecharHistorico();
+  else if (_assistHistOpen) assistRenderHistorico();
+
+  const box = document.getElementById('assist-msgs');
+  if (box) box.scrollTop = box.scrollHeight;
+}
+
+async function assistApagarConversa(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!id || !confirm('Apagar esta conversa?')) return;
+  try {
+    const res = await fetch(`/api/ia/conversas/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.erro || 'Falha ao apagar');
+    if (_assistConversaId === id) assistNovaConversa({ semFoco: true });
+    if (_assistHistOpen) await assistRenderHistorico();
+  } catch (e) {
+    if (typeof toast === 'function') toast(e.message, 'error');
   }
 }
 
@@ -7064,11 +7241,25 @@ async function enviarAssistente(e) {
     const res = await fetch('/api/ia/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mensagem: msg, historico: _assistHist })
+      body: JSON.stringify({
+        mensagem: msg,
+        historico: _assistHist,
+        conversa_id: _assistConversaId
+      })
     });
     const data = await res.json();
     if (thinking) thinking.remove();
     if (!res.ok) throw new Error(data.erro || 'Falha no assistente');
+
+    if (data.conversa_id) {
+      _assistConversaId = data.conversa_id;
+      assistSalvarConversaLocal(data.conversa_id);
+      const titEl = document.getElementById('assist-titulo');
+      if (titEl && (titEl.textContent === 'Assistente' || !_assistHist.length)) {
+        const t = msg.length > 40 ? msg.slice(0, 37) + '…' : msg;
+        assistSetTitulo(t, 'Conversa salva');
+      }
+    }
 
     const resposta = assistSanitizeTexto(data.resposta || 'Ok.');
     assistAddBubble('bot', resposta);
