@@ -151,13 +151,30 @@ function extrairCampoResposta(s) {
   return null;
 }
 
+function extrairCampoAcoes(s) {
+  const m = String(s || '').match(/"acoes"\s*:\s*(\[[\s\S]*?\])\s*(?:,|\})/);
+  if (!m) return null;
+  try {
+    const arr = JSON.parse(m[1]);
+    return Array.isArray(arr) ? arr : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function parseJSON(txt) {
   const s = limparJsonIA(txt);
   try {
     return JSON.parse(s);
   } catch (e1) {
+    // Tenta reparar JSON comum (vírgula trailing)
+    try {
+      const repaired = s.replace(/,\s*([}\]])/g, '$1');
+      return JSON.parse(repaired);
+    } catch (e2) { /* segue */ }
     const resposta = extrairCampoResposta(s);
-    if (resposta) return { resposta, acoes: [] };
+    const acoes = extrairCampoAcoes(s) || [];
+    if (resposta) return { resposta, acoes };
     throw e1;
   }
 }
@@ -172,6 +189,38 @@ function textoAssistenteSeguro(textoBruto, parsed) {
   if (extraido) return extraido;
   if (s && !/^\s*\{/.test(s)) return s;
   return 'Beleza — me conta mais um detalhe pra eu agir.';
+}
+
+/** Nunca deixa a IA afirmar que alterou o app se a ação não rodou de verdade. */
+function reconciliarRespostaComAcoes(resposta, acoesExec) {
+  const oks = (acoesExec || []).filter(a => a && a.ok);
+  const fails = (acoesExec || []).filter(a => a && a.ok === false);
+  const finOk = oks.filter(a => a.tipo === 'recategorizar' || a.tipo === 'criar_categoria');
+  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|já (está|esta|ficou)|alterei|atualizei/i.test(String(resposta || ''));
+
+  if (finOk.length) {
+    const partes = [];
+    for (const a of finOk) {
+      if (a.tipo === 'criar_categoria') {
+        partes.push(a.criada
+          ? `Criei a categoria **${a.label || a.categoria}**.`
+          : `Categoria **${a.label || a.categoria}** ok.`);
+      } else if (a.tipo === 'recategorizar') {
+        partes.push(`Movi **${a.qtd || 0}** transações pra **${a.label || a.categoria}**.`);
+      }
+    }
+    return partes.join(' ');
+  }
+
+  if (claim) {
+    const err = fails.map(f => f.erro).filter(Boolean)[0];
+    if (err) {
+      return `Tentei organizar, mas não consegui: ${err}. Manda de novo com data/valores ou ids.`;
+    }
+    return 'Ainda **não alterei** nada no Extrato — a ação não chegou a rodar. Repete: “organiza as txs do domingo em Apostas - Amigos”.';
+  }
+
+  return resposta;
 }
 
 router.get('/status', (req, res) => {
@@ -852,6 +901,19 @@ async function executarAcoes(acoes) {
     );
   }
 
+  async function buscarTxsComFallback(acao) {
+    let txs = await buscarTxsParaRecategorizar(acao);
+    if (txs.length) return txs;
+    const f = acao.filtros || {};
+    // IA às vezes manda "Superbet" mas a descrição é "SPRBT" — tenta de novo só com data/valores
+    if (Array.isArray(f.contem) && f.contem.length && (f.data || f.data_de || (f.valores && f.valores.length))) {
+      const { contem, ...rest } = f;
+      txs = await buscarTxsParaRecategorizar({ ...acao, filtros: rest, ids: undefined });
+      if (txs.length) return txs;
+    }
+    return txs;
+  }
+
   for (const acao of acoes.slice(0, 8)) {
     const tipo = acao && acao.tipo;
     try {
@@ -928,7 +990,7 @@ async function executarAcoes(acoes) {
           feitos.push({ tipo, ok: false, erro: 'categoria obrigatória' });
           continue;
         }
-        const txs = await buscarTxsParaRecategorizar(acao);
+        const txs = await buscarTxsComFallback(acao);
         if (!txs.length) {
           feitos.push({ tipo, ok: false, erro: 'nenhuma transação encontrada com esses filtros', categoria: cat.chave });
           continue;
@@ -1126,8 +1188,11 @@ Tipos de ação:
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela. Confirme o que foi feito (ex: "categorizei N txs em Apostas - Amigos").
+- NUNCA diga que criou/moveu/categorizou se não emitir a ação correspondente em "acoes". Sem ação = não aconteceu.
 - Se o usuário pedir organização de categorias, EMITA a ação — não diga "vai no extrato e altera".
 - Use financeiro.categorias (chave/label) se a categoria já existir; senão criar_categoria + recategorizar (ou só recategorizar, que cria a categoria).
+- Em filtros.contem use pedaços reais da descrição (ex: "ERIK", "SPRBT", "TIZON"), não apelidos inventados.
+- Prefira ids de ultimas_transacoes quando bater.
 - Responda a pergunta feita; não desvie pra pitch genérico.
 - acoes pode ser [].
 - Não invente números, títulos, ids ou status.
@@ -1147,8 +1212,9 @@ Regras:
     try { parsed = parseJSON(texto); }
     catch (e) { parsed = null; }
 
-    const resposta = textoAssistenteSeguro(texto, parsed);
+    const respostaBruta = textoAssistenteSeguro(texto, parsed);
     const acoesExec = await executarAcoes(parsed && parsed.acoes);
+    const resposta = reconciliarRespostaComAcoes(respostaBruta, acoesExec);
     await salvarMensagem(conversaId, 'assistant', resposta);
 
     res.json({ resposta, acoes: acoesExec, snapshot: snap, provider, usage, conversa_id: conversaId });

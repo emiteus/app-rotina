@@ -7406,7 +7406,7 @@ async function enviarAssistente(e) {
       }
       if (feitos.some(a => a.tipo === 'criar_categoria' || a.tipo === 'recategorizar')) {
         if (typeof carregarTransacoes === 'function') carregarTransacoes();
-        if (typeof carregarFinanceiro === 'function') carregarFinanceiro();
+        if (typeof renderFinDonut === 'function') renderFinDonut();
         if (typeof carregarCatLista === 'function') carregarCatLista();
         if (typeof carregarCategorizar === 'function') carregarCategorizar();
       }
