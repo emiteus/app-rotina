@@ -196,9 +196,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const oks = (acoesExec || []).filter(a => a && a.ok);
   const fails = (acoesExec || []).filter(a => a && a.ok === false);
   const finOk = oks.filter(a =>
-    a.tipo === 'recategorizar' || a.tipo === 'criar_categoria' || a.tipo === 'renomear_categoria'
+    a.tipo === 'recategorizar'
+    || a.tipo === 'criar_categoria'
+    || a.tipo === 'renomear_categoria'
+    || a.tipo === 'fundir_categorias'
   );
-  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|renomeei|renomear|ajustei|já (está|esta|ficou)|alterei|atualizei/i.test(String(resposta || ''));
+  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|renomeei|renomear|unifiquei|fundi|ajustei|já (está|esta|ficou)|alterei|atualizei/i.test(String(resposta || ''));
 
   if (finOk.length) {
     const partes = [];
@@ -211,6 +214,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Movi **${a.qtd || 0}** transações pra **${a.label || a.categoria}**.`);
       } else if (a.tipo === 'renomear_categoria') {
         partes.push(`Renomeei pra **${a.label || a.categoria}**.`);
+      } else if (a.tipo === 'fundir_categorias') {
+        const fontes = (a.de || []).join(', ') || 'as categorias';
+        partes.push(`Unifiquei **${fontes}** em **${a.label || a.categoria}** (${a.qtd || 0} txs).`);
       }
     }
     return partes.join(' ');
@@ -842,7 +848,14 @@ async function executarAcoes(acoes) {
     else chave = normalizarChave(label || catRaw);
     if (!chave) return null;
     const existe = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chave]);
-    if (existe) return { chave: existe.chave, label: existe.label, criada: false };
+    if (existe) {
+      // Se pediram label novo e a chave já existe, atualiza o label
+      if (labelHint && labelHint !== existe.label) {
+        await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [labelHint, existe.chave]);
+        return { chave: existe.chave, label: labelHint, criada: false };
+      }
+      return { chave: existe.chave, label: existe.label, criada: false };
+    }
     const lab = label || chave;
     await run(
       `INSERT INTO categorias (chave, label, criado_por_usuario) VALUES ($1,$2,true)
@@ -850,6 +863,23 @@ async function executarAcoes(acoes) {
       [chave, lab]
     );
     return { chave, label: lab, criada: true };
+  }
+
+  async function resolverCategoriaRef(ref) {
+    const raw = String(ref || '').trim();
+    if (!raw) return null;
+    const chaveTry = /^[a-z0-9_]+$/i.test(raw) ? raw.toLowerCase() : normalizarChave(raw);
+    let row = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chaveTry]);
+    if (!row) row = await get(`SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`, [raw]);
+    if (!row) {
+      row = await get(
+        `SELECT chave, label FROM categorias
+         WHERE label ILIKE $1 OR chave ILIKE $2
+         ORDER BY length(label) ASC LIMIT 1`,
+        [`%${raw}%`, `%${chaveTry}%`]
+      );
+    }
+    return row;
   }
 
   async function buscarTxsParaRecategorizar(acao) {
@@ -1091,6 +1121,113 @@ async function executarAcoes(acoes) {
           label: novoLabel,
           label_antes: row.label
         });
+      } else if (tipo === 'fundir_categorias') {
+        const novoLabel = String(acao.categoria_label || acao.label || acao.para || '').trim();
+        let fontesRaw = [];
+        if (Array.isArray(acao.de)) fontesRaw = acao.de;
+        else if (Array.isArray(acao.fontes)) fontesRaw = acao.fontes;
+        else if (acao.de) fontesRaw = String(acao.de).split(/[,;/|e]+/i);
+        fontesRaw = fontesRaw.map(s => String(s || '').trim()).filter(Boolean).slice(0, 12);
+
+        // Se não veio lista, mas o label já está duplicado (2x "Pai e Mãe"), funde por label
+        if (!fontesRaw.length && novoLabel) {
+          const dups = await all(
+            `SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`,
+            [novoLabel]
+          );
+          if (dups.length >= 2) fontesRaw = dups.map(d => d.chave);
+        }
+
+        const resolvidas = [];
+        for (const f of fontesRaw) {
+          const r = await resolverCategoriaRef(f);
+          if (r && !resolvidas.find(x => x.chave === r.chave)) resolvidas.push(r);
+        }
+
+        // Também pega qualquer outra categoria com o mesmo label-alvo (duplicatas)
+        if (novoLabel) {
+          const dups = await all(
+            `SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`,
+            [novoLabel]
+          );
+          for (const d of dups) {
+            if (!resolvidas.find(x => x.chave === d.chave)) resolvidas.push(d);
+          }
+        }
+
+        if (resolvidas.length < 2 && !novoLabel) {
+          feitos.push({ tipo, ok: false, erro: 'informe ao menos 2 categorias pra unificar' });
+          continue;
+        }
+        if (!resolvidas.length) {
+          feitos.push({ tipo, ok: false, erro: 'categorias de origem não encontradas' });
+          continue;
+        }
+
+        const lab = novoLabel || resolvidas[0].label;
+        const alvo = await garantirCategoria({
+          categoria_label: lab,
+          categoria: acao.categoria || undefined
+        });
+        if (!alvo) {
+          feitos.push({ tipo, ok: false, erro: 'não deu pra criar categoria destino' });
+          continue;
+        }
+
+        const chavesOrigem = resolvidas.map(r => r.chave).filter(c => c !== alvo.chave);
+        if (!chavesOrigem.length) {
+          // Só duplicata de label na mesma chave — só garante label
+          await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [lab, alvo.chave]);
+          feitos.push({
+            tipo,
+            ok: true,
+            categoria: alvo.chave,
+            label: lab,
+            de: resolvidas.map(r => r.chave),
+            qtd: 0
+          });
+          continue;
+        }
+
+        const updFin = await run(
+          `UPDATE financeiro
+           SET categoria = $1, categoria_confirmada = true
+           WHERE categoria = ANY($2::text[])`,
+          [alvo.chave, chavesOrigem]
+        );
+        await run(
+          `UPDATE categoria_regras SET categoria = $1 WHERE categoria = ANY($2::text[])`,
+          [alvo.chave, chavesOrigem]
+        ).catch(() => {});
+        await run(
+          `UPDATE despesas_mes SET categoria = $1 WHERE categoria = ANY($2::text[])`,
+          [alvo.chave, chavesOrigem]
+        ).catch(() => {});
+
+        // Remove categorias origem (não apaga seed clássicos se ainda forem a chave alvo)
+        const seedKeep = new Set([
+          'alimentacao', 'contas_fixas', 'moradia', 'transporte', 'lazer', 'apostas',
+          'compras', 'assinaturas', 'saude', 'educacao', 'outros', 'projetos', 'faturas',
+          'iof', 'transferencia', 'receita_trabalho', 'pj_receita', 'pj_despesa'
+        ]);
+        for (const c of chavesOrigem) {
+          if (seedKeep.has(c)) {
+            // seed: só restaura label padrão se for alimentacao etc — deixa label como está se user renomeou
+            continue;
+          }
+          await run(`DELETE FROM categorias WHERE chave = $1`, [c]).catch(() => {});
+        }
+
+        await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [lab, alvo.chave]);
+
+        feitos.push({
+          tipo,
+          ok: true,
+          categoria: alvo.chave,
+          label: lab,
+          de: chavesOrigem,
+          qtd: Number(updFin && updFin.rowCount) || 0
+        });
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
       }
@@ -1101,40 +1238,120 @@ async function executarAcoes(acoes) {
   return feitos;
 }
 
-/** Se a IA esquecer de emitir acao, inferimos pedidos claros de rename/criar. */
+/** Se a IA esquecer de emitir acao, inferimos pedidos claros de rename/fundir. */
 function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   const acoes = Array.isArray(acoesParsed) ? acoesParsed.filter(Boolean) : [];
   const msg = String(mensagem || '').replace(/\s+/g, ' ').trim();
   if (!msg) return acoes;
 
-  const temRename = acoes.some(a => a.tipo === 'renomear_categoria');
-  const pedeRename = /(?:ajust|renome|mud[aeo]|alter|troc).{0,50}(?:nome|categoria)/i.test(msg)
-    || /(?:nome da categoria|categoria).{0,30}(?:pra|para|pro)/i.test(msg);
+  // Não inventa ação em "desfaz"
+  if (/\b(desfaz|desfaça|desfaca|undo|voltar atrás|voltar atras)\b/i.test(msg)) return acoes;
 
-  if (pedeRename && !temRename) {
-    let novo = null;
-    const m1 = msg.match(/(?:pra|para|pro|=|:)\s*[\"“']?([^\"”'\n.!?]{2,60})\s*$/i);
-    const m2 = msg.match(/(?:categoria|nome).{0,20}?(?:pra|para|pro)\s*[\"“']?([^\"”'\n.!?]+)/i);
-    novo = ((m2 && m2[1]) || (m1 && m1[1]) || '').trim().replace(/^["“']+|["”']+$/g, '');
-    // fallback: texto após "pra "
-    if (!novo || novo.length < 2) {
-      const m3 = msg.match(/\bpra\s+(.+)$/i);
-      if (m3) novo = m3[1].trim();
+  const cats = (snap && snap.financeiro && snap.financeiro.categorias) || [];
+  const norm = (s) => String(s || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+
+  const temFundir = acoes.some(a => a.tipo === 'fundir_categorias');
+  const pedeFundir = /\b(unific|fund|junt[ae]|mescl|soma\b|apenas\s*1|só\s*1|so\s*1)\b/i.test(msg)
+    || /deix[ae].{0,20}1\s*categoria/i.test(msg);
+
+  if (pedeFundir && !temFundir) {
+    let label = null;
+    const mParens = msg.match(/\(([^)]{2,60})\)\s*$/);
+    const mPra = msg.match(/(?:em|pra|para|pro)\s+[\"“']?([^\"”'\n.!?]{2,60})\s*$/i);
+    const mApenas = msg.match(/(?:categoria|chama[dr]?|nome)\s+[\"“']?([^\"”'\n.!?]{2,60})/i);
+    label = ((mParens && mParens[1]) || (mPra && mPra[1]) || (mApenas && mApenas[1]) || '').trim();
+    if (/pai/i.test(msg) && /m[aã]e/i.test(msg) && !label) label = 'Pai e Mãe';
+
+    const fontes = [];
+    // tokens conhecidos do catálogo mencionados
+    for (const c of cats) {
+      const chave = c.chave || c.id;
+      const lab = c.label || '';
+      if (!chave) continue;
+      const reChave = new RegExp(`\\b${chave.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (reChave.test(msg) || (lab.length >= 3 && msg.toLowerCase().includes(lab.toLowerCase()))) {
+        fontes.push(chave);
+      }
     }
+    // pai / mae explícitos
+    if (/\bpai\b/i.test(msg)) fontes.push('pai');
+    if (/\bm[aã]e\b/i.test(msg)) fontes.push('mae');
+
+    // duplicatas com mesmo label
+    if (label) {
+      for (const c of cats) {
+        if (String(c.label || '').toLowerCase() === label.toLowerCase()) fontes.push(c.chave || c.id);
+      }
+    }
+
+    const uniq = [...new Set(fontes.filter(Boolean))];
+    if (uniq.length >= 2 || (label && uniq.length >= 1)) {
+      acoes.push({
+        tipo: 'fundir_categorias',
+        de: uniq.length ? uniq : undefined,
+        categoria_label: label || undefined
+      });
+    }
+  }
+
+  const temRename = acoes.some(a => a.tipo === 'renomear_categoria');
+  // "muda alimentacao para mercado" / "ajusta o nome pra X"
+  const mMuda = msg.match(/\b(?:mud[aeo]|renome[ia]|troc[ae]|alter[ae]|ajust[ae])\s+(?:o\s+nome\s+(?:da\s+categoria\s+)?)?(?:da\s+categoria\s+)?[\"“']?([a-z0-9_À-ú\s-]{2,40})[\"”']?\s+(?:pra|para|pro|=)\s+[\"“']?([^\"”'\n.!?]+)/i);
+  const pedeRename = !!mMuda
+    || /(?:ajust|renome).{0,40}(?:nome|categoria).{0,20}(?:pra|para)/i.test(msg);
+
+  if (pedeRename && !temRename && !pedeFundir) {
+    let de = mMuda ? mMuda[1].trim() : null;
+    let novo = mMuda ? mMuda[2].trim() : null;
+    if (!novo) {
+      const m2 = msg.match(/(?:pra|para|pro)\s+[\"“']?([^\"”'\n.!?]+)/i);
+      novo = m2 ? m2[1].trim() : null;
+    }
+    novo = (novo || '').replace(/^["“']+|["”']+$/g, '').trim();
+    // evita engolir "e unifica..." no label
+    if (novo) novo = novo.split(/\s+e\s+unific/i)[0].trim();
+
     if (novo && novo.length >= 2 && novo.length <= 60) {
-      const cats = (snap && snap.financeiro && snap.financeiro.categorias) || [];
-      let de = cats.find(c => /amigo/i.test(c.label || '') || /amigo/i.test(c.chave || ''));
-      if (!de && /aposta/i.test(novo)) {
-        de = cats.find(c => /aposta/i.test(c.chave || '') && c.chave !== 'apostas')
-          || cats.find(c => /aposta/i.test(c.label || '') && !/^apostas$/i.test(c.chave || ''));
+      if (!de) {
+        // tenta achar categoria mencionada que não é o destino
+        const nNovo = norm(novo);
+        de = (cats.find(c => {
+          const k = c.chave || c.id;
+          return k && msg.toLowerCase().includes(k) && norm(k) !== nNovo && norm(c.label) !== nNovo;
+        }) || {}).chave;
       }
       acoes.push({
         tipo: 'renomear_categoria',
-        de: de ? de.chave : undefined,
+        de: de || undefined,
         categoria_label: novo
       });
     }
   }
+
+  // Se a IA renomeou 2+ categorias pro MESMO label, vira fundir (evita 2x "Pai e Mãe")
+  const renames = acoes.filter(a => a && a.tipo === 'renomear_categoria');
+  const porLabel = {};
+  for (const a of renames) {
+    const lab = String(a.categoria_label || a.label || '').trim().toLowerCase();
+    if (!lab) continue;
+    (porLabel[lab] = porLabel[lab] || []).push(a);
+  }
+  for (const [lab, list] of Object.entries(porLabel)) {
+    if (list.length < 2) continue;
+    const fontes = list.map(a => a.de || a.categoria || a.chave).filter(Boolean);
+    // remove renames duplicados
+    for (let i = acoes.length - 1; i >= 0; i--) {
+      if (list.includes(acoes[i])) acoes.splice(i, 1);
+    }
+    acoes.push({
+      tipo: 'fundir_categorias',
+      de: fontes,
+      categoria_label: list[0].categoria_label || list[0].label
+    });
+  }
+
   return acoes;
 }
 
@@ -1275,7 +1492,7 @@ Como usar o contexto:
 Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir no Extrato manualmente):
 - registrar pendência/dívida/despesa/tarefa/meta → acoes
 - "fui na academia" → marcar_habito
-- criar categoria / renomear / organizar / recategorizar / "joga pra X" / "não bagunçar gasto" / "ajusta o nome" → criar_categoria, renomear_categoria e/ou recategorizar
+- criar categoria / renomear / unificar(fundir) / organizar / recategorizar / "joga pra X" / "ajusta o nome" → criar_categoria, renomear_categoria, fundir_categorias e/ou recategorizar
 - Se faltar dado essencial (qual categoria? quais txs?), pergunte e NÃO emita ação
 - Preferir ids de financeiro.ultimas_transacoes[].id quando bater a descrição/valor/data; senão use filtros
 
@@ -1288,17 +1505,18 @@ Tipos de ação:
 - {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
 - {"tipo":"marcar_habito","titulo":"Academia"}
 - {"tipo":"criar_categoria","categoria_label":"Apostas - Amigos"}
-- {"tipo":"renomear_categoria","de":"apostasamigos","categoria_label":"Apostas - Amigos"}
+- {"tipo":"renomear_categoria","de":"alimentacao","categoria_label":"Mercado"}
+- {"tipo":"fundir_categorias","de":["pai","mae"],"categoria_label":"Pai e Mãe"}
 - {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","ids":["uuid1","uuid2"]}
-- {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","filtros":{"data":"YYYY-MM-DD","valores":[250,400,350],"contem":["Erik","Superbet","Tizon"]}}
+- {"tipo":"recategorizar","categoria_label":"Apostas - Amigos","filtros":{"data":"YYYY-MM-DD","valores":[250,400,350],"contem":["Erik","SPRBT","TIZON"]}}
 
 Regras:
-- "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela. Confirme o que foi feito (ex: "categorizei N txs em Apostas - Amigos").
-- NUNCA diga que criou/moveu/renomeou/categorizou se não emitir a ação correspondente em "acoes". Sem ação = não aconteceu.
-- Se o usuário pedir organização de categorias, EMITA a ação — não diga "vai no extrato e altera".
-- "ajusta/renomeia o nome da categoria" → renomear_categoria (use chave de financeiro.categorias; "de" = chave ou label atual).
-- Use financeiro.categorias (chave/label) se a categoria já existir; senão criar_categoria + recategorizar (ou só recategorizar, que cria a categoria).
-- Em filtros.contem use pedaços reais da descrição (ex: "ERIK", "SPRBT", "TIZON"), não apelidos inventados.
+- "resposta" é o texto que o usuário lê — nunca JSON cru dentro dela. Confirme o que foi feito.
+- NUNCA diga que criou/moveu/renomeou/unificou se não emitir a ação correspondente em "acoes". Sem ação = não aconteceu.
+- "unifica / funde / junta / soma categorias / deixa só 1" → fundir_categorias (NÃO renomear as duas pro mesmo label).
+- "ajusta/renomeia / muda X pra Y" → renomear_categoria.
+- Use financeiro.categorias (chave/label) se a categoria já existir.
+- Em filtros.contem use pedaços reais da descrição (ex: "ERIK", "SPRBT", "TIZON").
 - Prefira ids de ultimas_transacoes quando bater.
 - Responda a pergunta feita; não desvie pra pitch genérico.
 - acoes pode ser [].

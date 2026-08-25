@@ -7395,6 +7395,8 @@ async function enviarAssistente(e) {
           txt = `${a.qtd || 0} tx → ${lab}`;
         } else if (a.tipo === 'renomear_categoria') {
           txt = `Renomeada: ${a.label || a.categoria}`;
+        } else if (a.tipo === 'fundir_categorias') {
+          txt = `Unificadas → ${a.label || a.categoria} (${a.qtd || 0} tx)`;
         }
         assistAddBubble('acao', txt);
       });
@@ -7410,7 +7412,7 @@ async function enviarAssistente(e) {
       if (feitos.some(a => a.tipo === 'criar_meta') && typeof carregarMetas === 'function') {
         carregarMetas();
       }
-      if (feitos.some(a => a.tipo === 'criar_categoria' || a.tipo === 'recategorizar' || a.tipo === 'renomear_categoria')) {
+      if (feitos.some(a => a.tipo === 'criar_categoria' || a.tipo === 'recategorizar' || a.tipo === 'renomear_categoria' || a.tipo === 'fundir_categorias')) {
         if (typeof carregarCatListaForcado === 'function') await carregarCatListaForcado();
         else if (typeof carregarCatLista === 'function') await carregarCatLista();
         if (typeof carregarTransacoes === 'function') carregarTransacoes();
@@ -7420,7 +7422,7 @@ async function enviarAssistente(e) {
     }
     const falhas = (data.acoes || []).filter(a => a && a.ok === false);
     falhas.forEach(a => {
-      if (a.tipo === 'recategorizar' || a.tipo === 'criar_categoria' || a.tipo === 'renomear_categoria') {
+      if (a.tipo === 'recategorizar' || a.tipo === 'criar_categoria' || a.tipo === 'renomear_categoria' || a.tipo === 'fundir_categorias') {
         assistAddBubble('acao', `Não deu: ${a.erro || a.tipo}`);
       }
     });
