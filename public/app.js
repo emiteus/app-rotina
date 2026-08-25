@@ -3594,25 +3594,53 @@ function renderBancos() {
   const apelidoPorItem = {};
   items.forEach(it => { apelidoPorItem[it.item_id] = nomeBancoItem(it); });
 
+  const contasPorItem = {};
+  ((_ofSaldos && _ofSaldos.contas) || []).forEach(c => {
+    if (!c.item_id) return;
+    if (!contasPorItem[c.item_id]) contasPorItem[c.item_id] = [];
+    contasPorItem[c.item_id].push(c);
+  });
+
+  const labelContaCurta = (c) => {
+    if (c.tipo === 'CREDIT') return /gold/i.test(c.nome || '') ? 'Cartão gold' : 'Cartão';
+    return c.nome || 'Conta corrente';
+  };
+
   const itemsHtml = items.length ? items.map(it => {
     const sync = it.ultima_sync ? new Date(it.ultima_sync).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : 'nunca';
     const ehPJ = it.pessoa === 'PJ';
     const outraPessoa = ehPJ ? 'PF' : 'PJ';
     const nome = nomeBancoItem(it);
+    const contas = contasPorItem[it.item_id] || [];
+    const contasLinhas = contas.length
+      ? contas.map(c => {
+          const ehCartao = c.tipo === 'CREDIT';
+          const valor = Number(c.saldo) || 0;
+          return `<div style="display:flex; justify-content:space-between; gap:8px; font-size:12px; padding:3px 0; color:var(--text-secondary);">
+            <span>${ehCartao ? '💳' : '🏦'} ${escapeHtml(labelContaCurta(c))}</span>
+            <span style="color:${ehCartao ? '#f5a623' : 'var(--text-primary)'}; font-variant-numeric:tabular-nums;">${ehCartao ? '−' : ''}${formatBRL(Math.abs(valor))}</span>
+          </div>`;
+        }).join('')
+      : `<div style="font-size:11px; color:var(--text-muted);">Sem contas sincronizadas</div>`;
     return `
-      <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(15,23,42,0.03); border-radius:8px; margin-bottom:6px;">
-        <span style="font-size:16px;">🏦</span>
-        <span style="flex:1; font-size:13px; min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span style="font-weight:550;">${escapeHtml(nome)}</span>
-          ${badgePessoaHtml(ehPJ ? 'PJ' : 'PF')}
-        </span>
-        <span style="font-size:11px; color:var(--text-muted); flex-shrink:0;">sync: ${sync}</span>
-        <div class="banco-menu" onclick="event.stopPropagation()">
-          <button type="button" class="banco-menu-btn" aria-label="Opções" onclick="toggleMenuBanco(this, event)">⋯</button>
-          <div class="banco-menu-drop">
-            <button type="button" onclick="definirPessoaConta('${it.item_id}','${outraPessoa}')">Marcar como ${outraPessoa}</button>
-            <button type="button" onclick="renomearConta('${it.item_id}')">Renomear</button>
-            <button type="button" onclick="desconectarBanco('${it.item_id}')">Remover</button>
+      <div style="padding:12px; background:rgba(15,23,42,0.04); border:1px solid rgba(255,255,255,0.06); border-radius:12px; margin-bottom:8px;">
+        <div style="display:flex; align-items:flex-start; gap:10px;">
+          <span style="font-size:16px; line-height:1.2;">🏦</span>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+              <span style="font-size:14px; font-weight:600;">${escapeHtml(nome)}</span>
+              ${badgePessoaHtml(ehPJ ? 'PJ' : 'PF')}
+              <span style="font-size:10px; color:var(--text-muted); margin-left:auto;">sync ${sync}</span>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">${contasLinhas}</div>
+          </div>
+          <div class="banco-menu" onclick="event.stopPropagation()">
+            <button type="button" class="banco-menu-btn" aria-label="Opções" onclick="toggleMenuBanco(this, event)">⋯</button>
+            <div class="banco-menu-drop">
+              <button type="button" onclick="definirPessoaConta('${it.item_id}','${outraPessoa}')">Marcar como ${outraPessoa}</button>
+              <button type="button" onclick="renomearConta('${it.item_id}')">Renomear</button>
+              <button type="button" onclick="desconectarBanco('${it.item_id}')">Remover</button>
+            </div>
           </div>
         </div>
       </div>`;
@@ -3628,32 +3656,6 @@ function renderBancos() {
     const pfBanco = (pp.PF && pp.PF.totalBanco) != null ? pp.PF.totalBanco : (_ofSaldos.emConta != null ? _ofSaldos.emConta : _ofSaldos.totalBanco);
     const pjBanco = (pp.PJ && pp.PJ.totalBanco) || 0;
 
-    const renderLinhaConta = (c) => {
-      const ehCartao = c.tipo === 'CREDIT';
-      const dataSaldo = c.saldo_em ? new Date(c.saldo_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
-      const bancoNome = apelidoPorItem[c.item_id] || c.banco || '';
-      const contaLabel = ehCartao
-        ? ( /gold/i.test(c.nome || '') ? 'Cartão gold' : 'Cartão' )
-        : (c.nome || 'Conta');
-      return `
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:6px 0; gap:8px;">
-          <span style="min-width:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span>${ehCartao ? '💳' : '🏦'}</span>
-            <span>${bancoNome ? `${escapeHtml(bancoNome)} · ` : ''}${escapeHtml(contaLabel)}</span>
-            ${dataSaldo ? `<span style="color:var(--text-muted); font-size:10px;">(${dataSaldo})</span>` : ''}
-          </span>
-          <span style="flex-shrink:0; color:${ehCartao ? '#f5a623' : 'var(--text)'};">${ehCartao ? '−' : ''}${formatBRL(Math.abs(Number(c.saldo)))}</span>
-        </div>`;
-    };
-
-    const contasPf = _ofSaldos.contas.filter(c => c.pessoa !== 'PJ');
-    const contasPj = _ofSaldos.contas.filter(c => c.pessoa === 'PJ');
-    const bloco = (titulo, cor, lista) => lista.length ? `
-      <div style="margin-top:10px;">
-        <div style="font-size:11px; font-weight:650; letter-spacing:0.04em; text-transform:uppercase; color:${cor}; margin-bottom:4px;">${titulo}</div>
-        ${lista.map(renderLinhaConta).join('')}
-      </div>` : '';
-
     let avisoStale = '';
     if (_ofSaldos.saldoEmMaisAntigo) {
       const diasAtras = Math.floor((Date.now() - new Date(_ofSaldos.saldoEmMaisAntigo).getTime()) / 86400000);
@@ -3661,15 +3663,16 @@ function renderBancos() {
         avisoStale = `<div style="background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#f5c46b;">Saldo de até ${diasAtras} dias atrás. Use "Atualizar saldos".</div>`;
       }
     }
-    const avisoMistura = (!contasPj.length && contasPf.filter(c => c.tipo !== 'CREDIT').length > 1)
-      ? `<div style="background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.25); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#93c5fd;">Tem mais de uma conta corrente. No ⋯ de cada banco, use <b>Marcar como PJ</b> na Inter empresas.</div>`
+    const temDoisInter = items.filter(it => /inter/i.test(nomeBancoItem(it) + ' ' + (it.connector_nome || ''))).length >= 2;
+    const avisoMistura = (!pjBanco && temDoisInter)
+      ? `<div style="background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.25); border-radius:8px; padding:8px 10px; margin-bottom:10px; font-size:11px; color:#93c5fd;">Duas Inter conectadas. Na que tem ~R$ 0,85 (empresas), toque ⋯ → <b>Marcar como PJ</b>.</div>`
       : '';
 
     saldoHtml += `
       ${avisoStale}
       ${avisoMistura}
-      <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:14px; margin-bottom:14px;">
-        <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+      <div style="background:rgba(15,23,42,0.03); border-radius:10px; padding:14px; margin-bottom:12px;">
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <div style="flex:1; min-width:90px; text-align:center;">
             <div style="font-size:11px; color:var(--text-muted);">PF (pessoal)</div>
             <div style="font-size:18px; font-weight:700; color:#31a24c;">${formatBRL(pfBanco)}</div>
@@ -3682,11 +3685,6 @@ function renderBancos() {
             <div style="font-size:11px; color:var(--text-muted);">Faturas</div>
             <div style="font-size:18px; font-weight:700; color:#f5a623;">${formatBRL(_ofSaldos.totalCredito)}</div>
           </div>
-        </div>
-        <div style="border-top:1px solid rgba(15,23,42,0.08); padding-top:4px;">
-          ${bloco('Pessoal · PF', '#3fb950', contasPf)}
-          ${bloco('Empresa · PJ', '#60a5fa', contasPj)}
-          ${!contasPj.length ? `<p style="font-size:11px; color:var(--text-muted); margin:10px 0 0;">Nenhuma conta marcada como PJ ainda.</p>` : ''}
         </div>
       </div>`;
   }
