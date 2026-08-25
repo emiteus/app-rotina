@@ -1469,7 +1469,7 @@ body { padding-left: 240px; }
   background: rgba(248, 81, 73, 0.12);
 }
 
-/* Bancos preso no rodapé da Visão Geral */
+/* Bancos: barra compacta sticky; aberto = fluxo normal (sem sobrepor) */
 .bancos-pinned {
   position: sticky;
   bottom: 0;
@@ -1480,6 +1480,14 @@ body { padding-left: 240px; }
   border-radius: 14px 14px 0 0;
   box-shadow: 0 -8px 28px rgba(0,0,0,0.35);
   overflow: hidden;
+}
+.bancos-pinned.open {
+  position: relative;
+  bottom: auto;
+  z-index: auto;
+  border-radius: 14px;
+  box-shadow: none;
+  margin-bottom: 24px;
 }
 .bancos-pinned-toggle {
   width: 100%;

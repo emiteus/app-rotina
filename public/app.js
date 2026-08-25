@@ -3382,6 +3382,10 @@ function toggleBancosDrawer() {
   if (_bancosDrawerAberto) {
     renderBancos();
     carregarBancos();
+    // Abre no fluxo da página (não sticky) — garante que o painel entre na tela
+    requestAnimationFrame(() => {
+      wrap?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   }
 }
 
