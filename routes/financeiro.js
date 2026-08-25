@@ -116,7 +116,8 @@ router.get('/extrato', async (req, res) => {
     const limitIdx = i;
 
     const movimentacoes = await all(
-      `SELECT f.id, f.tipo, f.valor, f.descricao, f.data, f.categoria, f.fonte, f.account_id,
+      `SELECT f.id, f.tipo, f.valor, f.descricao, TO_CHAR(f.data, 'YYYY-MM-DD') AS data,
+              f.categoria, f.fonte, f.account_id,
               a.nome AS conta_nome, a.tipo AS conta_tipo, a.item_id,
               i.apelido, i.connector_nome, i.pessoa,
               COALESCE(i.apelido, i.connector_nome, 'Manual') AS banco
@@ -172,7 +173,7 @@ router.get('/extrato', async (req, res) => {
           ...m,
           banco,
           valor: Number(m.valor),
-          data: ymdDe(m.data) || null
+          data: m.data || null
         };
       }),
       resumo: {

@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const axios = require('axios');
 const { run, get, all } = require('../lib/db');
-const { hojeStr, addDias } = require('../lib/datas');
+const { hojeStr, addDias, dataTxPluggy } = require('../lib/datas');
 const { categoriaObvia } = require('../lib/categoria-heuristica');
 const { nomeBancoDisplay } = require('../lib/banco-nome');
 
@@ -748,7 +748,7 @@ async function syncItem(apiKey, itemId, opts = {}) {
       const results = txResp.data.results || [];
 
       for (const t of results) {
-        const dataUso = (t.date || '').split('T')[0] || hojeStr();
+        const dataUso = dataTxPluggy(t, hojeStr());
         if (dataUso < fromStr) { parar = true; continue; }
         const ehCartao = conta.type === 'CREDIT';
         const tipo = ehCartao
@@ -765,8 +765,15 @@ async function syncItem(apiKey, itemId, opts = {}) {
         try {
           const r = await run(
             `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, external_id, fonte, account_id, chave_categoria, categoria_confirmada)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,'pluggy',$8,$9,$10)
-             ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO NOTHING`,
+             VALUES ($1,$2,$3,$4,$5::date,$6,$7,'pluggy',$8,$9,$10)
+             ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO UPDATE SET
+               data = EXCLUDED.data,
+               descricao = EXCLUDED.descricao,
+               valor = EXCLUDED.valor,
+               tipo = EXCLUDED.tipo
+             WHERE financeiro.data IS DISTINCT FROM EXCLUDED.data
+                OR financeiro.descricao IS DISTINCT FROM EXCLUDED.descricao
+                OR financeiro.valor IS DISTINCT FROM EXCLUDED.valor`,
             [uuid(), tipo, valor, t.description || 'Transação bancária', dataUso, categoria, extId, conta.id, chave, confirmada]
           );
           if (r.rowCount > 0) importadas++; else ignoradas++;

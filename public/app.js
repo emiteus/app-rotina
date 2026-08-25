@@ -4820,11 +4820,12 @@ function _preencherExtratoContas(contas) {
 
 function extratoYmd(value) {
   if (!value) return '';
+  if (typeof value === 'string') {
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+  }
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    const y = value.getFullYear();
-    const m = String(value.getMonth() + 1).padStart(2, '0');
-    const d = String(value.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    return value.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
   }
   const s = String(value);
   const m = s.match(/(\d{4}-\d{2}-\d{2})/);
