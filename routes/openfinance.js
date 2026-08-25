@@ -767,13 +767,12 @@ async function syncItem(apiKey, itemId, opts = {}) {
             `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, external_id, fonte, account_id, chave_categoria, categoria_confirmada)
              VALUES ($1,$2,$3,$4,$5::date,$6,$7,'pluggy',$8,$9,$10)
              ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO UPDATE SET
-               data = EXCLUDED.data,
                descricao = EXCLUDED.descricao,
                valor = EXCLUDED.valor,
                tipo = EXCLUDED.tipo
-             WHERE financeiro.data IS DISTINCT FROM EXCLUDED.data
-                OR financeiro.descricao IS DISTINCT FROM EXCLUDED.descricao
-                OR financeiro.valor IS DISTINCT FROM EXCLUDED.valor`,
+             WHERE financeiro.descricao IS DISTINCT FROM EXCLUDED.descricao
+                OR financeiro.valor IS DISTINCT FROM EXCLUDED.valor
+                OR financeiro.tipo IS DISTINCT FROM EXCLUDED.tipo`,
             [uuid(), tipo, valor, t.description || 'Transação bancária', dataUso, categoria, extId, conta.id, chave, confirmada]
           );
           if (r.rowCount > 0) importadas++; else ignoradas++;
