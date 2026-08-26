@@ -1867,13 +1867,54 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
-  // "concluí X" / "terminei a tarefa X"
+  // "concluí X" / "terminei a tarefa X" — NÃO usar "fiz" solto (pega "fiz o pagamento")
   if (!acoes.some(a => a.tipo === 'concluir_tarefa')) {
-    const mConc = msg.match(/\b(?:conclu[ií]|terminei|fiz)\s+(?:a\s+)?(?:tarefa\s+)?(.+)$/i);
-    if (mConc && !/\bacademia\b/i.test(msg) && !/\bpaguei\b/i.test(msg)) {
+    const mConc = msg.match(/\b(?:conclu[ií]|terminei)\s+(?:a\s+)?(?:tarefa\s+)?(.+)$/i)
+      || msg.match(/\bfiz\s+(?:a\s+)?tarefa\s+(.+)$/i);
+    if (mConc && !/\bacademia\b/i.test(msg) && !/\bpaguei\b/i.test(msg) && !/\bpagamento\b/i.test(msg)) {
       const titulo = mConc[1].replace(/[.!?]+$/, '').trim();
-      if (titulo.length >= 2 && titulo.length <= 80 && !/^(hoje|ontem|isso)$/i.test(titulo)) {
+      if (
+        titulo.length >= 2 && titulo.length <= 80
+        && !/^(hoje|ontem|isso|o pagamento|pagamento|pix|transfer)/i.test(titulo)
+      ) {
         acoes.push({ tipo: 'concluir_tarefa', titulo });
+      }
+    }
+  }
+
+  // Explica um lançamento do extrato pra categorizar
+  // "NATURA ... foi um pagamento que minha tia pediu... nome dela é ADRIANA"
+  if (!acoes.some(a => a.tipo === 'recategorizar')) {
+    const mDesc = msg.match(
+      /^([A-Za-z0-9Á-ú][^,]{8,100}?)\s+(?:foi|é|era)\s+(?:um\s+|uma\s+)?(?:pagamento|pix|transfer[eê]ncia|compra|gasto)/i
+    );
+    const mNome = msg.match(
+      /\bnome\s+(?:dela|dele)\s+(?:é|eh)\s+([A-ZÀ-Ú][A-Za-zÀ-ú]+(?:\s+[A-ZÀ-Ú][A-Za-zÀ-ú]+){0,3})/i
+    ) || msg.match(
+      /\b(?:tia|tio)\s+([A-ZÀ-Ú][A-Za-zÀ-ú]+(?:\s+[A-ZÀ-Ú][A-Za-zÀ-ú]+){0,2})/i
+    );
+    if (mDesc) {
+      const trecho = mDesc[1].trim();
+      const stop = new Set([
+        'pagamento', 'titulo', 'título', 'de', 'da', 'do', 'dos', 'das', 'co', 'pay',
+        'cre', 'dir', 'sa', 'ltda', 'pix', 'enviado', 'recebido', 'transferencia'
+      ]);
+      const tokens = trecho
+        .split(/[\s\-|*\/.]+/)
+        .map(t => t.trim())
+        .filter(t => t.length >= 4 && !stop.has(t.toLowerCase()))
+        .slice(0, 4);
+      let label = mNome ? mNome[1].trim() : null;
+      if (!label && /\btia\b/i.test(msg)) label = 'Tia';
+      if (!label && /\btio\b/i.test(msg)) label = 'Tio';
+      if (!label && /\bpai\b/i.test(msg) && /\bm[aã]e\b/i.test(msg)) label = 'Pai e Mãe';
+      if (tokens.length && label) {
+        acoes.push({
+          tipo: 'recategorizar',
+          categoria_label: label,
+          filtros: { contem: tokens },
+          aprender: true
+        });
       }
     }
   }
@@ -2010,24 +2051,28 @@ router.post('/chat', async (req, res) => {
 
     // Atalho: pedidos claros (mover categoria, confirmar receita/despesa etc.)
     // executam sem esperar o Gemini — evita timeout de 35s nesses casos.
+    // Só usa o atalho se alguma ação der certo; senão deixa a IA interpretar.
     const acoesRapidas = inferirAcoesDaMensagem(mensagem, snap, []);
     const TIPOS_FAST = new Set([
       'recategorizar', 'fundir_categorias', 'renomear_categoria', 'criar_categoria',
       'confirmar_despesa', 'confirmar_receita', 'criar_receita',
-      'marcar_das', 'marcar_habito', 'concluir_tarefa', 'depositar_meta'
+      'marcar_das', 'marcar_habito', 'depositar_meta'
+      // concluir_tarefa fora: "fiz o pagamento" gerava falso positivo
     ]);
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
       const acoesExec = await executarAcoes(acoesRapidas);
-      const resposta = reconciliarRespostaComAcoes('', acoesExec);
-      await salvarMensagem(conversaId, 'assistant', resposta);
-      return res.json({
-        resposta,
-        acoes: acoesExec,
-        snapshot: snap,
-        provider: 'local',
-        usage: null,
-        conversa_id: conversaId
-      });
+      if (acoesExec.some(a => a && a.ok)) {
+        const resposta = reconciliarRespostaComAcoes('', acoesExec);
+        await salvarMensagem(conversaId, 'assistant', resposta);
+        return res.json({
+          resposta,
+          acoes: acoesExec,
+          snapshot: snap,
+          provider: 'local',
+          usage: null,
+          conversa_id: conversaId
+        });
+      }
     }
 
     const systemPrompt = `Você é o assistente pessoal do App Rotina. Português brasileiro, direto, tom de amigo útil. Trata o usuário por "você".
@@ -2093,6 +2138,7 @@ Regras:
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - "unifica/funde" → fundir_categorias (não renomear as duas pro mesmo label).
 - "transfere/move gastos da categoria X pra Y" → recategorizar (filtros.categoria=X).
+- Explicar lançamento do extrato (ex.: "NATURA foi pagamento da tia Adriana") → recategorizar com filtros.contem.
 - "já paguei / confirmo pagamento" → confirmar_despesa.
 - "recebi / caiu (Laranjeira, Tylty…)" → confirmar_receita. NÃO use criar_transacao entrada pra isso.
 - receita variável (corte, infoproduto) → criar_receita.
