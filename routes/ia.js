@@ -31,15 +31,25 @@ function providerAtivo() {
   return null;
 }
 
+function isTimeoutErr(err) {
+  const code = err.code || err.cause?.code;
+  const msg = String(err.message || '');
+  return code === 'ECONNABORTED' || code === 'ETIMEDOUT' || /timeout/i.test(msg);
+}
+
 function mensagemGemini(err) {
   const raw = err.response?.data?.error?.message || err.message || '';
   const status = err.response?.status;
+  if (isTimeoutErr(err)) {
+    return 'A IA demorou demais pra responder. Tenta de novo — pedidos tipo “muda categoria X pra Y” costumam ir mais rápido agora.';
+  }
   const saturado = status === 429 || status === 503 || /high demand|overloaded|unavailable|resource.?exhausted/i.test(raw);
   if (saturado) return 'O Gemini está saturado agora. Tenta de novo em alguns segundos.';
   return raw || 'Falha ao falar com a IA.';
 }
 
 function modeloSaturado(err) {
+  if (isTimeoutErr(err)) return true;
   const raw = err.response?.data?.error?.message || err.message || '';
   const status = err.response?.status;
   return status === 404 || status === 429 || status === 503
@@ -997,6 +1007,12 @@ async function executarAcoes(acoes) {
       W.push(`tipo = $${p++}`);
       V.push(f.tipo);
     }
+    const catFiltro = String(f.categoria || f.de || f.de_categoria || acao.de || '').trim();
+    if (catFiltro) {
+      W.push(`(categoria = $${p} OR lower(categoria) = lower($${p}))`);
+      V.push(catFiltro);
+      p++;
+    }
     const valores = Array.isArray(f.valores)
       ? f.valores.map(Number).filter(n => Number.isFinite(n) && n > 0).slice(0, 20)
       : [];
@@ -1016,12 +1032,14 @@ async function executarAcoes(acoes) {
       W.push(`(${parts.join(' OR ')})`);
     }
     if (!W.length) return [];
+    const soCategoria = !!catFiltro && !f.data && !f.data_de && !f.data_ate && !valores.length && !contem.length;
+    const lim = soCategoria ? 2000 : 40;
     return all(
       `SELECT id, descricao, valor, tipo, data, chave_categoria, categoria
        FROM financeiro
        WHERE ${W.join(' AND ')}
        ORDER BY data DESC
-       LIMIT 40`,
+       LIMIT ${lim}`,
       V
     );
   }
@@ -1785,6 +1803,46 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
+  // "transfere gastos da categoria trabalho pra projetos" / "move trabalho → projetos"
+  if (!acoes.some(a => a.tipo === 'recategorizar')) {
+    const mMove = msg.match(
+      /\bcategoria\s+[\"“']?([a-z0-9_À-ú-]{2,40})[\"”']?\s+(?:pra|para|pro|→|->)\s+[\"“']?([a-z0-9_À-ú\s-]{2,40})/i
+    ) || msg.match(
+      /\b(?:transfer[ei]|mov[aeo]|passa|jog[aue]|recategoriz[ae])\b.{0,60}?\b([a-z0-9_À-ú-]{2,40})\b\s+(?:pra|para|pro|→|->)\s+[\"“']?([a-z0-9_À-ú\s-]{2,40})/i
+    );
+    if (mMove) {
+      const deRaw = mMove[1].trim();
+      const paraRaw = mMove[2].replace(/[.!?]+$/, '').trim();
+      const skip = /^(esses|estas|os|as|gastos?|despesas?|txs?|transacoes?|com|da|de|do|a|o)$/i;
+      if (!skip.test(deRaw) && !skip.test(paraRaw)) {
+        const resolverCat = (raw) => {
+          const n = norm(raw);
+          if (!n) return null;
+          const exact = cats.find(c => norm(c.chave || c.id) === n || norm(c.label) === n);
+          if (exact) return exact.chave || exact.id;
+          const soft = cats.find(c => {
+            const k = norm(c.chave || c.id);
+            const l = norm(c.label);
+            return (k && (k.includes(n) || n.includes(k))) || (l && (l.includes(n) || n.includes(l)));
+          });
+          return soft ? (soft.chave || soft.id) : (n.length >= 2 ? n : null);
+        };
+        const de = resolverCat(deRaw);
+        const para = resolverCat(paraRaw) || paraRaw;
+        if (de && para && norm(de) !== norm(para)) {
+          acoes.push({
+            tipo: 'recategorizar',
+            de,
+            categoria_label: paraRaw,
+            categoria: /^[a-z0-9_]+$/i.test(String(para)) ? String(para) : undefined,
+            filtros: { categoria: de },
+            aprender: false
+          });
+        }
+      }
+    }
+  }
+
   // "já paguei Netflix" / "paguei a luz"
   if (!acoes.some(a => a.tipo === 'confirmar_despesa')) {
     const mPago = msg.match(/\b(?:j[aá]\s+)?paguei\s+(?:a\s+|o\s+)?(.+?)(?:\s+hoje|\s+ontem)?$/i)
@@ -1949,6 +2007,29 @@ router.post('/chat', async (req, res) => {
     }
 
     const snap = await snapshotAssistente();
+
+    // Atalho: pedidos claros (mover categoria, confirmar receita/despesa etc.)
+    // executam sem esperar o Gemini — evita timeout de 35s nesses casos.
+    const acoesRapidas = inferirAcoesDaMensagem(mensagem, snap, []);
+    const TIPOS_FAST = new Set([
+      'recategorizar', 'fundir_categorias', 'renomear_categoria', 'criar_categoria',
+      'confirmar_despesa', 'confirmar_receita', 'criar_receita',
+      'marcar_das', 'marcar_habito', 'concluir_tarefa', 'depositar_meta'
+    ]);
+    if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
+      const acoesExec = await executarAcoes(acoesRapidas);
+      const resposta = reconciliarRespostaComAcoes('', acoesExec);
+      await salvarMensagem(conversaId, 'assistant', resposta);
+      return res.json({
+        resposta,
+        acoes: acoesExec,
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId
+      });
+    }
+
     const systemPrompt = `Você é o assistente pessoal do App Rotina. Português brasileiro, direto, tom de amigo útil. Trata o usuário por "você".
 
 Missão: responder QUALQUER pergunta sobre o app e os dados do usuário que estiverem no JSON de contexto abaixo — tarefas, hábitos, financeiro, despesas do mês, metas, alarmes, eventos/calendário, recorrentes, saldos, plano financeiro, MEI/DAS, histórico e streak. Se a informação existir no contexto, use-a. Se não existir no contexto, diga que não tem esse dado no app agora (não invente).
@@ -1979,6 +2060,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - apagar tx / corrigir data de tx → deletar_transacao / corrigir_data_tx
 - DAS pago → marcar_das
 - criar/renomear/unificar/recategorizar categorias → ações de categoria
+- "transfere/move categoria X pra Y" → recategorizar com filtros.categoria=X
 - Preferir ids do contexto (despesas_mes.itens[].id, receitas_mes.itens[].id, metas[].id, tarefas.*.id, ultimas_transacoes[].id)
 - Se faltar dado essencial, pergunte e NÃO emita ação
 
@@ -2010,6 +2092,7 @@ Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru. Confirme o que foi feito.
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - "unifica/funde" → fundir_categorias (não renomear as duas pro mesmo label).
+- "transfere/move gastos da categoria X pra Y" → recategorizar (filtros.categoria=X).
 - "já paguei / confirmo pagamento" → confirmar_despesa.
 - "recebi / caiu (Laranjeira, Tylty…)" → confirmar_receita. NÃO use criar_transacao entrada pra isso.
 - receita variável (corte, infoproduto) → criar_receita.
@@ -2019,14 +2102,36 @@ Regras:
 - No máximo 1 emoji.
 - Valores em R$ (ex: R$ 1.200).`;
 
-    const { texto, usage, provider } = await chamarIA({
-      system: systemPrompt,
-      user: mensagem,
-      historico,
-      maxTokens: 1400,
-      jsonMode: true,
-      timeout: 35000
-    });
+    let texto;
+    let usage;
+    let provider;
+    try {
+      ({ texto, usage, provider } = await chamarIA({
+        system: systemPrompt,
+        user: mensagem,
+        historico,
+        maxTokens: 1400,
+        jsonMode: true,
+        timeout: 14000
+      }));
+    } catch (errGemini) {
+      // Se a IA travou, ainda tenta executar pedidos inferíveis
+      const fallback = inferirAcoesDaMensagem(mensagem, snap, []);
+      if (fallback.length) {
+        const acoesExec = await executarAcoes(fallback);
+        const resposta = reconciliarRespostaComAcoes('', acoesExec);
+        await salvarMensagem(conversaId, 'assistant', resposta);
+        return res.json({
+          resposta,
+          acoes: acoesExec,
+          snapshot: snap,
+          provider: 'local-fallback',
+          usage: null,
+          conversa_id: conversaId
+        });
+      }
+      throw errGemini;
+    }
 
     let parsed = null;
     try { parsed = parseJSON(texto); }
