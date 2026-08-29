@@ -1,6 +1,6 @@
 {
   "name": "app-rotina",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "",
   "main": "electron-main.js",
   "scripts": {
@@ -19,6 +19,7 @@
   "type": "commonjs",
   "dependencies": {
     "axios": "^1.19.0",
+    "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.4.2",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
@@ -58,6 +59,7 @@
     "files": [
       "electron-main.js",
       "electron-preload.js",
+      "lib/electron-auth.js",
       "node_modules/**/*",
       "package.json",
       "!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE,license,*.d.ts,*.map}",

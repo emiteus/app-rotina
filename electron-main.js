@@ -1,7 +1,8 @@
-const { app, BrowserWindow, Menu, session, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, Menu, session, nativeImage, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log/main');
+const electronAuth = require('./lib/electron-auth');
 log.initialize();
 log.transports.file.level = 'debug';
 autoUpdater.logger = log;
@@ -11,7 +12,7 @@ const isDev = !app.isPackaged;
 
 const PROD_URL = 'https://app-rotina-production-f84e.up.railway.app/';
 /** Versão do frontend web — manter igual ao ?v= do index.html */
-const WEB_BUILD = '94';
+const WEB_BUILD = '97';
 
 function urlProducao() {
   return `${PROD_URL}?v=${WEB_BUILD}&electron=1&_=${Date.now()}`;
@@ -52,6 +53,7 @@ function carregarIcone() {
 const APP_ICON = carregarIcone();
 
 let mainWindow;
+let currentPartition = null;
 
 // Protege contra múltiplas instâncias
 const gotTheLock = app.requestSingleInstanceLock();
@@ -67,16 +69,52 @@ if (!gotTheLock) {
   });
 }
 
-function createWindow() {
+function registrarIpcAuth() {
+  ipcMain.handle('auth:getSavedLogin', () => electronAuth.getSavedLogin());
+  ipcMain.handle('auth:hasStoredPassword', () => electronAuth.hasStoredPassword());
+  ipcMain.handle('auth:getStoredPassword', () => electronAuth.getStoredPassword());
+  ipcMain.handle('auth:saveCredentials', (_e, login, password) => {
+    const prevLogin = electronAuth.getSavedLogin();
+    const prevPartition = currentPartition;
+    const result = electronAuth.saveCredentials(login, password);
+    const newPartition = electronAuth.partitionForLogin(result.login);
+    const precisaRecriar = prevLogin !== result.login || prevPartition !== newPartition;
+    return { ...result, precisaRecriar };
+  });
+  ipcMain.handle('auth:clearCredentials', () => {
+    electronAuth.clearCredentials();
+    return { ok: true };
+  });
+  ipcMain.handle('auth:recriarJanela', () => {
+    recriarJanelaUsuario();
+    return { ok: true };
+  });
+}
+
+function recriarJanelaUsuario() {
+  if (!mainWindow) return;
+  const bounds = mainWindow.getBounds();
+  const maximized = mainWindow.isMaximized();
+  mainWindow.close();
+  mainWindow = null;
+  createWindow({ bounds, maximized });
+}
+
+function createWindow(opts = {}) {
+  const savedLogin = electronAuth.getSavedLogin();
+  currentPartition = electronAuth.partitionForLogin(savedLogin);
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: opts.bounds?.width || 1200,
+    height: opts.bounds?.height || 800,
+    x: opts.bounds?.x,
+    y: opts.bounds?.y,
     minWidth: 800,
     minHeight: 600,
     autoHideMenuBar: true,          // esconde a barra "App Rotina | Editar | Ver"
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      partition: currentPartition,
       preload: path.join(__dirname, 'electron-preload.js')
     },
     icon: APP_ICON,
@@ -182,6 +220,7 @@ function createWindow() {
   }
 
   mainWindow.once('ready-to-show', () => {
+    if (opts.maximized) mainWindow.maximize();
     mostrarJanela();
     setTimeout(aplicarAppDetails, 400);
   });
@@ -202,6 +241,7 @@ function createWindow() {
 Menu.setApplicationMenu(null);
 
 app.on('ready', async () => {
+  registrarIpcAuth();
   // Limpa cache HTTP do Chromium interno pra garantir que CSS/JS novos entrem.
   // Sem isso, o Electron reusa disk cache mesmo quando o servidor manda arquivo novo.
   try { await session.defaultSession.clearCache(); } catch (e) {}

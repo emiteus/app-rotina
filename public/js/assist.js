@@ -9,14 +9,20 @@ let _assistHistOpen = false;
 let _assistCarregado = false;
 const ASSIST_CONV_KEY = 'assist_conversa_id_v1';
 
+function assistConvKey() {
+  const uid = window.__currentUser?.id;
+  return uid ? `${ASSIST_CONV_KEY}:${uid}` : ASSIST_CONV_KEY;
+}
+
 function assistLerConversaLocal() {
-  try { return localStorage.getItem(ASSIST_CONV_KEY) || null; }
+  try { return localStorage.getItem(assistConvKey()) || null; }
   catch (e) { return null; }
 }
 function assistSalvarConversaLocal(id) {
   try {
-    if (id) localStorage.setItem(ASSIST_CONV_KEY, id);
-    else localStorage.removeItem(ASSIST_CONV_KEY);
+    const k = assistConvKey();
+    if (id) localStorage.setItem(k, id);
+    else localStorage.removeItem(k);
   } catch (e) { /* ignore */ }
 }
 

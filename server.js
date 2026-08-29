@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const { initDB } = require('./lib/db');
 const { router: authRouter, requireAuth } = require('./routes/auth');
 const WebSocketServer = require('./lib/websocket');
@@ -30,6 +31,13 @@ app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 app.use(session({
   name: 'rotina.sid',
   secret: process.env.SESSION_SECRET || 'seu-secret-aqui-mudar-em-producao',
+  store: process.env.DATABASE_URL
+    ? new pgSession({
+        conString: process.env.DATABASE_URL,
+        tableName: 'session',
+        createTableIfMissing: true
+      })
+    : undefined,
   resave: false,
   saveUninitialized: false,
   proxy: true,

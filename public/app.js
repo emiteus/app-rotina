@@ -5475,7 +5475,7 @@ async function carregarRankingDia() {
       return `<div class="ranking-row${eu}">
         <div class="ranking-row-head">
           <span class="ranking-nome" style="--rank-cor:${cor}">${escapeHtml(j.nome)}${trofeu}</span>
-          <span class="ranking-score">${j.concluidas}/${j.total} · ${pct}%</span>
+          <span class="ranking-score"><span class="ranking-pct">${pct}%</span><span class="ranking-qty">${j.concluidas}/${j.total}</span></span>
         </div>
         <div class="ranking-bar"><div class="ranking-bar-fill" style="width:${pct}%; background:${cor}"></div></div>
       </div>`;
@@ -5485,8 +5485,8 @@ async function carregarRankingDia() {
       const euLider = jogadores[0]?.eu;
       if (!l) liderEl.textContent = '';
       else if (l.empate) liderEl.textContent = 'Empate na liderança';
-      else if (l.diff > 0 && l.nome) {
-        const diffTxt = l.diff === 1 ? '1 tarefa na frente' : `${l.diff} tarefas na frente`;
+      else if (l.diffPct > 0 && l.nome) {
+        const diffTxt = l.diffPct === 1 ? '1 ponto na frente' : `${l.diffPct} pontos na frente`;
         liderEl.textContent = euLider ? `Você está ${diffTxt}` : `${l.nome} — ${diffTxt}`;
       } else liderEl.textContent = '';
     }

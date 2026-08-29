@@ -13,8 +13,8 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=94">
-  <link rel="stylesheet" href="style-ranking.css?v=94">
+  <link rel="stylesheet" href="style.css?v=97">
+  <link rel="stylesheet" href="style-ranking.css?v=97">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
 <body>
   <script>
     (function () {
-      var V = '94';
+      var V = '97';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -123,13 +123,8 @@
         <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
           <span id="header-user-name" class="header-user-name" title="Usuário logado"></span>
           <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
-          <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
-            Analisar meu dia
-          </button>
         </div>
       </div>
-      <div id="analise-ia-box" style="display:none; background:var(--card-bg, #25262b); border:1px solid rgba(38,224,200,0.25); border-radius:12px; padding:18px 20px; margin-bottom:20px; font-size:14px; line-height:1.6; color:var(--text-primary);"></div>
 
       <!-- 3 KPI cards, tipo Kirvano -->
       <div class="cards-grid dashboard-kpi-grid">
@@ -159,28 +154,6 @@
           </div>
           <div class="card-mini ranking-lider" id="dash-ranking-lider"></div>
         </div>
-      </div>
-
-      <!-- Chart hero: um único gráfico grande, sem 4 mini stat cards redundantes -->
-      <div class="panel dashboard-chart-hero" style="margin-bottom: 24px;">
-        <div class="panel-header">
-          <div>
-            <div class="card-label" style="margin-bottom:6px;">Histórico de atividade</div>
-            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">· <span id="stats-taxa">0</span>% conclusão</span></div>
-          </div>
-        </div>
-        <div class="chart-container">
-          <canvas id="chart-bars"></canvas>
-        </div>
-      </div>
-
-      <!-- Últimas transações — lista discreta com link pra Financeiro -->
-      <div class="panel">
-        <div class="panel-header">
-          <h3>Últimas transações</h3>
-          <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas →</button>
-        </div>
-        <div id="dash-transacoes-list" class="mini-list"></div>
       </div>
 
       <!-- 4 cards Kirvano-style embaixo -->
@@ -1018,14 +991,17 @@
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <input type="text" id="login-usuario" placeholder="Usuário" autocomplete="username" required enterkeyhint="next"
           style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
-        <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required enterkeyhint="go"
-          style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
+        <div id="login-senha-wrap">
+          <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required enterkeyhint="go"
+            style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
+        </div>
         <input type="password" id="login-senha2" placeholder="Confirmar senha" autocomplete="new-password" enterkeyhint="go"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <input type="text" id="login-codigo" placeholder="Código de convite" autocomplete="off" enterkeyhint="go"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <button type="submit" id="login-btn" style="background:var(--accent); border:none; color:var(--accent-on, #09090B); border-radius:8px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; min-height:48px; touch-action:manipulation;">Entrar</button>
         <p id="login-erro" style="margin:0; font-size:12px; color:var(--danger); display:none;"></p>
+        <button type="button" id="login-trocar-usuario" style="display:none; background:none; border:none; color:var(--text-muted); font-size:12px; cursor:pointer; padding:4px 0; text-align:center;">Trocar usuário neste PC</button>
         <button type="button" id="login-toggle-modo" style="background:none; border:none; color:var(--accent); font-size:13px; cursor:pointer; padding:4px 0; text-align:center;"></button>
       </form>
     </div>
@@ -1033,33 +1009,136 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=94"></script>
-  <script src="js/assist.js?v=94"></script>
-  <script src="app.js?v=94"></script>
+  <script src="js/fin-receitas.js?v=97"></script>
+  <script src="js/assist.js?v=97"></script>
+  <script src="app.js?v=97"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
+      const LS_LAST_LOGIN = 'rotina_last_login';
+      const isDesktop = !!(window.electron && window.electron.isDesktop);
+      const desktopAuth = isDesktop && window.electron.auth ? window.electron.auth : null;
+
       const overlay = document.getElementById('login-overlay');
       const form = document.getElementById('login-form');
       const subtitleEl = document.getElementById('login-subtitle');
       const inputNome = document.getElementById('login-nome');
       const inputUsuario = document.getElementById('login-usuario');
       const inputSenha = document.getElementById('login-senha');
+      const inputSenhaWrap = document.getElementById('login-senha-wrap');
       const inputSenha2 = document.getElementById('login-senha2');
       const inputCodigo = document.getElementById('login-codigo');
       const erroEl = document.getElementById('login-erro');
       const btn = document.getElementById('login-btn');
       const toggleModo = document.getElementById('login-toggle-modo');
+      const btnTrocarUsuario = document.getElementById('login-trocar-usuario');
       const fab = document.getElementById('assist-fab');
       let mostrando = false;
       let modoCadastro = false;
       let cadastroInfo = { aberto: false, precisaCodigo: false };
+      let desktopTemSenhaSalva = false;
+      let autoLoginEmAndamento = false;
+
+      function preencherUsuarioSalvo() {
+        const last = localStorage.getItem(LS_LAST_LOGIN);
+        if (last && !inputUsuario.value) inputUsuario.value = last;
+      }
+
+      async function atualizarUiDesktop() {
+        if (!desktopAuth) return;
+        desktopTemSenhaSalva = await desktopAuth.hasStoredPassword();
+        const savedLogin = await desktopAuth.getSavedLogin();
+        if (savedLogin) inputUsuario.value = savedLogin;
+        else preencherUsuarioSalvo();
+        if (desktopTemSenhaSalva && !modoCadastro) {
+          inputSenhaWrap.style.display = 'none';
+          inputSenha.required = false;
+          subtitleEl.textContent = savedLogin
+            ? `Conectando como ${savedLogin}…`
+            : 'Entrando neste computador…';
+          if (btnTrocarUsuario) btnTrocarUsuario.style.display = 'block';
+        } else {
+          inputSenhaWrap.style.display = '';
+          inputSenha.required = true;
+          if (btnTrocarUsuario) btnTrocarUsuario.style.display = 'none';
+        }
+      }
+
+      function limparCacheLocalUsuario() {
+        try {
+          const keep = new Set(['app_build', LS_LAST_LOGIN]);
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const k = localStorage.key(i);
+            if (k && !keep.has(k)) localStorage.removeItem(k);
+          }
+          sessionStorage.clear();
+        } catch (e) { /* ok */ }
+      }
+
+      async function fazerLogin(login, senha) {
+        const r = await originalFetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ login, senha })
+        });
+        const d = await r.json().catch(() => ({}));
+        return { ok: r.ok, data: d, status: r.status };
+      }
+
+      async function tentarAutoLoginDesktop(silencioso) {
+        if (!desktopAuth || autoLoginEmAndamento) return false;
+        autoLoginEmAndamento = true;
+        try {
+          const savedLogin = await desktopAuth.getSavedLogin();
+          const login = (savedLogin || inputUsuario.value || localStorage.getItem(LS_LAST_LOGIN) || '').trim().toLowerCase();
+          if (!login) return false;
+
+          const check = await originalFetch('/api/auth/check', { credentials: 'same-origin' });
+          const cd = await check.json().catch(() => ({}));
+          if (check.ok && cd.authenticated) {
+            await carregarUsuarioSessao();
+            return true;
+          }
+
+          const senha = await desktopAuth.getStoredPassword();
+          if (!senha) return false;
+
+          if (!silencioso) {
+            overlay.style.display = 'flex';
+            subtitleEl.textContent = `Conectando como ${login}…`;
+            inputSenhaWrap.style.display = 'none';
+          }
+
+          const res = await fazerLogin(login, senha);
+          if (res.ok) {
+            localStorage.setItem(LS_LAST_LOGIN, login);
+            esconderLogin();
+            await carregarUsuarioSessao();
+            return true;
+          }
+          if (res.status === 401) {
+            erroEl.textContent = 'Senha mudou — digite de novo ou troque de usuário.';
+            inputSenhaWrap.style.display = '';
+            inputSenha.required = true;
+            if (btnTrocarUsuario) btnTrocarUsuario.style.display = 'block';
+          }
+          return false;
+        } catch (e) {
+          return false;
+        } finally {
+          autoLoginEmAndamento = false;
+        }
+      }
 
       const originalFetch = window.fetch.bind(window);
       window.fetch = async function (input, init) {
         const res = await originalFetch(input, { credentials: 'same-origin', ...init });
         const url = typeof input === 'string' ? input : (input && input.url) || '';
         if (res.status === 401 && url.includes('/api/') && !url.includes('/api/auth/')) {
+          if (isDesktop && await tentarAutoLoginDesktop(true)) {
+            return originalFetch(input, { credentials: 'same-origin', ...init });
+          }
           mostrarLogin();
         }
         return res;
@@ -1107,6 +1186,8 @@
         overlay.style.display = 'flex';
         if (fab) fab.style.display = 'none';
         carregarCadastroInfo();
+        preencherUsuarioSalvo();
+        atualizarUiDesktop();
       }
       function esconderLogin() {
         mostrando = false;
@@ -1116,9 +1197,11 @@
         erroEl.style.display = 'none';
         inputSenha.value = '';
         inputSenha2.value = '';
-        inputUsuario.value = '';
         inputNome.value = '';
         inputCodigo.value = '';
+        inputSenhaWrap.style.display = '';
+        inputSenha.required = true;
+        if (btnTrocarUsuario) btnTrocarUsuario.style.display = 'none';
         atualizarModoUI();
       }
 
@@ -1126,6 +1209,7 @@
         const user = d && d.user;
         if (!user) return;
         window.__currentUser = user;
+        if (user.login) localStorage.setItem(LS_LAST_LOGIN, user.login);
         const el = document.getElementById('header-user-name');
         if (el) el.textContent = user.nome || user.login || '';
         if (Number(user.stats?.financeiro) > 0 || Number(user.stats?.tasks) > 0) {
@@ -1141,7 +1225,27 @@
       async function forcarLogout() {
         try { await originalFetch('/api/auth/logout', { credentials: 'same-origin' }); } catch (e) {}
         window.__currentUser = null;
+        if (isDesktop && desktopAuth && await desktopAuth.hasStoredPassword()) {
+          await tentarAutoLoginDesktop(false);
+          return;
+        }
         mostrarLogin();
+      }
+
+      if (btnTrocarUsuario) {
+        btnTrocarUsuario.addEventListener('click', async () => {
+          if (!desktopAuth) return;
+          await desktopAuth.clearCredentials();
+          limparCacheLocalUsuario();
+          inputUsuario.value = '';
+          inputSenha.value = '';
+          inputSenhaWrap.style.display = '';
+          inputSenha.required = true;
+          desktopTemSenhaSalva = false;
+          subtitleEl.textContent = 'Entra pra continuar';
+          btnTrocarUsuario.style.display = 'none';
+          await desktopAuth.recriarJanela();
+        });
       }
 
       async function carregarUsuarioSessao() {
@@ -1166,7 +1270,11 @@
         const senha2 = (inputSenha2.value || '').trim();
         const codigo = (inputCodigo.value || '').trim();
         if (!login) { erroEl.textContent = 'Digite o usuário'; erroEl.style.display = 'block'; return; }
-        if (!senha) { erroEl.textContent = 'Digite a senha'; erroEl.style.display = 'block'; return; }
+        if (!senha && !(isDesktop && desktopTemSenhaSalva && !modoCadastro)) {
+          erroEl.textContent = 'Digite a senha';
+          erroEl.style.display = 'block';
+          return;
+        }
         if (modoCadastro && cadastroInfo.aberto && senha !== senha2) {
           erroEl.textContent = 'As senhas não coincidem';
           erroEl.style.display = 'block';
@@ -1175,8 +1283,23 @@
         btn.disabled = true;
         btn.textContent = modoCadastro && cadastroInfo.aberto ? 'Criando…' : 'Entrando…';
         try {
+          if (isDesktop && desktopTemSenhaSalva && !modoCadastro) {
+            const ok = await tentarAutoLoginDesktop(false);
+            if (ok) return;
+          }
+
+          let senhaUsar = senha;
+          if (isDesktop && desktopAuth && !modoCadastro && !senhaUsar) {
+            senhaUsar = await desktopAuth.getStoredPassword();
+          }
+          if (!senhaUsar && !(modoCadastro && cadastroInfo.aberto)) {
+            erroEl.textContent = 'Digite a senha';
+            erroEl.style.display = 'block';
+            return;
+          }
+
           const url = modoCadastro && cadastroInfo.aberto ? '/api/auth/register' : '/api/auth/login';
-          const body = modoCadastro && cadastroInfo.aberto ? { login, senha, nome, codigo } : { login, senha };
+          const body = modoCadastro && cadastroInfo.aberto ? { login, senha, nome, codigo } : { login, senha: senhaUsar };
           const r = await originalFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1185,8 +1308,20 @@
           });
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
+            localStorage.setItem(LS_LAST_LOGIN, login);
+            limparCacheLocalUsuario();
+            if (isDesktop && desktopAuth && !modoCadastro) {
+              const saved = await desktopAuth.saveCredentials(login, senhaUsar);
+              esconderLogin();
+              await carregarUsuarioSessao();
+              if (saved.precisaRecriar) {
+                await desktopAuth.recriarJanela();
+                return;
+              }
+              return;
+            }
             esconderLogin();
-            location.href = '/?v=94';
+            location.href = '/?v=97';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu  tenta de novo');
@@ -1201,7 +1336,12 @@
       });
 
       (async () => {
+        preencherUsuarioSalvo();
         try {
+          if (isDesktop && desktopAuth) {
+            const autoOk = await tentarAutoLoginDesktop(true);
+            if (autoOk) return;
+          }
           const r = await originalFetch('/api/auth/check', { credentials: 'same-origin' });
           const d = await r.json().catch(() => ({}));
           if (!r.ok || !d.authenticated) mostrarLogin();
@@ -1271,7 +1411,7 @@
           if (typeof toast === 'function') toast('Permissão negada', 'error');
           return;
         }
-        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=94');
+        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=97');
         const reg = __pushRegistration;
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -1332,7 +1472,7 @@
     (async function () {
       try {
         if (!('serviceWorker' in navigator)) return _atualizarUiPush();
-        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=94').catch(() => null);
+        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=97').catch(() => null);
         const r = await fetch('/api/push/config');
         if (r.ok) __pushConfig = await r.json();
         _atualizarUiPush();
