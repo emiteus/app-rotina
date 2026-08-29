@@ -62,10 +62,11 @@ const despesasRouter = require('./routes/despesas');
 const receitasRouter = require('./routes/receitas');
 const pushRouter = require('./routes/push');
 const iaRouter = require('./routes/ia');
-const { garantirRecorrentesHabitos } = require('./lib/habitos');
+const rankingRouter = require('./routes/ranking');
+const { garantirRecorrentesHabitosTodos } = require('./lib/habitos');
 const { enviarPush } = require('./lib/push');
 const { TZ, hojeStr, ymAtual, diaDoMes, diaSemana, ymdDe, dataResetSql, horaAtual, addDias } = require('./lib/datas');
-const { persistirHistoricoDia, backfillHistorico } = require('./lib/historico');
+const { persistirHistoricoDia, backfillHistoricoTodos } = require('./lib/historico');
 
 // Passar wsServer para as rotas
 tasksRouter.setWsServer(wsServer);
@@ -77,6 +78,7 @@ openfinanceRouter.setWsServer(wsServer);
 
 // Todas as APIs abaixo exigem login (/api/auth é público pra permitir fazer o próprio login)
 app.use('/api/tasks', requireAuth, tasksRouter);
+app.use('/api/ranking', requireAuth, rankingRouter);
 app.use('/api/financeiro', requireAuth, financeiroRouter);
 app.use('/api/despesas', requireAuth, despesasRouter);
 app.use('/api/receitas', requireAuth, receitasRouter);
@@ -104,14 +106,20 @@ if (!fs.existsSync('./data')) fs.mkdirSync('./data');
 // Inicializa BD
 initDB().then(async () => {
   try {
-    const h = await garantirRecorrentesHabitos();
-    if (h.criadas) console.log(`[Habitos] ${h.criadas} recorrente(s) criada(s)`);
+    const { ensureDevUser } = require('./lib/tenant');
+    await ensureDevUser();
+  } catch (err) {
+    console.error('[tenant]', err.message);
+  }
+  try {
+    const h = await garantirRecorrentesHabitosTodos();
+    if (h.criadas) console.log(`[Habitos] ${h.criadas} recorrente(s) criada(s) (${h.usuarios} user(s))`);
   } catch (err) {
     console.error('[Habitos]', err.message);
   }
   try {
-    const bf = await backfillHistorico(90);
-    console.log(`[Historico] backfill ${bf.salvos}/${bf.dias} dia(s)`);
+    const bf = await backfillHistoricoTodos(90);
+    console.log(`[Historico] backfill ${bf.salvos} dia(s) (${bf.usuarios} user(s))`);
   } catch (err) {
     console.error('[Historico]', err.message);
   }
@@ -151,7 +159,7 @@ sched('*/1 * * * *', runCron('alarmes', async () => {
   const { all } = require('./lib/db');
   const horaAgora = horaAtual();
 
-  const alarmes = await all(`SELECT * FROM alarmes WHERE ativo = true AND hora = $1`, [horaAgora]);
+  const alarmes = await all(`SELECT * FROM alarmes WHERE ativo = true AND hora = $1 AND user_id IS NOT NULL`, [horaAgora]);
 
   alarmes.forEach(alarme => {
     enviarTelegram(alarme.mensagem);
@@ -165,14 +173,15 @@ sched('*/1 * * * *', runCron('alarmes', async () => {
 // Gerar tarefas recorrentes do dia (00:05 e na inicializacao)
 async function gerarRecorrentesHoje() {
   try {
-    const { run, get, all } = require('./lib/db');
+    const { run, all } = require('./lib/db');
     const { v4: uuid } = require('uuid');
-    await garantirRecorrentesHabitos();
+    await garantirRecorrentesHabitosTodos();
     const hoje = hojeStr();
     const dow = String(diaSemana());
     const recorrentes = await all(`SELECT * FROM tarefas_recorrentes WHERE ativa = true`);
     let criadas = 0;
     for (const r of recorrentes) {
+      if (!r.user_id) continue;
       const dias = (r.dias_semana || '0,1,2,3,4,5,6').split(',');
       if (!dias.includes(dow)) continue;
       if (r.ultima_criacao) {
@@ -180,9 +189,9 @@ async function gerarRecorrentesHoje() {
       }
       const taskId = uuid();
       await run(
-        `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, dataResetSql(hoje)]
+        `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, user_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, dataResetSql(hoje), r.user_id]
       );
       await run(`UPDATE tarefas_recorrentes SET ultima_criacao = $1 WHERE id = $2`, [hoje, r.id]);
       criadas++;
@@ -197,8 +206,12 @@ if (CRONS_ENABLED) setTimeout(gerarRecorrentesHoje, 3000); // Executa 3s apos se
 
 // Persiste agregados do dia em task_historico (23:55 BRT) + reforço de ontem às 0:10
 async function persistirHistoricoCron(dia) {
-  const r = await persistirHistoricoDia(dia);
-  if (r.salvo) console.log(`[Historico] ${r.data}: ${r.concluidas}/${r.total}`);
+  const { all } = require('./lib/db');
+  const users = await all(`SELECT id FROM usuarios WHERE ativo = true`);
+  for (const u of users) {
+    const r = await persistirHistoricoDia(dia, u.id);
+    if (r.salvo) console.log(`[Historico] ${u.id.slice(0, 8)}… ${r.data}: ${r.concluidas}/${r.total}`);
+  }
 }
 sched('55 23 * * *', runCron('historico-hoje', () => persistirHistoricoCron(hojeStr())));
 sched('10 0 * * *', runCron('historico-ontem', () => persistirHistoricoCron(addDias(-1))));

@@ -7,6 +7,7 @@ const { hojeStr, ymAtual, addDias, dataResetSql, horaAtual, diaSemana } = requir
 const { persistirHistoricoDia } = require('../lib/historico');
 const plano = require('../lib/plano-financeiro');
 const openfinanceRouter = require('./openfinance');
+const { requireUserId } = require('../lib/tenant');
 
 
 const router = express.Router();
@@ -313,12 +314,17 @@ router.get('/gemini-models', async (req, res) => {
 
 // POST /api/ia/categorizar
 router.post('/categorizar', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   if (!providerAtivo()) return res.status(400).json({ erro: 'IA não configurada.' });
   const desc = String(req.body?.descricao || '').trim();
   if (!desc) return res.status(400).json({ erro: 'descricao é obrigatória' });
 
   try {
-    const cats = await all(`SELECT chave, label FROM categorias ORDER BY label`);
+    const cats = await all(
+      `SELECT chave, label FROM categorias WHERE user_id IS NULL OR user_id = $1 ORDER BY label`,
+      [uid]
+    );
     if (cats.length === 0) return res.status(400).json({ erro: 'Nenhuma categoria cadastrada.' });
 
     const listaCategorias = cats.map(c => `- ${c.chave}: ${c.label}`).join('\n');
@@ -432,6 +438,8 @@ Exemplos:
 
 // POST /api/ia/analise/diaria
 router.post('/analise/diaria', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   if (!providerAtivo()) return res.status(400).json({ erro: 'IA não configurada.' });
 
   try {
@@ -441,15 +449,15 @@ router.post('/analise/diaria', async (req, res) => {
 
     const tarefasHoje = await all(
       `SELECT COUNT(*)::int AS total, SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
-       FROM tasks WHERE data_reset::date = $1`,
-      [hoje]
+       FROM tasks WHERE user_id = $1 AND data_reset::date = $2`,
+      [uid, hoje]
     );
 
     const finHoje = await all(
       `SELECT tipo, categoria, valor, descricao
-       FROM financeiro WHERE data::date = $1
+       FROM financeiro WHERE user_id = $1 AND data::date = $2
        ORDER BY valor DESC LIMIT 20`,
-      [hoje]
+      [uid, hoje]
     );
 
     const finMedia = await all(
@@ -458,8 +466,8 @@ router.post('/analise/diaria', async (req, res) => {
          COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas30,
          COUNT(*)::int AS n
        FROM financeiro
-       WHERE data::date BETWEEN $1 AND $2 AND data::date < $3`,
-      [inicio30, ontem, hoje]
+       WHERE user_id = $1 AND data::date BETWEEN $2 AND $3 AND data::date < $4`,
+      [uid, inicio30, ontem, hoje]
     );
 
     const t = tarefasHoje[0] || { total: 0, concluidas: 0 };
@@ -532,6 +540,7 @@ function mapTarefa(t) {
 
 async function snapshotAssistente(opts = {}) {
   const lite = !!opts.lite;
+  const userId = opts.userId;
   const hoje = hojeStr();
   const ym = ymAtual();
   const ontem = addDias(-1);
@@ -569,149 +578,163 @@ async function snapshotAssistente(opts = {}) {
   ] = await Promise.all([
     all(
       `SELECT id, titulo, concluida, prioridade, hora, concluida_em, categoria, data_reset
-       FROM tasks WHERE data_reset::date = $1
+       FROM tasks WHERE user_id = $1 AND data_reset::date = $2
        ORDER BY concluida, prioridade, hora NULLS LAST LIMIT ${lite ? 25 : 50}`,
-      [hoje]
+      [userId, hoje]
     ).catch(() => []),
     lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, concluida, prioridade, hora, concluida_em, categoria
-       FROM tasks WHERE data_reset::date = $1
+       FROM tasks WHERE user_id = $1 AND data_reset::date = $2
        ORDER BY concluida, prioridade LIMIT 30`,
-      [ontem]
+      [userId, ontem]
     ).catch(() => []),
     lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, concluida, prioridade, hora, categoria
-       FROM tasks WHERE data_reset::date = $1
+       FROM tasks WHERE user_id = $1 AND data_reset::date = $2
        ORDER BY prioridade, hora NULLS LAST LIMIT 30`,
-      [amanha]
+      [userId, amanha]
     ).catch(() => []),
     lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, concluida, prioridade, hora, categoria, data_reset
        FROM tasks
-       WHERE data_reset::date > $1::date AND data_reset::date <= $2::date
+       WHERE user_id = $1 AND data_reset::date > $2::date AND data_reset::date <= $3::date
        ORDER BY data_reset, prioridade LIMIT 40`,
-      [hoje, fim14]
+      [userId, hoje, fim14]
     ).catch(() => []),
     lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, prioridade, hora, data_reset
        FROM tasks
-       WHERE concluida = false
+       WHERE user_id = $1 AND concluida = false
          AND data_reset IS NOT NULL
-         AND data_reset::date < $1::date
+         AND data_reset::date < $2::date
        ORDER BY data_reset DESC LIMIT 20`,
-      [hoje]
+      [userId, hoje]
     ).catch(() => []),
     get(
       `SELECT COUNT(*)::int AS total,
               SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
        FROM tasks
-       WHERE data_reset IS NOT NULL AND DATE(data_reset) >= $1::date`,
-      [inicio7]
+       WHERE user_id = $1 AND data_reset IS NOT NULL AND DATE(data_reset) >= $2::date`,
+      [userId, inicio7]
     ).catch(() => ({ total: 0, concluidas: 0 })),
     get(
       `SELECT COUNT(*)::int AS total,
               SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
        FROM tasks
-       WHERE data_reset IS NOT NULL AND DATE(data_reset) >= $1::date`,
-      [inicio30]
+       WHERE user_id = $1 AND data_reset IS NOT NULL AND DATE(data_reset) >= $2::date`,
+      [userId, inicio30]
     ).catch(() => ({ total: 0, concluidas: 0 })),
     get(
       `SELECT
          COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
          COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas
-       FROM financeiro WHERE data::date >= $1::date`,
-      [inicio7]
+       FROM financeiro WHERE user_id = $1 AND data::date >= $2::date`,
+      [userId, inicio7]
     ).catch(() => ({ entradas: 0, saidas: 0 })),
     get(
       `SELECT
          COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
          COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas
-       FROM financeiro WHERE data::date >= $1::date`,
-      [inicio30]
+       FROM financeiro WHERE user_id = $1 AND data::date >= $2::date`,
+      [userId, inicio30]
     ).catch(() => ({ entradas: 0, saidas: 0 })),
     get(
       `SELECT
          COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) AS entradas,
          COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) AS saidas
-       FROM financeiro WHERE TO_CHAR(data, 'YYYY-MM') = $1`,
-      [ym]
+       FROM financeiro WHERE user_id = $1 AND TO_CHAR(data, 'YYYY-MM') = $2`,
+      [userId, ym]
     ).catch(() => ({ entradas: 0, saidas: 0 })),
     all(
       `SELECT id, descricao, valor, tipo, categoria, data, fonte, chave_categoria,
               pago_terceiro, terceiro_nome
        FROM financeiro
+       WHERE user_id = $1
        ORDER BY data DESC
-       LIMIT ${lite ? 20 : 40}`
+       LIMIT ${lite ? 20 : 40}`,
+      [userId]
     ).catch(() => []),
-    all(`SELECT chave, label FROM categorias ORDER BY label LIMIT ${lite ? 50 : 80}`).catch(() => []),
+    all(
+      `SELECT chave, label FROM categorias
+       WHERE user_id IS NULL OR user_id = $1
+       ORDER BY label LIMIT ${lite ? 50 : 80}`,
+      [userId]
+    ).catch(() => []),
     all(
       `SELECT COALESCE(NULLIF(categoria,''),'outros') AS categoria,
               SUM(valor)::float AS total, COUNT(*)::int AS qtd
        FROM financeiro
-       WHERE tipo = 'saida' AND data::date >= $1::date
+       WHERE user_id = $1 AND tipo = 'saida' AND data::date >= $2::date
        GROUP BY 1 ORDER BY total DESC LIMIT 12`,
-      [inicio30]
+      [userId, inicio30]
     ).catch(() => []),
     all(
       `SELECT id, titulo, valor_esperado, dia_vencimento, categoria, status, pago_em, confirmado_por
-       FROM despesas_mes WHERE ym = $1
+       FROM despesas_mes WHERE user_id = $1 AND ym = $2
        ORDER BY CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'pago' THEN 2 ELSE 3 END,
                 dia_vencimento NULLS LAST
        LIMIT ${lite ? 30 : 60}`,
-      [ym]
+      [userId, ym]
     ).catch(() => []),
     all(
       `SELECT id, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, origem, notas
-       FROM receitas_mes WHERE ym = $1
+       FROM receitas_mes WHERE user_id = $1 AND ym = $2
        ORDER BY CASE tipo WHEN 'fixa' THEN 0 ELSE 1 END,
                 CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'recebido' THEN 2 ELSE 3 END,
                 dia_previsto NULLS LAST
        LIMIT ${lite ? 20 : 40}`,
-      [ym]
+      [userId, ym]
     ).catch(() => []),
     all(
       `SELECT m.id, m.nome, m.valor_total, m.prazo, m.concluida,
-              COALESCE((SELECT SUM(valor) FROM metas_depositos d WHERE d.meta_id = m.id),0) AS guardado
+              COALESCE((SELECT SUM(valor) FROM metas_depositos d WHERE d.meta_id = m.id AND d.user_id = $1),0) AS guardado
        FROM metas m
+       WHERE m.user_id = $1
        ORDER BY m.concluida ASC, m.prazo NULLS LAST
-       LIMIT 20`
+       LIMIT 20`,
+      [userId]
     ).catch(() => []),
-    all(`SELECT id, hora, mensagem, ativo FROM alarmes ORDER BY ativo DESC, hora LIMIT 20`).catch(() => []),
-    listarHabitos().catch(() => ({ habitos: [] })),
+    all(`SELECT id, hora, mensagem, ativo FROM alarmes WHERE user_id = $1 ORDER BY ativo DESC, hora LIMIT 20`, [userId]).catch(() => []),
+    listarHabitos(userId).catch(() => ({ habitos: [] })),
     lite ? Promise.resolve([]) : all(
       `SELECT titulo, prioridade, categoria, frequencia, dias_semana, ativa
-       FROM tarefas_recorrentes WHERE ativa = true
-       ORDER BY titulo LIMIT 30`
+       FROM tarefas_recorrentes WHERE user_id = $1 AND ativa = true
+       ORDER BY titulo LIMIT 30`,
+      [userId]
     ).catch(() => []),
     lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, tipo, data, hora, cor
        FROM eventos
-       WHERE data::date >= $1::date AND data::date <= $2::date
+       WHERE user_id = $1 AND data::date >= $2::date AND data::date <= $3::date
        ORDER BY data, hora NULLS LAST
        LIMIT 25`,
-      [hoje, fim14]
+      [userId, hoje, fim14]
     ).catch(() => []),
     lite ? Promise.resolve([]) : all(
       `SELECT data, total, concluidas
        FROM task_historico
-       WHERE data::date >= $1::date
+       WHERE user_id = $1 AND data::date >= $2::date
        ORDER BY data DESC LIMIT 21`,
-      [inicio30]
+      [userId, inicio30]
     ).catch(() => []),
     lite ? Promise.resolve([]) : all(
       `SELECT a.nome, a.tipo, a.saldo, i.pessoa, i.connector_nome
        FROM openfinance_accounts a
        JOIN openfinance_items i ON i.item_id = a.item_id
+       WHERE i.user_id = $1
        ORDER BY i.pessoa, a.tipo, a.nome
-       LIMIT 20`
+       LIMIT 20`,
+      [userId]
     ).catch(() => []),
     all(
       `SELECT ym, valor, pago, data_pagamento
        FROM mei_das
+       WHERE user_id = $1
        ORDER BY ym DESC
-       LIMIT 6`
+       LIMIT 6`,
+      [userId]
     ).catch(() => []),
-    lite ? Promise.resolve(null) : analisarConsistencia(30).catch(() => null)
+    lite ? Promise.resolve(null) : analisarConsistencia(30, userId).catch(() => null)
   ]);
 
   const tHoje = tarefasHoje || [];
@@ -941,7 +964,7 @@ async function snapshotAssistente(opts = {}) {
   };
 }
 
-async function executarAcoes(acoes) {
+async function executarAcoes(acoes, userId) {
   if (!Array.isArray(acoes) || acoes.length === 0) return [];
   const feitos = [];
   const ym = ymAtual();
@@ -959,20 +982,22 @@ async function executarAcoes(acoes) {
     if (/^[a-z0-9_]+$/i.test(catRaw)) chave = catRaw.toLowerCase();
     else chave = normalizarChave(label || catRaw);
     if (!chave) return null;
-    const existe = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chave]);
+    const existe = await get(
+      `SELECT chave, label FROM categorias WHERE chave = $1 AND (user_id IS NULL OR user_id = $2)`,
+      [chave, userId]
+    );
     if (existe) {
-      // Se pediram label novo e a chave já existe, atualiza o label
       if (labelHint && labelHint !== existe.label) {
-        await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [labelHint, existe.chave]);
+        await run(`UPDATE categorias SET label = $1 WHERE chave = $2 AND user_id = $3`, [labelHint, existe.chave, userId]);
         return { chave: existe.chave, label: labelHint, criada: false };
       }
       return { chave: existe.chave, label: existe.label, criada: false };
     }
     const lab = label || chave;
     await run(
-      `INSERT INTO categorias (chave, label, criado_por_usuario) VALUES ($1,$2,true)
+      `INSERT INTO categorias (chave, label, criado_por_usuario, user_id) VALUES ($1,$2,true,$3)
        ON CONFLICT (chave) DO NOTHING`,
-      [chave, lab]
+      [chave, lab, userId]
     );
     return { chave, label: lab, criada: true };
   }
@@ -981,14 +1006,21 @@ async function executarAcoes(acoes) {
     const raw = String(ref || '').trim();
     if (!raw) return null;
     const chaveTry = /^[a-z0-9_]+$/i.test(raw) ? raw.toLowerCase() : normalizarChave(raw);
-    let row = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chaveTry]);
-    if (!row) row = await get(`SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`, [raw]);
+    let row = await get(
+      `SELECT chave, label FROM categorias WHERE chave = $1 AND (user_id IS NULL OR user_id = $2)`,
+      [chaveTry, userId]
+    );
+    if (!row) row = await get(
+      `SELECT chave, label FROM categorias WHERE lower(label) = lower($1) AND (user_id IS NULL OR user_id = $2)`,
+      [raw, userId]
+    );
     if (!row) {
       row = await get(
         `SELECT chave, label FROM categorias
-         WHERE label ILIKE $1 OR chave ILIKE $2
+         WHERE (user_id IS NULL OR user_id = $3)
+           AND (label ILIKE $1 OR chave ILIKE $2)
          ORDER BY length(label) ASC LIMIT 1`,
-        [`%${raw}%`, `%${chaveTry}%`]
+        [`%${raw}%`, `%${chaveTry}%`, userId]
       );
     }
     return row;
@@ -999,14 +1031,14 @@ async function executarAcoes(acoes) {
     if (ids.length) {
       return all(
         `SELECT id, descricao, valor, tipo, data, chave_categoria, categoria
-         FROM financeiro WHERE id = ANY($1::text[])`,
-        [ids]
+         FROM financeiro WHERE user_id = $1 AND id = ANY($2::text[])`,
+        [userId, ids]
       );
     }
     const f = acao.filtros || {};
-    const W = [];
-    const V = [];
-    let p = 1;
+    const W = [`user_id = $1`];
+    const V = [userId];
+    let p = 2;
     if (f.data) {
       W.push(`data::date = $${p++}::date`);
       V.push(String(f.data).slice(0, 10));
@@ -1064,9 +1096,9 @@ async function executarAcoes(acoes) {
       const frag = trecho.slice(0, 80).replace(/[%_\\]/g, '');
       txs = await all(
         `SELECT id, descricao, valor, tipo, data, chave_categoria, categoria
-         FROM financeiro WHERE descricao ILIKE $1
+         FROM financeiro WHERE user_id = $1 AND descricao ILIKE $2
          ORDER BY data DESC LIMIT 40`,
-        [`%${frag}%`]
+        [userId, `%${frag}%`]
       );
       if (txs.length) return txs;
     }
@@ -1092,9 +1124,9 @@ async function executarAcoes(acoes) {
         const id = uuid();
         const dia = acao.dia_vencimento != null ? Number(acao.dia_vencimento) : null;
         await run(
-          `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem)
-           VALUES ($1,$2,$3,$4,$5,$6,'pendente','manual')`,
-          [id, acao.ym || ym, titulo, valor, Number.isFinite(dia) ? dia : null, acao.categoria || 'outros']
+          `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem, user_id)
+           VALUES ($1,$2,$3,$4,$5,$6,'pendente','manual',$7)`,
+          [id, acao.ym || ym, titulo, valor, Number.isFinite(dia) ? dia : null, acao.categoria || 'outros', userId]
         );
         feitos.push({ tipo, ok: true, titulo, valor });
       } else if (tipo === 'criar_tarefa') {
@@ -1108,9 +1140,9 @@ async function executarAcoes(acoes) {
           ? dataResetSql(String(acao.data_reset).slice(0, 10))
           : dataResetSql(hojeStr());
         await run(
-          `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, hora)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [id, titulo, acao.descricao || '', acao.prioridade || 'media', acao.categoria || 'geral', dataReset, acao.hora || null]
+          `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, hora, user_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [id, titulo, acao.descricao || '', acao.prioridade || 'media', acao.categoria || 'geral', dataReset, acao.hora || null, userId]
         );
         feitos.push({ tipo, ok: true, titulo });
       } else if (tipo === 'criar_meta') {
@@ -1121,14 +1153,14 @@ async function executarAcoes(acoes) {
           continue;
         }
         const r = await get(
-          `INSERT INTO metas (nome, valor_total, prazo) VALUES ($1,$2,$3) RETURNING id`,
-          [nome, valor, acao.prazo || null]
+          `INSERT INTO metas (nome, valor_total, prazo, user_id) VALUES ($1,$2,$3,$4) RETURNING id`,
+          [nome, valor, acao.prazo || null, userId]
         );
         feitos.push({ tipo, ok: true, nome, valor, id: r && r.id });
       } else if (tipo === 'marcar_habito') {
         const titulo = String(acao.titulo || 'Academia').trim() || 'Academia';
-        const r = await checkinHabito(titulo);
-        persistirHistoricoDia(hojeStr()).catch(() => {});
+        const r = await checkinHabito(titulo, userId);
+        persistirHistoricoDia(hojeStr(), userId).catch(() => {});
         feitos.push({
           tipo,
           ok: true,
@@ -1164,10 +1196,10 @@ async function executarAcoes(acoes) {
               const chave = normalizarChave(token).slice(0, 40);
               if (!chave || chave.length < 3) continue;
               await run(
-                `INSERT INTO categoria_regras (chave, categoria, exemplo)
-                 VALUES ($1,$2,$3)
-                 ON CONFLICT (chave) DO UPDATE SET categoria = EXCLUDED.categoria`,
-                [chave, cat.chave, String(acao.filtros?.trecho || token).slice(0, 120)]
+                `INSERT INTO categoria_regras (chave, categoria, exemplo, user_id)
+                 VALUES ($1,$2,$3,$4)
+                 ON CONFLICT (chave) DO UPDATE SET categoria = EXCLUDED.categoria, user_id = EXCLUDED.user_id`,
+                [chave, cat.chave, String(acao.filtros?.trecho || token).slice(0, 120), userId]
               );
             }
           }
@@ -1184,7 +1216,7 @@ async function executarAcoes(acoes) {
           const tokTxt = contem.length ? contem.join('", "') : 'esse nome';
           let totalTxt = '';
           try {
-            const row = await get(`SELECT COUNT(*)::int AS n FROM financeiro`);
+            const row = await get(`SELECT COUNT(*)::int AS n FROM financeiro WHERE user_id = $1`, [userId]);
             totalTxt = row && row.n ? ` (${row.n} lançamentos no extrato)` : '';
           } catch (e) { /* ok */ }
           const syncTxt = syncInfo && Number(syncInfo.importadas) > 0
@@ -1210,18 +1242,18 @@ async function executarAcoes(acoes) {
                categoria_confirmada = true,
                pago_terceiro = CASE WHEN $3 THEN true ELSE pago_terceiro END,
                terceiro_nome = CASE WHEN $3 AND $4 IS NOT NULL THEN $4 ELSE terceiro_nome END
-           WHERE id = ANY($2::text[])`,
-          [cat.chave, ids, marcarTerceiro, nomeTerceiro]
+           WHERE user_id = $5 AND id = ANY($2::text[])`,
+          [cat.chave, ids, marcarTerceiro, nomeTerceiro, userId]
         );
         if (acao.aprender !== false) {
           for (const t of txs) {
             const chave = t.chave_categoria || normalizarChave(t.descricao).slice(0, 40);
             if (!chave) continue;
             await run(
-              `INSERT INTO categoria_regras (chave, categoria, exemplo)
-               VALUES ($1,$2,$3)
-               ON CONFLICT (chave) DO UPDATE SET categoria = EXCLUDED.categoria`,
-              [chave, cat.chave, String(t.descricao || '').slice(0, 120)]
+              `INSERT INTO categoria_regras (chave, categoria, exemplo, user_id)
+               VALUES ($1,$2,$3,$4)
+               ON CONFLICT (chave) DO UPDATE SET categoria = EXCLUDED.categoria, user_id = EXCLUDED.user_id`,
+              [chave, cat.chave, String(t.descricao || '').slice(0, 120), userId]
             );
           }
         }
@@ -1244,45 +1276,59 @@ async function executarAcoes(acoes) {
         let row = null;
         if (deRaw) {
           const chaveTry = /^[a-z0-9_]+$/i.test(deRaw) ? deRaw.toLowerCase() : normalizarChave(deRaw);
-          row = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chaveTry]);
+          row = await get(
+            `SELECT chave, label FROM categorias WHERE chave = $1 AND (user_id IS NULL OR user_id = $2)`,
+            [chaveTry, userId]
+          );
           if (!row) {
-            row = await get(`SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`, [deRaw]);
+            row = await get(
+              `SELECT chave, label FROM categorias WHERE lower(label) = lower($1) AND (user_id IS NULL OR user_id = $2)`,
+              [deRaw, userId]
+            );
           }
           if (!row) {
             row = await get(
               `SELECT chave, label FROM categorias
-               WHERE label ILIKE $1 OR chave ILIKE $2
+               WHERE (user_id IS NULL OR user_id = $3)
+                 AND (label ILIKE $1 OR chave ILIKE $2)
                ORDER BY length(label) ASC LIMIT 1`,
-              [`%${deRaw}%`, `%${chaveTry}%`]
+              [`%${deRaw}%`, `%${chaveTry}%`, userId]
             );
           }
         }
         if (!row) {
           const chaveNovo = normalizarChave(novoLabel);
-          row = await get(`SELECT chave, label FROM categorias WHERE chave = $1`, [chaveNovo]);
-          // "Apostas - Amigo" → apostasamigo vs chave apostasamigos
+          row = await get(
+            `SELECT chave, label FROM categorias WHERE chave = $1 AND (user_id IS NULL OR user_id = $2)`,
+            [chaveNovo, userId]
+          );
           if (!row && chaveNovo.length >= 6) {
             row = await get(
               `SELECT chave, label FROM categorias
-               WHERE chave LIKE $1 OR $2 LIKE (chave || '%')
-               ORDER BY ABS(length(chave) - length($3)) ASC, length(chave) DESC
+               WHERE (user_id IS NULL OR user_id = $3)
+                 AND (chave LIKE $1 OR $2 LIKE (chave || '%'))
+               ORDER BY ABS(length(chave) - length($2)) ASC, length(chave) DESC
                LIMIT 1`,
-              [`${chaveNovo}%`, chaveNovo, chaveNovo]
+              [`${chaveNovo}%`, chaveNovo, userId]
             );
           }
           if (!row && /amigo/i.test(novoLabel)) {
             row = await get(
               `SELECT chave, label FROM categorias
-               WHERE chave ILIKE '%amigo%' OR label ILIKE '%amigo%'
-               ORDER BY length(label) ASC LIMIT 1`
+               WHERE (user_id IS NULL OR user_id = $1)
+                 AND (chave ILIKE '%amigo%' OR label ILIKE '%amigo%')
+               ORDER BY length(label) ASC LIMIT 1`,
+              [userId]
             );
           }
           if (!row && /aposta/i.test(novoLabel)) {
             row = await get(
               `SELECT chave, label FROM categorias
-               WHERE chave ILIKE '%aposta%' OR label ILIKE '%aposta%'
+               WHERE (user_id IS NULL OR user_id = $1)
+                 AND (chave ILIKE '%aposta%' OR label ILIKE '%aposta%')
                ORDER BY CASE WHEN chave = 'apostas' THEN 1 ELSE 0 END, length(label) ASC
-               LIMIT 1`
+               LIMIT 1`,
+              [userId]
             );
           }
         }
@@ -1290,7 +1336,7 @@ async function executarAcoes(acoes) {
           feitos.push({ tipo, ok: false, erro: 'categoria não encontrada pra renomear' });
           continue;
         }
-        await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [novoLabel, row.chave]);
+        await run(`UPDATE categorias SET label = $1 WHERE chave = $2 AND user_id = $3`, [novoLabel, row.chave, userId]);
         feitos.push({
           tipo,
           ok: true,
@@ -1309,8 +1355,8 @@ async function executarAcoes(acoes) {
         // Se não veio lista, mas o label já está duplicado (2x "Pai e Mãe"), funde por label
         if (!fontesRaw.length && novoLabel) {
           const dups = await all(
-            `SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`,
-            [novoLabel]
+            `SELECT chave, label FROM categorias WHERE lower(label) = lower($1) AND (user_id IS NULL OR user_id = $2)`,
+            [novoLabel, userId]
           );
           if (dups.length >= 2) fontesRaw = dups.map(d => d.chave);
         }
@@ -1324,8 +1370,8 @@ async function executarAcoes(acoes) {
         // Também pega qualquer outra categoria com o mesmo label-alvo (duplicatas)
         if (novoLabel) {
           const dups = await all(
-            `SELECT chave, label FROM categorias WHERE lower(label) = lower($1)`,
-            [novoLabel]
+            `SELECT chave, label FROM categorias WHERE lower(label) = lower($1) AND (user_id IS NULL OR user_id = $2)`,
+            [novoLabel, userId]
           );
           for (const d of dups) {
             if (!resolvidas.find(x => x.chave === d.chave)) resolvidas.push(d);
@@ -1354,7 +1400,7 @@ async function executarAcoes(acoes) {
         const chavesOrigem = resolvidas.map(r => r.chave).filter(c => c !== alvo.chave);
         if (!chavesOrigem.length) {
           // Só duplicata de label na mesma chave — só garante label
-          await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [lab, alvo.chave]);
+          await run(`UPDATE categorias SET label = $1 WHERE chave = $2 AND user_id = $3`, [lab, alvo.chave, userId]);
           feitos.push({
             tipo,
             ok: true,
@@ -1369,16 +1415,16 @@ async function executarAcoes(acoes) {
         const updFin = await run(
           `UPDATE financeiro
            SET categoria = $1, categoria_confirmada = true
-           WHERE categoria = ANY($2::text[])`,
-          [alvo.chave, chavesOrigem]
+           WHERE user_id = $2 AND categoria = ANY($3::text[])`,
+          [alvo.chave, userId, chavesOrigem]
         );
         await run(
-          `UPDATE categoria_regras SET categoria = $1 WHERE categoria = ANY($2::text[])`,
-          [alvo.chave, chavesOrigem]
+          `UPDATE categoria_regras SET categoria = $1 WHERE user_id = $2 AND categoria = ANY($3::text[])`,
+          [alvo.chave, userId, chavesOrigem]
         ).catch(() => {});
         await run(
-          `UPDATE despesas_mes SET categoria = $1 WHERE categoria = ANY($2::text[])`,
-          [alvo.chave, chavesOrigem]
+          `UPDATE despesas_mes SET categoria = $1 WHERE user_id = $2 AND categoria = ANY($3::text[])`,
+          [alvo.chave, userId, chavesOrigem]
         ).catch(() => {});
 
         // Remove categorias origem (não apaga seed clássicos se ainda forem a chave alvo)
@@ -1392,10 +1438,10 @@ async function executarAcoes(acoes) {
             // seed: só restaura label padrão se for alimentacao etc — deixa label como está se user renomeou
             continue;
           }
-          await run(`DELETE FROM categorias WHERE chave = $1`, [c]).catch(() => {});
+          await run(`DELETE FROM categorias WHERE chave = $1 AND user_id = $2`, [c, userId]).catch(() => {});
         }
 
-        await run(`UPDATE categorias SET label = $1 WHERE chave = $2`, [lab, alvo.chave]);
+        await run(`UPDATE categorias SET label = $1 WHERE chave = $2 AND user_id = $3`, [lab, alvo.chave, userId]);
 
         feitos.push({
           tipo,
@@ -1409,15 +1455,15 @@ async function executarAcoes(acoes) {
         const titulo = String(acao.titulo || acao.nome || '').trim();
         const id = acao.id ? String(acao.id) : null;
         let row = null;
-        if (id) row = await get(`SELECT id, titulo, status FROM despesas_mes WHERE id = $1`, [id]);
+        if (id) row = await get(`SELECT id, titulo, status FROM despesas_mes WHERE id = $1 AND user_id = $2`, [id, userId]);
         if (!row && titulo) {
           row = await get(
             `SELECT id, titulo, status FROM despesas_mes
-             WHERE ym = $1 AND status IN ('pendente','atrasado')
-               AND (lower(titulo) = lower($2) OR titulo ILIKE $3)
-             ORDER BY CASE WHEN lower(titulo) = lower($2) THEN 0 ELSE 1 END, dia_vencimento NULLS LAST
+             WHERE user_id = $1 AND ym = $2 AND status IN ('pendente','atrasado')
+               AND (lower(titulo) = lower($3) OR titulo ILIKE $4)
+             ORDER BY CASE WHEN lower(titulo) = lower($3) THEN 0 ELSE 1 END, dia_vencimento NULLS LAST
              LIMIT 1`,
-            [acao.ym || ym, titulo, `%${titulo}%`]
+            [userId, acao.ym || ym, titulo, `%${titulo}%`]
           );
         }
         if (!row) {
@@ -1435,8 +1481,8 @@ async function executarAcoes(acoes) {
              pago_em = $1::date,
              confirmado_por = 'assistente',
              dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
-           WHERE id = $2`,
-          [pagoEm, row.id]
+           WHERE id = $2 AND user_id = $3`,
+          [pagoEm, row.id, userId]
         );
         feitos.push({ tipo, ok: true, titulo: row.titulo, id: row.id, pago_em: pagoEm });
       } else if (tipo === 'confirmar_receita') {
@@ -1445,36 +1491,36 @@ async function executarAcoes(acoes) {
         const chave = String(acao.chave || '').trim() || null;
         const id = acao.id ? String(acao.id) : null;
 
-        const countRec = await get(`SELECT COUNT(*)::int AS n FROM receitas_mes WHERE ym = $1`, [ymRec]);
+        const countRec = await get(`SELECT COUNT(*)::int AS n FROM receitas_mes WHERE ym = $1 AND user_id = $2`, [ymRec, userId]);
         if (!countRec?.n) {
           for (const item of plano.rendaFixa || []) {
             const dia = item.dia != null ? Number(item.dia) : null;
             await run(
               `INSERT INTO receitas_mes
-                (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, origem)
-               VALUES ($1,$2,$3,$4,NULL,$5,'fixa',$6,'pendente',NULL,'plano')`,
-              [uuid(), ymRec, item.nome, item.valor, dia, item.chave]
+                (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, origem, user_id)
+               VALUES ($1,$2,$3,$4,NULL,$5,'fixa',$6,'pendente',NULL,'plano',$7)`,
+              [uuid(), ymRec, item.nome, item.valor, dia, item.chave, userId]
             );
           }
         }
 
         let row = null;
-        if (id) row = await get(`SELECT * FROM receitas_mes WHERE id = $1`, [id]);
+        if (id) row = await get(`SELECT * FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, userId]);
         if (!row && chave) {
           row = await get(
-            `SELECT * FROM receitas_mes WHERE ym = $1 AND chave = $2 AND status IN ('pendente','atrasado')
+            `SELECT * FROM receitas_mes WHERE user_id = $1 AND ym = $2 AND chave = $3 AND status IN ('pendente','atrasado')
              ORDER BY CASE tipo WHEN 'fixa' THEN 0 ELSE 1 END LIMIT 1`,
-            [acao.ym || ymRec, chave]
+            [userId, acao.ym || ymRec, chave]
           );
         }
         if (!row && titulo) {
           row = await get(
             `SELECT * FROM receitas_mes
-             WHERE ym = $1 AND status IN ('pendente','atrasado')
-               AND (lower(titulo) = lower($2) OR titulo ILIKE $3)
-             ORDER BY CASE WHEN lower(titulo) = lower($2) THEN 0 ELSE 1 END, dia_previsto NULLS LAST
+             WHERE user_id = $1 AND ym = $2 AND status IN ('pendente','atrasado')
+               AND (lower(titulo) = lower($3) OR titulo ILIKE $4)
+             ORDER BY CASE WHEN lower(titulo) = lower($3) THEN 0 ELSE 1 END, dia_previsto NULLS LAST
              LIMIT 1`,
-            [ymRec, titulo, `%${titulo}%`]
+            [userId, ymRec, titulo, `%${titulo}%`]
           );
         }
         if (!row) {
@@ -1494,8 +1540,8 @@ async function executarAcoes(acoes) {
              recebido_em = $2::date,
              origem = CASE WHEN origem = 'plano' THEN origem ELSE 'assistente' END,
              dia_previsto = COALESCE(dia_previsto, EXTRACT(DAY FROM $2::date)::int)
-           WHERE id = $3`,
-          [valor, recebidoEm, row.id]
+           WHERE id = $3 AND user_id = $4`,
+          [valor, recebidoEm, row.id, userId]
         );
         feitos.push({ tipo, ok: true, titulo: row.titulo, id: row.id, valor, recebido_em: recebidoEm });
       } else if (tipo === 'criar_receita') {
@@ -1514,8 +1560,8 @@ async function executarAcoes(acoes) {
         const id = uuid();
         await run(
           `INSERT INTO receitas_mes
-            (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, notas, origem)
-           VALUES ($1,$2,$3,$4,$5,$6,'variavel',$7,'recebido',$8,$9,'assistente')`,
+            (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, notas, origem, user_id)
+           VALUES ($1,$2,$3,$4,$5,$6,'variavel',$7,'recebido',$8,$9,'assistente',$10)`,
           [
             id,
             ymRec,
@@ -1525,7 +1571,8 @@ async function executarAcoes(acoes) {
             recebidoEm ? Number(String(recebidoEm).slice(8, 10)) : null,
             chave,
             recebidoEm,
-            acao.notas ? String(acao.notas).trim() : null
+            acao.notas ? String(acao.notas).trim() : null,
+            userId
           ]
         );
         feitos.push({ tipo, ok: true, id, titulo, valor, chave, recebido_em: recebidoEm });
@@ -1536,15 +1583,15 @@ async function executarAcoes(acoes) {
           continue;
         }
         let meta = null;
-        if (acao.id) meta = await get(`SELECT id, nome, valor_total, concluida FROM metas WHERE id = $1`, [acao.id]);
+        if (acao.id) meta = await get(`SELECT id, nome, valor_total, concluida FROM metas WHERE id = $1 AND user_id = $2`, [acao.id, userId]);
         const nome = String(acao.nome || acao.titulo || acao.meta || '').trim();
         if (!meta && nome) {
           meta = await get(
             `SELECT id, nome, valor_total, concluida FROM metas
-             WHERE lower(nome) = lower($1) OR nome ILIKE $2
-             ORDER BY CASE WHEN lower(nome) = lower($1) THEN 0 ELSE 1 END, concluida ASC
+             WHERE user_id = $1 AND (lower(nome) = lower($2) OR nome ILIKE $3)
+             ORDER BY CASE WHEN lower(nome) = lower($2) THEN 0 ELSE 1 END, concluida ASC
              LIMIT 1`,
-            [nome, `%${nome}%`]
+            [userId, nome, `%${nome}%`]
           );
         }
         if (!meta) {
@@ -1552,13 +1599,16 @@ async function executarAcoes(acoes) {
           continue;
         }
         await run(
-          `INSERT INTO metas_depositos (meta_id, valor, descricao) VALUES ($1,$2,$3)`,
-          [meta.id, valor, acao.descricao || 'via assistente']
+          `INSERT INTO metas_depositos (meta_id, valor, descricao, user_id) VALUES ($1,$2,$3,$4)`,
+          [meta.id, valor, acao.descricao || 'via assistente', userId]
         );
-        const soma = await get(`SELECT COALESCE(SUM(valor),0) AS s FROM metas_depositos WHERE meta_id = $1`, [meta.id]);
+        const soma = await get(
+          `SELECT COALESCE(SUM(valor),0) AS s FROM metas_depositos WHERE meta_id = $1 AND user_id = $2`,
+          [meta.id, userId]
+        );
         let concluidaAgora = false;
         if (Number(soma.s) >= Number(meta.valor_total) && !meta.concluida) {
-          await run(`UPDATE metas SET concluida = true WHERE id = $1`, [meta.id]);
+          await run(`UPDATE metas SET concluida = true WHERE id = $1 AND user_id = $2`, [meta.id, userId]);
           concluidaAgora = true;
         }
         feitos.push({
@@ -1574,15 +1624,15 @@ async function executarAcoes(acoes) {
         const id = acao.id ? String(acao.id) : null;
         const dataAlvo = (acao.data_reset || acao.data || hojeStr()).slice(0, 10);
         let row = null;
-        if (id) row = await get(`SELECT id, titulo, concluida FROM tasks WHERE id = $1`, [id]);
+        if (id) row = await get(`SELECT id, titulo, concluida FROM tasks WHERE id = $1 AND user_id = $2`, [id, userId]);
         if (!row && titulo) {
           row = await get(
             `SELECT id, titulo, concluida FROM tasks
-             WHERE data_reset::date = $1::date AND concluida = false
-               AND (lower(titulo) = lower($2) OR titulo ILIKE $3)
-             ORDER BY CASE WHEN lower(titulo) = lower($2) THEN 0 ELSE 1 END
+             WHERE user_id = $1 AND data_reset::date = $2::date AND concluida = false
+               AND (lower(titulo) = lower($3) OR titulo ILIKE $4)
+             ORDER BY CASE WHEN lower(titulo) = lower($3) THEN 0 ELSE 1 END
              LIMIT 1`,
-            [dataAlvo, titulo, `%${titulo}%`]
+            [userId, dataAlvo, titulo, `%${titulo}%`]
           );
         }
         if (!row) {
@@ -1594,10 +1644,10 @@ async function executarAcoes(acoes) {
           continue;
         }
         await run(
-          `UPDATE tasks SET concluida = true, concluida_em = COALESCE(concluida_em, CURRENT_TIMESTAMP) WHERE id = $1`,
-          [row.id]
+          `UPDATE tasks SET concluida = true, concluida_em = COALESCE(concluida_em, CURRENT_TIMESTAMP) WHERE id = $1 AND user_id = $2`,
+          [row.id, userId]
         );
-        persistirHistoricoDia(hojeStr()).catch(() => {});
+        persistirHistoricoDia(hojeStr(), userId).catch(() => {});
         feitos.push({ tipo, ok: true, titulo: row.titulo, id: row.id });
       } else if (tipo === 'criar_evento') {
         const titulo = String(acao.titulo || '').trim();
@@ -1608,9 +1658,9 @@ async function executarAcoes(acoes) {
         }
         const id = uuid();
         await run(
-          `INSERT INTO eventos (id, titulo, descricao, data, hora, tipo, cor)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [id, titulo, acao.descricao || '', data, acao.hora || null, acao.tipo_evento || acao.tipo || 'evento', acao.cor || 'blue']
+          `INSERT INTO eventos (id, titulo, descricao, data, hora, tipo, cor, user_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [id, titulo, acao.descricao || '', data, acao.hora || null, acao.tipo_evento || acao.tipo || 'evento', acao.cor || 'blue', userId]
         );
         feitos.push({ tipo, ok: true, titulo, data, hora: acao.hora || null, id });
       } else if (tipo === 'criar_alarme') {
@@ -1621,7 +1671,7 @@ async function executarAcoes(acoes) {
           continue;
         }
         const id = uuid();
-        await run(`INSERT INTO alarmes (id, hora, mensagem) VALUES ($1,$2,$3)`, [id, hora, mensagem]);
+        await run(`INSERT INTO alarmes (id, hora, mensagem, user_id) VALUES ($1,$2,$3,$4)`, [id, hora, mensagem, userId]);
         feitos.push({ tipo, ok: true, hora, mensagem, id });
       } else if (tipo === 'criar_transacao') {
         const rawSentido = String(acao.tipo_tx || acao.sentido || acao.movimento || '').toLowerCase();
@@ -1640,9 +1690,9 @@ async function executarAcoes(acoes) {
         }
         const id = uuid();
         await run(
-          `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, fonte, categoria_confirmada)
-           VALUES ($1,$2,$3,$4,$5,$6,'manual',true)`,
-          [id, sentido, valor, desc, data, cat]
+          `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, fonte, categoria_confirmada, user_id)
+           VALUES ($1,$2,$3,$4,$5,$6,'manual',true,$7)`,
+          [id, sentido, valor, desc, data, cat, userId]
         );
         feitos.push({
           tipo,
@@ -1661,7 +1711,7 @@ async function executarAcoes(acoes) {
           continue;
         }
         const ids = txs.map(t => t.id);
-        await run(`DELETE FROM financeiro WHERE id = ANY($1::text[])`, [ids]);
+        await run(`DELETE FROM financeiro WHERE user_id = $1 AND id = ANY($2::text[])`, [userId, ids]);
         feitos.push({
           tipo,
           ok: true,
@@ -1681,7 +1731,7 @@ async function executarAcoes(acoes) {
           continue;
         }
         const ids = txs.map(t => t.id);
-        await run(`UPDATE financeiro SET data = $1::date WHERE id = ANY($2::text[])`, [novaData, ids]);
+        await run(`UPDATE financeiro SET data = $1::date WHERE user_id = $2 AND id = ANY($3::text[])`, [novaData, userId, ids]);
         feitos.push({
           tipo,
           ok: true,
@@ -1698,15 +1748,23 @@ async function executarAcoes(acoes) {
         }
         const pago = acao.pago === false ? false : true;
         const valor = acao.valor != null ? Number(acao.valor) : null;
-        await run(
-          `INSERT INTO mei_das (ym, valor, pago, data_pagamento)
-           VALUES ($1, $2, $3, CASE WHEN $3 THEN CURRENT_DATE ELSE NULL END)
-           ON CONFLICT (ym) DO UPDATE
-             SET valor = COALESCE(EXCLUDED.valor, mei_das.valor),
-                 pago = EXCLUDED.pago,
-                 data_pagamento = CASE WHEN EXCLUDED.pago THEN CURRENT_DATE ELSE NULL END`,
-          [ymDas, Number.isFinite(valor) ? valor : null, pago]
-        );
+        const existeDas = await get(`SELECT ym FROM mei_das WHERE ym = $1 AND user_id = $2`, [ymDas, userId]);
+        if (existeDas) {
+          await run(
+            `UPDATE mei_das SET
+               valor = COALESCE($1, valor),
+               pago = $2,
+               data_pagamento = CASE WHEN $2 THEN CURRENT_DATE ELSE NULL END
+             WHERE ym = $3 AND user_id = $4`,
+            [Number.isFinite(valor) ? valor : null, pago, ymDas, userId]
+          );
+        } else {
+          await run(
+            `INSERT INTO mei_das (ym, valor, pago, data_pagamento, user_id)
+             VALUES ($1, $2, $3, CASE WHEN $3 THEN CURRENT_DATE ELSE NULL END, $4)`,
+            [ymDas, Number.isFinite(valor) ? valor : null, pago, userId]
+          );
+        }
         feitos.push({ tipo, ok: true, ym: ymDas, pago, valor: Number.isFinite(valor) ? valor : null });
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
@@ -2006,42 +2064,47 @@ function tituloDeMensagem(msg) {
   return t.length > 56 ? t.slice(0, 53) + '…' : t;
 }
 
-async function garantirConversa(conversaId, primeiraMsg) {
+async function garantirConversa(conversaId, primeiraMsg, userId) {
   if (conversaId) {
-    const existe = await get(`SELECT id FROM assist_conversas WHERE id = $1`, [conversaId]);
+    const existe = await get(`SELECT id FROM assist_conversas WHERE id = $1 AND user_id = $2`, [conversaId, userId]);
     if (existe) return conversaId;
   }
   const id = uuid();
   await run(
-    `INSERT INTO assist_conversas (id, titulo) VALUES ($1, $2)`,
-    [id, tituloDeMensagem(primeiraMsg)]
+    `INSERT INTO assist_conversas (id, titulo, user_id) VALUES ($1, $2, $3)`,
+    [id, tituloDeMensagem(primeiraMsg), userId]
   );
   return id;
 }
 
-async function salvarMensagem(conversaId, role, content) {
+async function salvarMensagem(conversaId, role, content, userId) {
+  const conv = await get(`SELECT id FROM assist_conversas WHERE id = $1 AND user_id = $2`, [conversaId, userId]);
+  if (!conv) throw new Error('Conversa não encontrada');
   const id = uuid();
   await run(
     `INSERT INTO assist_mensagens (id, conversa_id, role, content) VALUES ($1, $2, $3, $4)`,
     [id, conversaId, role, String(content || '')]
   );
   await run(
-    `UPDATE assist_conversas SET atualizado_em = CURRENT_TIMESTAMP WHERE id = $1`,
-    [conversaId]
+    `UPDATE assist_conversas SET atualizado_em = CURRENT_TIMESTAMP WHERE id = $1 AND user_id = $2`,
+    [conversaId, userId]
   );
   return id;
 }
 
 // GET /api/ia/conversas — lista conversas recentes
 router.get('/conversas', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const rows = await all(`
       SELECT c.id, c.titulo, c.criado_em, c.atualizado_em,
              (SELECT COUNT(*)::int FROM assist_mensagens m WHERE m.conversa_id = c.id) AS msgs
       FROM assist_conversas c
+      WHERE c.user_id = $1
       ORDER BY c.atualizado_em DESC
       LIMIT 40
-    `);
+    `, [uid]);
     res.json({ conversas: rows });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -2050,8 +2113,13 @@ router.get('/conversas', async (req, res) => {
 
 // GET /api/ia/conversas/:id — mensagens de uma conversa
 router.get('/conversas/:id', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    const conv = await get(`SELECT id, titulo, criado_em, atualizado_em FROM assist_conversas WHERE id = $1`, [req.params.id]);
+    const conv = await get(
+      `SELECT id, titulo, criado_em, atualizado_em FROM assist_conversas WHERE id = $1 AND user_id = $2`,
+      [req.params.id, uid]
+    );
     if (!conv) return res.status(404).json({ erro: 'Conversa não encontrada' });
     const mensagens = await all(`
       SELECT id, role, content, criado_em
@@ -2068,10 +2136,12 @@ router.get('/conversas/:id', async (req, res) => {
 
 // POST /api/ia/conversas — nova conversa vazia
 router.post('/conversas', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const id = uuid();
     const titulo = String(req.body?.titulo || 'Nova conversa').trim() || 'Nova conversa';
-    await run(`INSERT INTO assist_conversas (id, titulo) VALUES ($1, $2)`, [id, titulo]);
+    await run(`INSERT INTO assist_conversas (id, titulo, user_id) VALUES ($1, $2, $3)`, [id, titulo, uid]);
     res.json({ id, titulo });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -2080,8 +2150,11 @@ router.post('/conversas', async (req, res) => {
 
 // DELETE /api/ia/conversas/:id
 router.delete('/conversas/:id', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    await run(`DELETE FROM assist_conversas WHERE id = $1`, [req.params.id]);
+    const r = await run(`DELETE FROM assist_conversas WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
+    if (!r.rowCount) return res.status(404).json({ erro: 'Conversa não encontrada' });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -2090,6 +2163,8 @@ router.delete('/conversas/:id', async (req, res) => {
 
 // POST /api/ia/chat — assistente global
 router.post('/chat', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   if (!providerAtivo()) return res.status(400).json({ erro: 'IA não configurada. Defina GEMINI_API_KEY ou ANTHROPIC_API_KEY.' });
   const mensagem = String(req.body?.mensagem || '').trim();
   if (!mensagem) return res.status(400).json({ erro: 'mensagem é obrigatória' });
@@ -2097,7 +2172,7 @@ router.post('/chat', async (req, res) => {
   let conversaId = req.body?.conversa_id ? String(req.body.conversa_id) : null;
 
   try {
-    conversaId = await garantirConversa(conversaId, mensagem);
+    conversaId = await garantirConversa(conversaId, mensagem, uid);
 
     // Se o cliente não mandou histórico, monta pelos últimos turns no banco
     if (!historico.length) {
@@ -2110,15 +2185,15 @@ router.post('/chat', async (req, res) => {
       historico = msgsDb.reverse().map(m => ({ role: m.role, content: m.content }));
     }
 
-    await salvarMensagem(conversaId, 'user', mensagem);
+    await salvarMensagem(conversaId, 'user', mensagem, uid);
 
     // Título = primeira pergunta do usuário (se ainda for genérico)
-    const conv = await get(`SELECT titulo FROM assist_conversas WHERE id = $1`, [conversaId]);
+    const conv = await get(`SELECT titulo FROM assist_conversas WHERE id = $1 AND user_id = $2`, [conversaId, uid]);
     if (conv && (!conv.titulo || conv.titulo === 'Nova conversa')) {
-      await run(`UPDATE assist_conversas SET titulo = $1 WHERE id = $2`, [tituloDeMensagem(mensagem), conversaId]);
+      await run(`UPDATE assist_conversas SET titulo = $1 WHERE id = $2 AND user_id = $3`, [tituloDeMensagem(mensagem), conversaId, uid]);
     }
 
-    const snap = await snapshotAssistente({ lite: true });
+    const snap = await snapshotAssistente({ lite: true, userId: uid });
 
     // Atalho: pedidos claros (mover categoria, confirmar receita/despesa etc.)
     // executam sem esperar o Gemini — evita timeout de 35s nesses casos.
@@ -2131,10 +2206,10 @@ router.post('/chat', async (req, res) => {
       // concluir_tarefa fora: "fiz o pagamento" gerava falso positivo
     ]);
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
-      const acoesExec = await executarAcoes(acoesRapidas);
+      const acoesExec = await executarAcoes(acoesRapidas, uid);
       if (acoesExec.some(a => a && a.ok)) {
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
-        await salvarMensagem(conversaId, 'assistant', resposta);
+        await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return res.json({
           resposta,
           acoes: acoesExec,
@@ -2148,7 +2223,7 @@ router.post('/chat', async (req, res) => {
       const recatFalhou = acoesExec.find(a => a && a.tipo === 'recategorizar' && a.ok === false);
       if (soRecat && recatFalhou) {
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
-        await salvarMensagem(conversaId, 'assistant', resposta);
+        await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return res.json({
           resposta,
           acoes: acoesExec,
@@ -2249,9 +2324,9 @@ Regras:
       // Se a IA travou, ainda tenta executar pedidos inferíveis
       const fallback = inferirAcoesDaMensagem(mensagem, snap, []);
       if (fallback.length) {
-        const acoesExec = await executarAcoes(fallback);
+        const acoesExec = await executarAcoes(fallback, uid);
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
-        await salvarMensagem(conversaId, 'assistant', resposta);
+        await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return res.json({
           resposta,
           acoes: acoesExec,
@@ -2270,9 +2345,9 @@ Regras:
 
     const respostaBruta = textoAssistenteSeguro(texto, parsed);
     const acoesMerged = inferirAcoesDaMensagem(mensagem, snap, parsed && parsed.acoes);
-    const acoesExec = await executarAcoes(acoesMerged);
+    const acoesExec = await executarAcoes(acoesMerged, uid);
     const resposta = reconciliarRespostaComAcoes(respostaBruta, acoesExec);
-    await salvarMensagem(conversaId, 'assistant', resposta);
+    await salvarMensagem(conversaId, 'assistant', resposta, uid);
 
     res.json({ resposta, acoes: acoesExec, snapshot: snap, provider, usage, conversa_id: conversaId });
   } catch (err) {

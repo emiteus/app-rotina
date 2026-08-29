@@ -5,6 +5,7 @@ const { run, get, all } = require('../lib/db');
 const { hojeStr, addDias, dataTxPluggy } = require('../lib/datas');
 const { categoriaObvia } = require('../lib/categoria-heuristica');
 const { nomeBancoDisplay } = require('../lib/banco-nome');
+const { requireUserId } = require('../lib/tenant');
 
 const router = express.Router();
 const PLUGGY_BASE = 'https://api.pluggy.ai';
@@ -92,9 +93,11 @@ function apelidoPadrao(pessoa, connectorNome, apelidoAtual) {
 // STATUS — frontend checa se Open Finance está disponível
 // =====================================================
 router.get('/status', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     // Sempre lista itens do DB (mesmo se Pluggy env falhar) pra UI não sumir
-    const items = await all(`SELECT * FROM openfinance_items ORDER BY criado_em DESC`).catch(() => []);
+    const items = await all(`SELECT * FROM openfinance_items WHERE user_id = $1 ORDER BY criado_em DESC`, [uid]).catch(() => []);
 
     // Corrige PF/PJ óbvios e apelidos MeuPluggy → Inter/Nubank
     for (const it of items || []) {
@@ -102,8 +105,8 @@ router.get('/status', async (req, res) => {
       if (inferida === 'PJ' && it.pessoa !== 'PJ') {
         const apelido = apelidoPadrao('PJ', it.connector_nome, it.apelido);
         await run(
-          `UPDATE openfinance_items SET pessoa = 'PJ', apelido = COALESCE($1, apelido) WHERE item_id = $2`,
-          [apelido, it.item_id]
+          `UPDATE openfinance_items SET pessoa = 'PJ', apelido = COALESCE($1, apelido) WHERE item_id = $2 AND user_id = $3`,
+          [apelido, it.item_id, uid]
         ).catch(() => {});
         it.pessoa = 'PJ';
         if (apelido) it.apelido = apelido;
@@ -122,7 +125,7 @@ router.get('/status', async (req, res) => {
           contasNomes: (contas || []).map(c => c.nome)
         });
         if (bom && !/meu\s*pluggy/i.test(bom)) {
-          await run(`UPDATE openfinance_items SET apelido = $1 WHERE item_id = $2`, [bom, it.item_id]).catch(() => {});
+          await run(`UPDATE openfinance_items SET apelido = $1 WHERE item_id = $2 AND user_id = $3`, [bom, it.item_id, uid]).catch(() => {});
           it.apelido = bom;
         }
       }
@@ -169,12 +172,15 @@ router.get('/status', async (req, res) => {
 // ITEMS-STATUS — status detalhado por item (última sync, auto?, precisa reconectar?)
 // =====================================================
 router.get('/items-status', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const items = await all(`
       SELECT item_id, apelido, connector_nome, pessoa, ultima_sync, next_auto_sync, status
       FROM openfinance_items
+      WHERE user_id = $1
       ORDER BY criado_em
-    `);
+    `, [uid]);
     const agora = Date.now();
     const out = items.map(it => {
       const ultimaMs = it.ultima_sync ? new Date(it.ultima_sync).getTime() : 0;
@@ -202,6 +208,8 @@ router.get('/items-status', async (req, res) => {
 // SALDOS — saldo REAL das contas (banco = ativo, cartão = dívida)
 // =====================================================
 router.get('/saldos', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const contas = await all(`
       SELECT a.account_id, a.item_id, a.tipo, a.nome, a.saldo, a.saldo_em, a.atualizado_em,
@@ -209,8 +217,9 @@ router.get('/saldos', async (req, res) => {
              COALESCE(i.apelido, i.connector_nome, '') AS banco
       FROM openfinance_accounts a
       LEFT JOIN openfinance_items i ON i.item_id = a.item_id
+      WHERE i.user_id = $1
       ORDER BY COALESCE(i.pessoa, 'PF'), a.tipo, a.nome
-    `);
+    `, [uid]);
     const porPessoa = {
       PF: { totalBanco: 0, totalCredito: 0 },
       PJ: { totalBanco: 0, totalCredito: 0 }
@@ -266,9 +275,14 @@ router.get('/saldos', async (req, res) => {
 // CONTAS — visão multi-conta consolidada (PF vs PJ)
 // =====================================================
 router.get('/contas', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    const items = await all(`SELECT item_id, connector_nome, pessoa, apelido, ultima_sync FROM openfinance_items ORDER BY criado_em`);
-    const accounts = await all(`SELECT account_id, item_id, tipo, nome, saldo, saldo_em FROM openfinance_accounts`);
+    const items = await all(`SELECT item_id, connector_nome, pessoa, apelido, ultima_sync FROM openfinance_items WHERE user_id = $1 ORDER BY criado_em`, [uid]);
+    const itemIds = items.map((i) => i.item_id);
+    const accounts = itemIds.length
+      ? await all(`SELECT account_id, item_id, tipo, nome, saldo, saldo_em FROM openfinance_accounts WHERE item_id = ANY($1::text[])`, [itemIds])
+      : [];
 
     // Fluxo do mês atual por conta (account_id)
     const agora = new Date();
@@ -276,8 +290,8 @@ router.get('/contas', async (req, res) => {
     const tx = await all(
       `SELECT account_id, tipo, SUM(valor) AS total
        FROM financeiro
-       WHERE account_id IS NOT NULL AND TO_CHAR(data, 'YYYY-MM') = $1
-       GROUP BY account_id, tipo`, [mesAtual]
+       WHERE user_id = $1 AND account_id IS NOT NULL AND TO_CHAR(data, 'YYYY-MM') = $2
+       GROUP BY account_id, tipo`, [uid, mesAtual]
     );
     const fluxoPorConta = {};
     tx.forEach(r => {
@@ -327,9 +341,11 @@ router.get('/contas', async (req, res) => {
 
 // PATCH — marcar PF/PJ e/ou apelido de um banco (só campos enviados)
 router.patch('/contas/:itemId', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const { pessoa, apelido } = req.body || {};
-    const it = await get(`SELECT item_id, connector_nome, apelido, pessoa FROM openfinance_items WHERE item_id = $1`, [req.params.itemId]);
+    const it = await get(`SELECT item_id, connector_nome, apelido, pessoa FROM openfinance_items WHERE item_id = $1 AND user_id = $2`, [req.params.itemId, uid]);
     if (!it) return res.status(404).json({ erro: 'Banco não encontrado' });
 
     const sets = [];
@@ -365,9 +381,10 @@ router.patch('/contas/:itemId', async (req, res) => {
     }
 
     if (!sets.length) return res.status(400).json({ erro: 'Nada pra atualizar' });
-    params.push(req.params.itemId);
-    await run(`UPDATE openfinance_items SET ${sets.join(', ')} WHERE item_id = $${params.length}`, params);
-    const atualizado = await get(`SELECT item_id, connector_nome, apelido, pessoa FROM openfinance_items WHERE item_id = $1`, [req.params.itemId]);
+    params.push(req.params.itemId, uid);
+    const r = await run(`UPDATE openfinance_items SET ${sets.join(', ')} WHERE item_id = $${params.length - 1} AND user_id = $${params.length}`, params);
+    if (!r.rowCount) return res.status(404).json({ erro: 'Banco não encontrado' });
+    const atualizado = await get(`SELECT item_id, connector_nome, apelido, pessoa FROM openfinance_items WHERE item_id = $1 AND user_id = $2`, [req.params.itemId, uid]);
     res.json({ ok: true, item: atualizado });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -378,6 +395,8 @@ router.patch('/contas/:itemId', async (req, res) => {
 // CONNECT TOKEN — usado pelo widget Pluggy Connect
 // =====================================================
 router.post('/connect-token', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const apiKey = await getApiKey();
     const body = {};
@@ -398,24 +417,31 @@ router.post('/connect-token', async (req, res) => {
 // SALVAR ITEM — após o widget conectar um banco
 // =====================================================
 router.post('/items', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   const { itemId, connectorNome } = req.body;
   if (!itemId) return res.status(400).json({ erro: 'itemId obrigatório' });
   try {
+    const existente = await get(`SELECT item_id, user_id FROM openfinance_items WHERE item_id = $1`, [itemId]);
+    if (existente && existente.user_id && existente.user_id !== uid) {
+      return res.status(403).json({ erro: 'Item pertence a outro usuário' });
+    }
     const nome = connectorNome || 'Banco';
     const pessoa = inferirPessoa(nome);
     const apelido = apelidoPadrao(pessoa, nome, null);
     await run(
-      `INSERT INTO openfinance_items (item_id, connector_nome, status, pessoa, apelido)
-       VALUES ($1, $2, 'ativo', $3, $4)
+      `INSERT INTO openfinance_items (item_id, connector_nome, status, pessoa, apelido, user_id)
+       VALUES ($1, $2, 'ativo', $3, $4, $5)
        ON CONFLICT (item_id) DO UPDATE SET
          connector_nome = EXCLUDED.connector_nome,
          status = 'ativo',
+         user_id = COALESCE(openfinance_items.user_id, EXCLUDED.user_id),
          pessoa = CASE
            WHEN openfinance_items.pessoa = 'PJ' THEN openfinance_items.pessoa
            ELSE EXCLUDED.pessoa
          END,
          apelido = COALESCE(openfinance_items.apelido, EXCLUDED.apelido)`,
-      [itemId, nome, pessoa, apelido]
+      [itemId, nome, pessoa, apelido, uid]
     );
     res.status(201).json({ ok: true, pessoa, apelido });
   } catch (err) {
@@ -427,9 +453,15 @@ router.post('/items', async (req, res) => {
 // IMPORTAR POR ITEM ID — conecta o banco no meu.pluggy.ai e cola o Item ID aqui
 // =====================================================
 router.post('/import-item', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   const itemId = (req.body && req.body.itemId || '').trim();
   if (!itemId) return res.status(400).json({ erro: 'Cole o Item ID do Pluggy.' });
   try {
+    const existente = await get(`SELECT item_id, user_id FROM openfinance_items WHERE item_id = $1`, [itemId]);
+    if (existente && existente.user_id && existente.user_id !== uid) {
+      return res.status(403).json({ erro: 'Item pertence a outro usuário' });
+    }
     const apiKey = await getApiKey();
     // Valida o item e pega o nome do banco
     let item;
@@ -446,17 +478,18 @@ router.post('/import-item', async (req, res) => {
     const pessoa = inferirPessoa(nome);
     const apelido = apelidoPadrao(pessoa, nome, null);
     await run(
-      `INSERT INTO openfinance_items (item_id, connector_nome, status, pessoa, apelido)
-       VALUES ($1, $2, 'ativo', $3, $4)
+      `INSERT INTO openfinance_items (item_id, connector_nome, status, pessoa, apelido, user_id)
+       VALUES ($1, $2, 'ativo', $3, $4, $5)
        ON CONFLICT (item_id) DO UPDATE SET
          connector_nome = EXCLUDED.connector_nome,
          status = 'ativo',
+         user_id = COALESCE(openfinance_items.user_id, EXCLUDED.user_id),
          pessoa = CASE
            WHEN openfinance_items.pessoa = 'PJ' THEN openfinance_items.pessoa
            ELSE EXCLUDED.pessoa
          END,
          apelido = COALESCE(openfinance_items.apelido, EXCLUDED.apelido)`,
-      [itemId, nome, pessoa, apelido]
+      [itemId, nome, pessoa, apelido, uid]
     );
     const r = await syncItem(apiKey, itemId);
     if (r.importadas > 0) emitUpdate('sync', { importadas: r.importadas });
@@ -528,13 +561,24 @@ async function refreshSaldoConta(apiKey, accountId, meta) {
   return { accountId, saldo, saldoEm };
 }
 
-async function refreshSaldosAll(opts = {}) {
+async function refreshSaldosAll(opts = {}, userId = null) {
   const apiKey = await getApiKey();
-  const contas = await all(`SELECT account_id, item_id, tipo, nome FROM openfinance_accounts`);
+  let contas;
+  let itemsMeta;
+  if (userId) {
+    contas = await all(`
+      SELECT a.account_id, a.item_id, a.tipo, a.nome
+      FROM openfinance_accounts a
+      JOIN openfinance_items i ON i.item_id = a.item_id
+      WHERE i.user_id = $1`, [userId]);
+    itemsMeta = await all(`SELECT item_id, connector_nome FROM openfinance_items WHERE user_id = $1`, [userId]);
+  } else {
+    contas = await all(`SELECT account_id, item_id, tipo, nome FROM openfinance_accounts`);
+    itemsMeta = await all(`SELECT item_id, connector_nome FROM openfinance_items`);
+  }
   if (!contas.length) return { semContas: true, ok: 0, falhas: 0, detalhes: [], demoMeuPluggy: false };
 
   // MeuPluggy (demo) não tem /balance realtime nem PATCH update
-  const itemsMeta = await all(`SELECT item_id, connector_nome FROM openfinance_items`);
   const demoIds = new Set(
     itemsMeta.filter(i => /meu\s*pluggy/i.test(String(i.connector_nome || ''))).map(i => i.item_id)
   );
@@ -691,6 +735,9 @@ async function syncItem(apiKey, itemId, opts = {}) {
   let importadas = 0, ignoradas = 0;
   let refreshInfo = null;
 
+  const itemRow = await get(`SELECT user_id FROM openfinance_items WHERE item_id = $1`, [itemId]);
+  const itemUserId = itemRow?.user_id || null;
+
   if (opts.refresh) {
     try {
       refreshInfo = await pedirUpdateItem(apiKey, itemId, { forcar: !!opts.forcar });
@@ -715,7 +762,10 @@ async function syncItem(apiKey, itemId, opts = {}) {
   // Regras de categoria aprendidas (chave -> categoria)
   const regras = {};
   try {
-    (await all(`SELECT chave, categoria FROM categoria_regras`)).forEach(r => { regras[r.chave] = r.categoria; });
+    const regrasRows = itemUserId
+      ? await all(`SELECT chave, categoria FROM categoria_regras WHERE user_id = $1`, [itemUserId])
+      : await all(`SELECT chave, categoria FROM categoria_regras`);
+    regrasRows.forEach(r => { regras[r.chave] = r.categoria; });
   } catch (e) { /* segue sem regras */ }
 
   // 1. Contas do item
@@ -764,8 +814,8 @@ async function syncItem(apiKey, itemId, opts = {}) {
         const confirmada = !!(regra || obvia);
         try {
           const r = await run(
-            `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, external_id, fonte, account_id, chave_categoria, categoria_confirmada)
-             VALUES ($1,$2,$3,$4,$5::date,$6,$7,'pluggy',$8,$9,$10)
+            `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, external_id, fonte, account_id, chave_categoria, categoria_confirmada, user_id)
+             VALUES ($1,$2,$3,$4,$5::date,$6,$7,'pluggy',$8,$9,$10,$11)
              ON CONFLICT (external_id) WHERE external_id IS NOT NULL DO UPDATE SET
                descricao = EXCLUDED.descricao,
                valor = EXCLUDED.valor,
@@ -773,7 +823,7 @@ async function syncItem(apiKey, itemId, opts = {}) {
              WHERE financeiro.descricao IS DISTINCT FROM EXCLUDED.descricao
                 OR financeiro.valor IS DISTINCT FROM EXCLUDED.valor
                 OR financeiro.tipo IS DISTINCT FROM EXCLUDED.tipo`,
-            [uuid(), tipo, valor, t.description || 'Transação bancária', dataUso, categoria, extId, conta.id, chave, confirmada]
+            [uuid(), tipo, valor, t.description || 'Transação bancária', dataUso, categoria, extId, conta.id, chave, confirmada, itemUserId]
           );
           if (r.rowCount > 0) importadas++; else ignoradas++;
         } catch (e) { ignoradas++; }
@@ -788,11 +838,20 @@ async function syncItem(apiKey, itemId, opts = {}) {
 }
 
 // Lógica reutilizável (usada pela rota e pelo agendador automático)
-async function syncAll(itemId, opts = {}) {
+async function syncAll(itemId, opts = {}, userId = null) {
   const apiKey = await getApiKey();
-  const items = itemId
-    ? [{ item_id: itemId }]
-    : await all(`SELECT item_id FROM openfinance_items WHERE status = 'ativo'`);
+  let items;
+  if (itemId) {
+    if (userId) {
+      const row = await get(`SELECT item_id FROM openfinance_items WHERE item_id = $1 AND user_id = $2`, [itemId, userId]);
+      if (!row) return { semItems: true, importadas: 0, ignoradas: 0 };
+    }
+    items = [{ item_id: itemId }];
+  } else if (userId) {
+    items = await all(`SELECT item_id FROM openfinance_items WHERE status = 'ativo' AND user_id = $1`, [userId]);
+  } else {
+    items = await all(`SELECT item_id FROM openfinance_items WHERE status = 'ativo'`);
+  }
   if (items.length === 0) return { semItems: true, importadas: 0, ignoradas: 0 };
 
   let importadas = 0, ignoradas = 0;
@@ -810,13 +869,15 @@ async function syncAll(itemId, opts = {}) {
 }
 
 router.post('/sync', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const refresh = !!(req.body && req.body.refresh);
-    const r = await syncAll(req.body && req.body.itemId, { refresh, forcar: !!(req.body && req.body.forcar) });
+    const r = await syncAll(req.body && req.body.itemId, { refresh, forcar: !!(req.body && req.body.forcar) }, uid);
     if (r.semItems) return res.status(400).json({ erro: 'Nenhum banco conectado. Conecte um banco primeiro.' });
     // Após sync, puxa saldo realtime de novo
     let saldos = null;
-    try { saldos = await refreshSaldosAll(); } catch (e) { /* best-effort */ }
+    try { saldos = await refreshSaldosAll({}, uid); } catch (e) { /* best-effort */ }
     res.json({
       ok: true,
       importadas: r.importadas,
@@ -834,12 +895,14 @@ router.post('/sync', async (req, res) => {
 
 // Atualiza só saldos (rápido) — usa GET /accounts/{id}/balance
 router.post('/refresh-saldos', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const pedirUpdate = !!(req.body && req.body.pedirUpdate);
     const apiKey = await getApiKey();
     const updates = [];
     if (pedirUpdate) {
-      const items = await all(`SELECT item_id FROM openfinance_items WHERE status = 'ativo'`);
+      const items = await all(`SELECT item_id FROM openfinance_items WHERE status = 'ativo' AND user_id = $1`, [uid]);
       for (const it of items) {
         try {
           updates.push({ item_id: it.item_id, ...(await pedirUpdateItem(apiKey, it.item_id)) });
@@ -851,10 +914,10 @@ router.post('/refresh-saldos', async (req, res) => {
       const algumOk = updates.some(u => u.ok);
       if (algumOk) {
         await new Promise(r => setTimeout(r, 8000));
-        await syncAll(null, { refresh: false });
+        await syncAll(null, { refresh: false }, uid);
       }
     }
-    const saldos = await refreshSaldosAll();
+    const saldos = await refreshSaldosAll({}, uid);
     // Reusa o mesmo shape do GET /saldos
     const contas = await all(`
       SELECT a.account_id, a.item_id, a.tipo, a.nome, a.saldo, a.saldo_em, a.atualizado_em,
@@ -862,8 +925,9 @@ router.post('/refresh-saldos', async (req, res) => {
              COALESCE(i.apelido, i.connector_nome, '') AS banco
       FROM openfinance_accounts a
       LEFT JOIN openfinance_items i ON i.item_id = a.item_id
+      WHERE i.user_id = $1
       ORDER BY COALESCE(i.pessoa, 'PF'), a.tipo, a.nome
-    `);
+    `, [uid]);
     const porPessoa = { PF: { totalBanco: 0, totalCredito: 0 }, PJ: { totalBanco: 0, totalCredito: 0 } };
     let totalBanco = 0, totalCredito = 0;
     contas.forEach(c => {
@@ -897,12 +961,12 @@ router.post('/refresh-saldos', async (req, res) => {
   }
 });
 
-// Exposto pro agendador (server.js)
-router.syncAll = function (itemId, opts) {
-  return syncAll(itemId, opts).catch(e => ({ erro: e.message }));
+// Exposto pro agendador (server.js) — userId null = todos os usuários (crons)
+router.syncAll = function (itemId, opts, userId) {
+  return syncAll(itemId, opts, userId ?? null).catch(e => ({ erro: e.message }));
 };
-router.refreshSaldosAll = function (opts) {
-  return refreshSaldosAll(opts).catch(e => ({ erro: e.message }));
+router.refreshSaldosAll = function (opts, userId) {
+  return refreshSaldosAll(opts, userId ?? null).catch(e => ({ erro: e.message }));
 };
 router.temCredenciais = temCredenciais;
 
@@ -940,8 +1004,12 @@ router.handlePluggyWebhook = handlePluggyWebhook;
 // DESCONECTAR banco
 // =====================================================
 router.delete('/items/:itemId', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const itemId = req.params.itemId;
+    const it = await get(`SELECT item_id FROM openfinance_items WHERE item_id = $1 AND user_id = $2`, [itemId, uid]);
+    if (!it) return res.status(404).json({ erro: 'Banco não encontrado' });
     // tenta remover no Pluggy (best-effort)
     try {
       const apiKey = await getApiKey();
@@ -962,13 +1030,19 @@ router.setWsServer = function (ws) { wsServer = ws; };
 // (uso pontual após fix do bug de sinal invertido no sync)
 // =====================================================
 router.post('/backfill-cartoes', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    const cartoes = await all(`SELECT account_id FROM openfinance_accounts WHERE tipo = 'CREDIT'`);
+    const cartoes = await all(`
+      SELECT a.account_id
+      FROM openfinance_accounts a
+      JOIN openfinance_items i ON i.item_id = a.item_id
+      WHERE a.tipo = 'CREDIT' AND i.user_id = $1`, [uid]);
     if (cartoes.length === 0) return res.status(400).json({ erro: 'Nenhuma conta CREDIT encontrada.' });
     const ids = cartoes.map(c => c.account_id);
-    const placeholders = ids.map((_, i) => `$${i + 1}`).join(',');
-    const del = await run(`DELETE FROM financeiro WHERE fonte = 'pluggy' AND account_id IN (${placeholders})`, ids);
-    const sync = await syncAll();
+    const placeholders = ids.map((_, i) => `$${i + 2}`).join(',');
+    const del = await run(`DELETE FROM financeiro WHERE fonte = 'pluggy' AND user_id = $1 AND account_id IN (${placeholders})`, [uid, ...ids]);
+    const sync = await syncAll(null, {}, uid);
     res.json({ ok: true, cartoes: ids.length, deletadas: del.rowCount, importadas: sync.importadas, ignoradas: sync.ignoradas });
   } catch (err) {
     if (err.code === 'PLUGGY_NAO_CONFIGURADO') {
@@ -979,3 +1053,5 @@ router.post('/backfill-cartoes', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.syncAll = syncAll;
+module.exports.refreshSaldosAll = refreshSaldosAll;

@@ -1,20 +1,23 @@
 const express = require('express');
 const { all, get } = require('../lib/db');
+const { requireUserId } = require('../lib/tenant');
 
 const router = express.Router();
 
-// GET /api/relatorios — lista os últimos 12 meses com movimentação
 router.get('/', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const meses = await all(`
       SELECT TO_CHAR(data, 'YYYY-MM') AS ym,
              COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor END),0) AS entradas,
              COALESCE(SUM(CASE WHEN tipo='saida'   THEN valor END),0) AS saidas
       FROM financeiro
-      WHERE data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+      WHERE user_id = $1
+        AND data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
         AND data < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
       GROUP BY ym
-      ORDER BY ym DESC`);
+      ORDER BY ym DESC`, [uid]);
     res.json({
       meses: meses.map(m => ({
         ym: m.ym,
@@ -28,9 +31,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/relatorios/range?from=YYYY-MM-DD&to=YYYY-MM-DD — resumo de um período custom
-// (DEVE vir antes de /:ym senão o Express interpreta "range" como um ym)
 router.get('/range', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   const from = String(req.query.from || '').trim();
   const to = String(req.query.to || '').trim();
   const dateRe = /^\d{4}-\d{2}-\d{2}$/;
@@ -42,13 +45,13 @@ router.get('/range', async (req, res) => {
       SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor END),0) AS entradas,
              COALESCE(SUM(CASE WHEN tipo='saida'   THEN valor END),0) AS saidas,
              COUNT(*)::int AS qtd
-      FROM financeiro WHERE data BETWEEN $1 AND $2`, [from, to]);
+      FROM financeiro WHERE user_id = $1 AND data BETWEEN $2 AND $3`, [uid, from, to]);
 
     const cat = await all(`
       SELECT categoria, tipo, COALESCE(SUM(valor),0) AS total, COUNT(*)::int AS qtd
-      FROM financeiro WHERE data BETWEEN $1 AND $2
+      FROM financeiro WHERE user_id = $1 AND data BETWEEN $2 AND $3
       GROUP BY categoria, tipo
-      ORDER BY total DESC`, [from, to]);
+      ORDER BY total DESC`, [uid, from, to]);
 
     const pfPj = await all(`
       SELECT i.pessoa,
@@ -56,11 +59,11 @@ router.get('/range', async (req, res) => {
              COALESCE(SUM(CASE WHEN f.tipo='saida'   THEN f.valor END),0) AS saidas
       FROM financeiro f
       JOIN openfinance_accounts a ON a.account_id = f.account_id
-      JOIN openfinance_items i    ON i.item_id    = a.item_id
-      WHERE f.data BETWEEN $1 AND $2
-      GROUP BY i.pessoa`, [from, to]);
+      JOIN openfinance_items i    ON i.item_id    = a.item_id AND i.user_id = $1
+      WHERE f.user_id = $1 AND f.data BETWEEN $2 AND $3
+      GROUP BY i.pessoa`, [uid, from, to]);
 
-    const cats = await all(`SELECT chave, label FROM categorias`);
+    const cats = await all(`SELECT chave, label FROM categorias WHERE user_id IS NULL OR user_id = $1`, [uid]);
     const labelDe = {};
     cats.forEach(c => { labelDe[c.chave] = c.label; });
     const categoriasMap = {};
@@ -92,54 +95,48 @@ router.get('/range', async (req, res) => {
   }
 });
 
-// GET /api/relatorios/:ym — resumo detalhado de um mês específico
 router.get('/:ym', async (req, res) => {
-  const ym = req.params.ym; // formato YYYY-MM
+  const uid = requireUserId(req, res);
+  if (!uid) return;
+  const ym = req.params.ym;
   if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ erro: 'ym inválido (use YYYY-MM)' });
 
-  // Mês anterior pra comparação
   const [ano, m] = ym.split('-').map(Number);
   const dPrev = new Date(ano, m - 2, 1);
   const ymPrev = `${dPrev.getFullYear()}-${String(dPrev.getMonth() + 1).padStart(2, '0')}`;
 
   try {
-    // Totais do mês selecionado
     const tot = await get(`
       SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor END),0) AS entradas,
              COALESCE(SUM(CASE WHEN tipo='saida'   THEN valor END),0) AS saidas,
              COUNT(*)::int AS qtd
-      FROM financeiro WHERE TO_CHAR(data, 'YYYY-MM') = $1`, [ym]);
+      FROM financeiro WHERE user_id = $1 AND TO_CHAR(data, 'YYYY-MM') = $2`, [uid, ym]);
 
-    // Por categoria (entradas + saídas)
     const cat = await all(`
       SELECT categoria, tipo, COALESCE(SUM(valor),0) AS total, COUNT(*)::int AS qtd
-      FROM financeiro WHERE TO_CHAR(data, 'YYYY-MM') = $1
+      FROM financeiro WHERE user_id = $1 AND TO_CHAR(data, 'YYYY-MM') = $2
       GROUP BY categoria, tipo
-      ORDER BY total DESC`, [ym]);
+      ORDER BY total DESC`, [uid, ym]);
 
-    // PF vs PJ (só considera transações com conta identificada)
     const pfPj = await all(`
       SELECT i.pessoa,
              COALESCE(SUM(CASE WHEN f.tipo='entrada' THEN f.valor END),0) AS entradas,
              COALESCE(SUM(CASE WHEN f.tipo='saida'   THEN f.valor END),0) AS saidas
       FROM financeiro f
       JOIN openfinance_accounts a ON a.account_id = f.account_id
-      JOIN openfinance_items i    ON i.item_id    = a.item_id
-      WHERE TO_CHAR(f.data, 'YYYY-MM') = $1
-      GROUP BY i.pessoa`, [ym]);
+      JOIN openfinance_items i    ON i.item_id    = a.item_id AND i.user_id = $1
+      WHERE f.user_id = $1 AND TO_CHAR(f.data, 'YYYY-MM') = $2
+      GROUP BY i.pessoa`, [uid, ym]);
 
-    // Comparação com mês anterior (só totais)
     const totPrev = await get(`
       SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor END),0) AS entradas,
              COALESCE(SUM(CASE WHEN tipo='saida'   THEN valor END),0) AS saidas
-      FROM financeiro WHERE TO_CHAR(data, 'YYYY-MM') = $1`, [ymPrev]);
+      FROM financeiro WHERE user_id = $1 AND TO_CHAR(data, 'YYYY-MM') = $2`, [uid, ymPrev]);
 
-    // Traz labels das categorias
-    const cats = await all(`SELECT chave, label FROM categorias`);
+    const cats = await all(`SELECT chave, label FROM categorias WHERE user_id IS NULL OR user_id = $1`, [uid]);
     const labelDe = {};
     cats.forEach(c => { labelDe[c.chave] = c.label; });
 
-    // Agrupa categorias mesmo se aparecerem em entrada e saída
     const categoriasMap = {};
     cat.forEach(c => {
       const k = c.categoria || 'outros';

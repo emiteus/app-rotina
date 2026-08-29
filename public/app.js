@@ -5,6 +5,7 @@ let ws = null;
 let wsReconnectAttempts = 0;
 const wsMaxReconnectAttempts = 5;
 const wsReconnectDelay = 3000;
+let wsSessionId = null;
 
 let allTasks = [];
 let allTransactions = [];
@@ -3884,8 +3885,9 @@ function conectarWebSocket() {
 
   ws.addEventListener('open', () => {
     wsReconnectAttempts = 0;
-    const sessionId = Math.random().toString(36).substring(7);
-    ws.send(JSON.stringify({ tipo: 'auth', sessionId }));
+    wsSessionId = Math.random().toString(36).substring(7);
+    const userId = window.__currentUser?.id || null;
+    ws.send(JSON.stringify({ tipo: 'auth', sessionId: wsSessionId, dados: { userId } }));
   });
 
   ws.addEventListener('message', (event) => {
@@ -3904,7 +3906,11 @@ function conectarWebSocket() {
 
 function handleWebSocketMessage(msg) {
   const { tipo } = msg;
-  if (tipo?.startsWith('tarefa-')) carregarTarefas();
+  if (tipo === 'ranking-dia') carregarRankingDia();
+  else if (tipo?.startsWith('tarefa-')) {
+    carregarTarefas();
+    carregarRankingDia();
+  }
   else if (tipo?.startsWith('financeiro-')) carregarTransacoes();
   else if (tipo?.startsWith('alarme-')) carregarAlarmes();
   else if (tipo?.startsWith('recorrente-')) carregarRecorrentes();
@@ -4032,6 +4038,7 @@ function trocarAba(tab) {
   document.getElementById(tab)?.classList.add('active');
   if (tab === 'historico-page') {
     carregarStats();
+  carregarRankingDia();
     if (typeof renderHistorico === 'function') renderHistorico();
   }
   if (tab === 'financeiro') {
@@ -5392,8 +5399,6 @@ async function carregarStats() {
 
 function renderStats(data) {
   const r = data.resumo || {};
-  document.getElementById('dash-streak').textContent = r.streak || 0;
-  // recalcula delta do streak agora que temos o valor real
   if (typeof _atualizarDeltasKPI === 'function') {
     const hoje = hojeLocal();
     const tarefasHoje = (allTasks || []).filter(t => t.data_reset && t.data_reset.split('T')[0] === hoje);
@@ -5418,6 +5423,49 @@ function renderStats(data) {
 
   // Prioridades
   renderHorizontalBars('chart-prioridades', data.prioridades || {}, 'pri');
+}
+
+async function carregarRankingDia() {
+  const listEl = document.getElementById('dash-ranking-list');
+  const liderEl = document.getElementById('dash-ranking-lider');
+  if (!listEl) return;
+  try {
+    const res = await fetch('/api/ranking/dia');
+    if (!res.ok) throw new Error('ranking');
+    const data = await res.json();
+    const jogadores = data.jogadores || [];
+    if (!jogadores.length) {
+      listEl.innerHTML = '<div class="ranking-empty">Ninguém na ofensiva ainda</div>';
+      if (liderEl) liderEl.textContent = '';
+      return;
+    }
+    listEl.innerHTML = jogadores.map((j, i) => {
+      const pct = j.total > 0 ? j.pct : 0;
+      const cor = j.cor || '#f97316';
+      const trofeu = i === 0 && j.concluidas > 0 ? ' 🏆' : '';
+      const eu = j.eu ? ' ranking-row-eu' : '';
+      return `<div class="ranking-row${eu}">
+        <div class="ranking-row-head">
+          <span class="ranking-nome" style="--rank-cor:${cor}">${escapeHtml(j.nome)}${trofeu}</span>
+          <span class="ranking-score">${j.concluidas}/${j.total} · ${pct}%</span>
+        </div>
+        <div class="ranking-bar"><div class="ranking-bar-fill" style="width:${pct}%; background:${cor}"></div></div>
+      </div>`;
+    }).join('');
+    if (liderEl) {
+      const l = data.lider;
+      const euLider = jogadores[0]?.eu;
+      if (!l) liderEl.textContent = '';
+      else if (l.empate) liderEl.textContent = 'Empate na liderança';
+      else if (l.diff > 0 && l.nome) {
+        const diffTxt = l.diff === 1 ? '1 tarefa na frente' : `${l.diff} tarefas na frente`;
+        liderEl.textContent = euLider ? `Você está ${diffTxt}` : `${l.nome} — ${diffTxt}`;
+      } else liderEl.textContent = '';
+    }
+  } catch (err) {
+    listEl.innerHTML = '<div class="ranking-empty">Erro ao carregar ranking</div>';
+    if (liderEl) liderEl.textContent = '';
+  }
 }
 
 let _chartRange = 30;
@@ -5558,6 +5606,7 @@ function alternarTipoGrafico(tipo) {
 
   // Re-renderizar o gráfico com o novo tipo
   carregarStats();
+  carregarRankingDia();
 }
 
 function renderHorizontalBars(targetId, dataObj, type) {
@@ -6008,7 +6057,7 @@ function atualizarDashboard() {
   document.getElementById('dash-proximo-alarme').textContent =
     proximoAlarme ? `Próximo: ${proximoAlarme.hora}` : 'Nenhum agendado';
 
-  // Streak vem das stats — atualizado via carregarStats()
+  // Streak pessoal permanece em /api/tasks/stats (gráficos); card principal = ranking
 
   // Top tarefas pendentes
   const pendentes = allTasks.filter(t => !t.concluida).slice(0, 4);
@@ -6090,21 +6139,6 @@ function _atualizarDeltasKPI(tarefasConcluidas, tarefasTotal) {
   } else {
     setDelta('dash-tarefas-delta', '', null);
   }
-
-  // Streak: mostra recorde se for maior que o atual (guardado em app_estado)
-  try {
-    const streakAtual = parseInt(document.getElementById('dash-streak')?.textContent || '0', 10);
-    const recorde = parseInt(estadoGet('streakRecorde') || '0', 10);
-    if (streakAtual > recorde) estadoSet('streakRecorde', String(streakAtual));
-    const rec = Math.max(streakAtual, recorde);
-    if (rec > 0 && rec > streakAtual) {
-      setDelta('dash-streak-delta', `recorde ${rec}`, null);
-    } else if (rec > 0 && streakAtual === rec) {
-      setDelta('dash-streak-delta', 'no recorde', 'pos');
-    } else {
-      setDelta('dash-streak-delta', '', null);
-    }
-  } catch (e) { setDelta('dash-streak-delta', '', null); }
 }
 
 function encontrarProximoAlarme() {
@@ -6547,6 +6581,7 @@ window.addEventListener('load', () => {
   carregarBancos().then(() => carregarTransacoes());
   carregarAlarmes();
   carregarStats();
+  carregarRankingDia();
   carregarRecorrentes();
   carregarEventos();
 
@@ -6578,6 +6613,7 @@ window.addEventListener('load', () => {
 
   // Stats a cada 60s
   setInterval(carregarStats, 60000);
+  setInterval(carregarRankingDia, 60000);
   // Extras a cada 2 min
   setInterval(carregarDashboardExtras, 120000);
 
@@ -7168,6 +7204,7 @@ async function inicializarApp() {
   carregarRecorrentes();
   carregarEventos();
   carregarStats();
+  carregarRankingDia();
   atualizarDashboard();
   verificarModoNoturno();
   window.addEventListener('keydown', (e) => {

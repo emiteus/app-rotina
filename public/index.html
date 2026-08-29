@@ -14,6 +14,7 @@
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
   <link rel="stylesheet" href="style.css?v=77">
+  <link rel="stylesheet" href="style-ranking.css?v=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -94,10 +95,13 @@
           <h1><span id="saudacao">Boa noite</span></h1>
           <p class="page-subtitle">Últimos 30 dias</p>
         </div>
-        <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
-          Analisar meu dia
-        </button>
+        <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+          <span id="header-user-name" class="header-user-name" title="Usuário logado"></span>
+          <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
+            Analisar meu dia
+          </button>
+        </div>
       </div>
       <div id="analise-ia-box" style="display:none; background:var(--card-bg, #25262b); border:1px solid rgba(38,224,200,0.25); border-radius:12px; padding:18px 20px; margin-bottom:20px; font-size:14px; line-height:1.6; color:var(--text-primary);"></div>
 
@@ -122,12 +126,12 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-label">Streak atual <span class="card-delta" id="dash-streak-delta"></span></div>
-          <div class="card-value"><span id="dash-streak">0</span> dias</div>
-          <div class="card-mini" style="margin-top:12px;">
-            <span>Seguidos completando tarefas</span>
+        <div class="card" id="dash-ranking-card">
+          <div class="card-label">Ofensiva do dia</div>
+          <div id="dash-ranking-list" class="ranking-list">
+            <div class="ranking-empty">Carregando…</div>
           </div>
+          <div class="card-mini ranking-lider" id="dash-ranking-lider"></div>
         </div>
       </div>
 
@@ -987,12 +991,21 @@
   <div id="login-overlay" style="display:none; position:fixed; inset:0; background:rgba(9,9,11,0.92); z-index:10050; align-items:center; justify-content:center; padding:20px; padding-bottom:max(20px, env(safe-area-inset-bottom));">
     <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:24px; width:100%; max-width:340px; box-shadow:var(--shadow-lg); position:relative; z-index:1;">
       <h2 style="margin:0 0 6px 0; font-size:20px; color:var(--text-primary);">App Rotina</h2>
-      <p style="margin:0 0 16px 0; font-size:13px; color:var(--text-muted);">Entra pra continuar</p>
+      <p id="login-subtitle" style="margin:0 0 16px 0; font-size:13px; color:var(--text-muted);">Entra pra continuar</p>
       <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
+        <input type="text" id="login-nome" placeholder="Seu nome (opcional)" autocomplete="name" enterkeyhint="next"
+          style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
+        <input type="text" id="login-usuario" placeholder="Usuário" autocomplete="username" required enterkeyhint="next"
+          style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required enterkeyhint="go"
           style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
+        <input type="password" id="login-senha2" placeholder="Confirmar senha" autocomplete="new-password" enterkeyhint="go"
+          style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
+        <input type="text" id="login-codigo" placeholder="Código de convite" autocomplete="off" enterkeyhint="go"
+          style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <button type="submit" id="login-btn" style="background:var(--accent); border:none; color:var(--accent-on, #09090B); border-radius:8px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; min-height:48px; touch-action:manipulation;">Entrar</button>
         <p id="login-erro" style="margin:0; font-size:12px; color:var(--danger); display:none;"></p>
+        <button type="button" id="login-toggle-modo" style="background:none; border:none; color:var(--accent); font-size:13px; cursor:pointer; padding:4px 0; text-align:center;"></button>
       </form>
     </div>
   </div>
@@ -1001,31 +1014,98 @@
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="js/fin-receitas.js?v=1"></script>
   <script src="js/assist.js?v=1"></script>
-  <script src="app.js?v=85"></script>
+  <script src="app.js?v=86"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
       const overlay = document.getElementById('login-overlay');
       const form = document.getElementById('login-form');
+      const subtitleEl = document.getElementById('login-subtitle');
+      const inputNome = document.getElementById('login-nome');
+      const inputUsuario = document.getElementById('login-usuario');
       const inputSenha = document.getElementById('login-senha');
+      const inputSenha2 = document.getElementById('login-senha2');
+      const inputCodigo = document.getElementById('login-codigo');
       const erroEl = document.getElementById('login-erro');
       const btn = document.getElementById('login-btn');
+      const toggleModo = document.getElementById('login-toggle-modo');
       const fab = document.getElementById('assist-fab');
       let mostrando = false;
+      let modoCadastro = false;
+      let cadastroInfo = { aberto: false, precisaCodigo: false };
+
+      async function carregarCadastroInfo() {
+        try {
+          const r = await fetch('/api/auth/cadastro', { credentials: 'same-origin' });
+          cadastroInfo = await r.json().catch(() => ({}));
+        } catch (e) {
+          cadastroInfo = { aberto: false, precisaCodigo: false };
+        }
+        atualizarModoUI();
+      }
+
+      function atualizarModoUI() {
+        const showCadastro = modoCadastro && cadastroInfo.aberto;
+        subtitleEl.textContent = showCadastro
+          ? 'Escolhe usuário e senha'
+          : 'Entra pra continuar';
+        btn.textContent = showCadastro ? 'Criar conta' : 'Entrar';
+        inputNome.style.display = showCadastro ? 'block' : 'none';
+        inputSenha2.style.display = showCadastro ? 'block' : 'none';
+        inputCodigo.style.display = showCadastro && cadastroInfo.precisaCodigo ? 'block' : 'none';
+        inputSenha.autocomplete = showCadastro ? 'new-password' : 'current-password';
+        if (toggleModo) {
+          if (cadastroInfo.aberto) {
+            toggleModo.style.display = 'block';
+            toggleModo.textContent = showCadastro ? 'Já tenho conta — entrar' : 'Primeira vez? Criar conta';
+          } else {
+            toggleModo.style.display = 'none';
+          }
+        }
+      }
+
+      if (toggleModo) {
+        toggleModo.addEventListener('click', () => {
+          modoCadastro = !modoCadastro;
+          erroEl.style.display = 'none';
+          atualizarModoUI();
+        });
+      }
 
       function mostrarLogin() {
         if (mostrando) return;
         mostrando = true;
         overlay.style.display = 'flex';
         if (fab) fab.style.display = 'none';
+        carregarCadastroInfo();
       }
       function esconderLogin() {
         mostrando = false;
+        modoCadastro = false;
         overlay.style.display = 'none';
         if (fab) fab.style.display = '';
         erroEl.style.display = 'none';
         inputSenha.value = '';
+        inputSenha2.value = '';
+        inputUsuario.value = '';
+        inputNome.value = '';
+        inputCodigo.value = '';
+        atualizarModoUI();
       }
+
+      window.__currentUser = null;
+      async function carregarUsuarioSessao() {
+        try {
+          const r = await originalFetch('/api/auth/me', { credentials: 'same-origin' });
+          const d = await r.json().catch(() => ({}));
+          if (d.user) {
+            window.__currentUser = d.user;
+            const el = document.getElementById('header-user-name');
+            if (el) el.textContent = d.user.nome;
+          }
+        } catch (e) { /* ok */ }
+      }
+      carregarUsuarioSessao();
 
       const originalFetch = window.fetch.bind(window);
       window.fetch = async function (input, init) {
@@ -1042,20 +1122,40 @@
         e.preventDefault();
         e.stopPropagation();
         erroEl.style.display = 'none';
+        const login = (inputUsuario.value || '').trim().toLowerCase();
         const senha = (inputSenha.value || '').trim();
+        const nome = (inputNome.value || '').trim();
+        const senha2 = (inputSenha2.value || '').trim();
+        const codigo = (inputCodigo.value || '').trim();
+        if (!login) {
+          erroEl.textContent = 'Digite o usuário';
+          erroEl.style.display = 'block';
+          return;
+        }
         if (!senha) {
           erroEl.textContent = 'Digite a senha';
           erroEl.style.display = 'block';
           return;
         }
+        if (modoCadastro && cadastroInfo.aberto) {
+          if (senha !== senha2) {
+            erroEl.textContent = 'As senhas não coincidem';
+            erroEl.style.display = 'block';
+            return;
+          }
+        }
         btn.disabled = true;
-        btn.textContent = 'Entrando…';
+        btn.textContent = modoCadastro && cadastroInfo.aberto ? 'Criando…' : 'Entrando…';
         try {
-          const r = await originalFetch('/api/auth/login', {
+          const url = modoCadastro && cadastroInfo.aberto ? '/api/auth/register' : '/api/auth/login';
+          const body = modoCadastro && cadastroInfo.aberto
+            ? { login, senha, nome, codigo }
+            : { login, senha };
+          const r = await originalFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ senha })
+            body: JSON.stringify(body)
           });
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
@@ -1063,14 +1163,14 @@
             location.reload();
             return;
           }
-          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Senha incorreta');
+          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu — tenta de novo');
           erroEl.style.display = 'block';
         } catch (err) {
           erroEl.textContent = 'Erro de rede: ' + err.message;
           erroEl.style.display = 'block';
         } finally {
           btn.disabled = false;
-          btn.textContent = 'Entrar';
+          atualizarModoUI();
         }
       });
 

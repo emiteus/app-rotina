@@ -1,8 +1,18 @@
 const express = require('express');
+const { v4: uuid } = require('uuid');
+const { get, run } = require('../lib/db');
+const { hashSenha, verificarSenha } = require('../lib/password');
+const { getUserId, SKIP_USER_ID } = require('../lib/tenant');
+
 const router = express.Router();
 
 const LOGIN_MAX = 8;
 const LOGIN_JANELA_MS = 15 * 60 * 1000;
+const MAX_USUARIOS = Math.max(2, Math.min(Number(process.env.MAX_USERS) || 2, 10));
+const CODIGO_CADASTRO = String(process.env.REGISTRATION_CODE || process.env.CODIGO_CADASTRO || '').trim();
+const CORES_NOVOS = ['#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#14b8a6'];
+const LOGIN_RE = /^[a-z0-9_]{3,20}$/;
+
 const tentativasLogin = new Map();
 
 function ipLogin(req) {
@@ -36,52 +46,195 @@ function limparLogin(ip) {
   tentativasLogin.delete(ip);
 }
 
-// Middleware de autenticacao
-// SKIP_AUTH=true no .env local bypassa (uso pessoal no Electron/localhost);
-// Railway NÃO tem SKIP_AUTH → produção continua protegida por senha.
+function validarLogin(login) {
+  if (!LOGIN_RE.test(login)) {
+    return 'Usuário: 3–20 caracteres, só letras minúsculas, números e _';
+  }
+  return null;
+}
+
+function validarSenha(senha) {
+  if (String(senha).length < 6) return 'Senha precisa ter pelo menos 6 caracteres';
+  if (String(senha).length > 128) return 'Senha muito longa';
+  return null;
+}
+
+function abrirSessao(req, res, user) {
+  req.session.userId = user.id;
+  req.session.userName = user.nome;
+  req.session.userLogin = user.login;
+  req.session.userCor = user.cor;
+  req.session.save((err) => {
+    if (err) {
+      console.error('[auth] falha ao salvar sessão:', err.message);
+      return res.status(500).json({ erro: 'Não consegui abrir a sessão. Tenta de novo.' });
+    }
+    res.json({ ok: true, user: { id: user.id, nome: user.nome, login: user.login, cor: user.cor } });
+  });
+}
+
+async function statusCadastro() {
+  const row = await get(`SELECT COUNT(*)::int AS n FROM usuarios WHERE ativo = true`);
+  const total = Number(row?.n) || 0;
+  const vagas = Math.max(0, MAX_USUARIOS - total);
+  return {
+    aberto: vagas > 0,
+    vagas,
+    maxUsuarios: MAX_USUARIOS,
+    precisaCodigo: !!CODIGO_CADASTRO
+  };
+}
+
 function requireAuth(req, res, next) {
-  if (process.env.SKIP_AUTH === 'true') return next();
-  if (req.session && req.session.authenticated) return next();
+  if (SKIP_USER_ID) {
+    req.session = req.session || {};
+    if (!req.session.userId) {
+      req.session.userId = SKIP_USER_ID;
+      req.session.userName = 'Dev';
+      req.session.userLogin = 'dev';
+    }
+    return next();
+  }
+  if (req.session && req.session.userId) return next();
   return res.status(401).json({ erro: 'Nao autenticado' });
 }
 
-// POST login
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const ip = ipLogin(req);
   const limite = checarLimiteLogin(ip);
   if (!limite.ok) {
-    return res.status(429).json({
-      erro: `Muitas tentativas. Espera ${limite.min} min.`
-    });
+    return res.status(429).json({ erro: `Muitas tentativas. Espera ${limite.min} min.` });
   }
 
+  const login = String(req.body?.login || req.body?.usuario || '').trim().toLowerCase();
   const senha = String(req.body?.senha || '').trim();
-  const senhaCorreta = String(process.env.APP_PASSWORD || 'senha123').trim();
 
-  if (senha && senha === senhaCorreta) {
-    limparLogin(ip);
-    req.session.authenticated = true;
-    return req.session.save((err) => {
-      if (err) {
-        console.error('[auth] falha ao salvar sessão:', err.message);
-        return res.status(500).json({ erro: 'Não consegui abrir a sessão. Tenta de novo.' });
-      }
-      res.json({ ok: true });
-    });
+  if (!login || !senha) {
+    registrarFalhaLogin(ip);
+    return res.status(401).json({ erro: 'Usuário e senha obrigatórios' });
   }
 
-  registrarFalhaLogin(ip);
-  res.status(401).json({ erro: 'Senha incorreta' });
+  try {
+    const user = await get(
+      `SELECT id, login, nome, senha_hash, cor, ativo FROM usuarios WHERE lower(login) = $1`,
+      [login]
+    );
+    if (!user || !user.ativo || !verificarSenha(senha, user.senha_hash)) {
+      registrarFalhaLogin(ip);
+      return res.status(401).json({ erro: 'Usuário ou senha incorretos' });
+    }
+
+    limparLogin(ip);
+    abrirSessao(req, res, user);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
-// GET verificar autenticacao
+router.get('/cadastro', async (_req, res) => {
+  try {
+    res.json(await statusCadastro());
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+router.post('/register', async (req, res) => {
+  if (SKIP_USER_ID) {
+    return res.status(403).json({ erro: 'Cadastro desativado em modo dev (SKIP_AUTH)' });
+  }
+
+  const ip = ipLogin(req);
+  const limite = checarLimiteLogin(ip);
+  if (!limite.ok) {
+    return res.status(429).json({ erro: `Muitas tentativas. Espera ${limite.min} min.` });
+  }
+
+  const login = String(req.body?.login || req.body?.usuario || '').trim().toLowerCase();
+  const senha = String(req.body?.senha || '').trim();
+  const nomeRaw = String(req.body?.nome || '').trim();
+  const codigo = String(req.body?.codigo || req.body?.codigoConvite || '').trim();
+
+  const errLogin = validarLogin(login);
+  if (errLogin) {
+    registrarFalhaLogin(ip);
+    return res.status(400).json({ erro: errLogin });
+  }
+  const errSenha = validarSenha(senha);
+  if (errSenha) {
+    registrarFalhaLogin(ip);
+    return res.status(400).json({ erro: errSenha });
+  }
+
+  try {
+    const st = await statusCadastro();
+    if (!st.aberto) {
+      return res.status(403).json({ erro: `Limite de ${MAX_USUARIOS} usuários atingido` });
+    }
+    if (st.precisaCodigo && codigo !== CODIGO_CADASTRO) {
+      registrarFalhaLogin(ip);
+      return res.status(403).json({ erro: 'Código de convite inválido' });
+    }
+
+    const existe = await get(`SELECT id FROM usuarios WHERE lower(login) = $1`, [login]);
+    if (existe) {
+      registrarFalhaLogin(ip);
+      return res.status(409).json({ erro: 'Esse usuário já existe' });
+    }
+
+    const nome = nomeRaw.slice(0, 40) || login.charAt(0).toUpperCase() + login.slice(1);
+    const cor = CORES_NOVOS[(await get(`SELECT COUNT(*)::int AS n FROM usuarios`))?.n % CORES_NOVOS.length] || '#3b82f6';
+    const id = uuid();
+
+    await run(
+      `INSERT INTO usuarios (id, login, nome, senha_hash, cor, ativo)
+       VALUES ($1,$2,$3,$4,$5,true)`,
+      [id, login, nome, hashSenha(senha), cor]
+    );
+
+    limparLogin(ip);
+    abrirSessao(req, res, { id, login, nome, cor });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+router.get('/me', (req, res) => {
+  if (SKIP_USER_ID) {
+    return res.json({
+      authenticated: true,
+      user: { id: SKIP_USER_ID, nome: 'Dev', login: 'dev', cor: '#f97316' }
+    });
+  }
+  if (!req.session?.userId) {
+    return res.json({ authenticated: false });
+  }
+  res.json({
+    authenticated: true,
+    user: {
+      id: req.session.userId,
+      nome: req.session.userName,
+      login: req.session.userLogin,
+      cor: req.session.userCor
+    }
+  });
+});
+
 router.get('/check', (req, res) => {
-  if (process.env.SKIP_AUTH === 'true') return res.json({ authenticated: true });
-  if (req.session && req.session.authenticated) return res.json({ authenticated: true });
+  const uid = getUserId(req);
+  if (uid) {
+    return res.json({
+      authenticated: true,
+      user: {
+        id: uid,
+        nome: req.session?.userName,
+        login: req.session?.userLogin
+      }
+    });
+  }
   res.json({ authenticated: false });
 });
 
-// GET logout
 router.get('/logout', (req, res) => {
   req.session.destroy();
   res.json({ ok: true });

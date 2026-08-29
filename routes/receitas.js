@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 const { ymAtual, hojeStr, diaDoMes } = require('../lib/datas');
 const plano = require('../lib/plano-financeiro');
+const { requireUserId } = require('../lib/tenant');
 
 const router = express.Router();
 
@@ -36,15 +37,15 @@ function statusInicial(ym, dia) {
   return 'pendente';
 }
 
-async function inserirReceitaFixa(ym, item, statusOverride) {
+async function inserirReceitaFixa(ym, item, statusOverride, userId) {
   const dia = item.dia != null ? Number(item.dia) : null;
   const status = statusOverride || statusInicial(ym, dia);
   const recebidoEm = status === 'recebido' ? hojeStr() : null;
   const valorRecebido = status === 'recebido' ? item.valor : null;
   await run(
     `INSERT INTO receitas_mes
-      (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, origem)
-     VALUES ($1,$2,$3,$4,$5,$6,'fixa',$7,$8,$9,'plano')`,
+      (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, origem, user_id)
+     VALUES ($1,$2,$3,$4,$5,$6,'fixa',$7,$8,$9,'plano',$10)`,
     [
       uuid(),
       ym,
@@ -54,30 +55,31 @@ async function inserirReceitaFixa(ym, item, statusOverride) {
       dia,
       item.chave,
       status,
-      recebidoEm
+      recebidoEm,
+      userId
     ]
   );
 }
 
-async function seedMesSeVazio(ym) {
-  const count = await get(`SELECT COUNT(*)::int AS n FROM receitas_mes WHERE ym = $1`, [ym]);
+async function seedMesSeVazio(ym, userId) {
+  const count = await get(`SELECT COUNT(*)::int AS n FROM receitas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   if (count && count.n > 0) return { seeded: false, count: count.n };
 
   for (const item of plano.rendaFixa || []) {
-    await inserirReceitaFixa(ym, item);
+    await inserirReceitaFixa(ym, item, null, userId);
   }
   return { seeded: true, count: (plano.rendaFixa || []).length };
 }
 
-async function syncPlanoMes(ym) {
-  const rows = await all(`SELECT * FROM receitas_mes WHERE ym = $1`, [ym]);
+async function syncPlanoMes(ym, userId) {
+  const rows = await all(`SELECT * FROM receitas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   let criadas = 0;
   let atualizadas = 0;
 
   for (const item of plano.rendaFixa || []) {
     const existente = rows.find((r) => r.chave === item.chave || chaveTitulo(r.titulo) === chaveTitulo(item.nome));
     if (!existente) {
-      await inserirReceitaFixa(ym, item);
+      await inserirReceitaFixa(ym, item, null, userId);
       criadas++;
       continue;
     }
@@ -103,7 +105,7 @@ async function syncPlanoMes(ym) {
     }
     if (campos.length) {
       vals.push(existente.id);
-      await run(`UPDATE receitas_mes SET ${campos.join(', ')} WHERE id = $${i}`, vals);
+      await run(`UPDATE receitas_mes SET ${campos.join(', ')} WHERE id = $${i} AND user_id = $${i + 1}`, [...vals, userId]);
       atualizadas++;
     }
   }
@@ -159,23 +161,25 @@ function resumo(lista) {
 }
 
 router.get('/', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const ym = ymValido(req.query.ym) ? req.query.ym : ymAtual();
-    const seed = await seedMesSeVazio(ym);
-    const sync = await syncPlanoMes(ym);
+    const seed = await seedMesSeVazio(ym, uid);
+    const sync = await syncPlanoMes(ym, uid);
     const rows = await all(
-      `SELECT * FROM receitas_mes WHERE ym = $1
+      `SELECT * FROM receitas_mes WHERE ym = $1 AND user_id = $2
        ORDER BY
          CASE tipo WHEN 'fixa' THEN 0 ELSE 1 END,
          CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'recebido' THEN 2 ELSE 3 END,
          COALESCE(dia_previsto, 99),
          titulo`,
-      [ym]
+      [ym, uid]
     );
     const receitas = rows.map((r) => enriquecerStatus(r, ym));
     for (const item of receitas) {
       if (item.status === 'atrasado' && rows.find((x) => x.id === item.id)?.status === 'pendente') {
-        await run(`UPDATE receitas_mes SET status = 'atrasado' WHERE id = $1 AND status = 'pendente'`, [item.id]);
+        await run(`UPDATE receitas_mes SET status = 'atrasado' WHERE id = $1 AND user_id = $2 AND status = 'pendente'`, [item.id, uid]);
       }
     }
     res.json({
@@ -193,6 +197,8 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const ym = ymValido(req.body.ym) ? req.body.ym : ymAtual();
     const tipo = String(req.body.tipo || 'variavel').toLowerCase() === 'fixa' ? 'fixa' : 'variavel';
@@ -214,8 +220,8 @@ router.post('/', async (req, res) => {
 
     await run(
       `INSERT INTO receitas_mes
-        (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, notas, origem)
-       VALUES ($1,$2,$3,$4,$5,$6,'variavel',$7,'recebido',$8,$9,$10)`,
+        (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, notas, origem, user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,'variavel',$7,'recebido',$8,$9,$10,$11)`,
       [
         id,
         ym,
@@ -226,10 +232,11 @@ router.post('/', async (req, res) => {
         chave || 'outro',
         recebidoEm,
         notas,
-        origem
+        origem,
+        uid
       ]
     );
-    const row = await get(`SELECT * FROM receitas_mes WHERE id = $1`, [id]);
+    const row = await get(`SELECT * FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
     res.status(201).json(enriquecerStatus(row, ym));
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -237,9 +244,11 @@ router.post('/', async (req, res) => {
 });
 
 router.post('/:id/confirmar', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const id = String(req.params.id);
-    const row = await get(`SELECT * FROM receitas_mes WHERE id = $1`, [id]);
+    const row = await get(`SELECT * FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
     if (!row) return res.status(404).json({ erro: 'receita nao encontrada' });
     if (row.status === 'recebido') {
       return res.json(enriquecerStatus(row, row.ym));
@@ -257,10 +266,10 @@ router.post('/:id/confirmar', async (req, res) => {
          recebido_em = $2::date,
          origem = CASE WHEN origem = 'plano' THEN origem ELSE $3 END,
          dia_previsto = COALESCE(dia_previsto, EXTRACT(DAY FROM $2::date)::int)
-       WHERE id = $4`,
-      [valor, recebidoEm, origem, id]
+       WHERE id = $4 AND user_id = $5`,
+      [valor, recebidoEm, origem, id, uid]
     );
-    const atual = await get(`SELECT * FROM receitas_mes WHERE id = $1`, [id]);
+    const atual = await get(`SELECT * FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
     res.json(enriquecerStatus(atual, atual.ym));
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -268,9 +277,11 @@ router.post('/:id/confirmar', async (req, res) => {
 });
 
 router.patch('/:id', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const id = String(req.params.id);
-    const row = await get(`SELECT * FROM receitas_mes WHERE id = $1`, [id]);
+    const row = await get(`SELECT * FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
     if (!row) return res.status(404).json({ erro: 'receita nao encontrada' });
 
     if (req.body.acao === 'confirmar' || req.body.acao === 'receber') {
@@ -278,17 +289,18 @@ router.patch('/:id', async (req, res) => {
       const valor = Number(req.body.valor_recebido ?? req.body.valor ?? row.valor_esperado);
       const recebidoEm = (req.body.recebido_em && String(req.body.recebido_em).slice(0, 10)) || hojeStr();
       await run(
-        `UPDATE receitas_mes SET status = 'recebido', valor_recebido = $1, recebido_em = $2::date WHERE id = $3`,
-        [valor, recebidoEm, id]
+        `UPDATE receitas_mes SET status = 'recebido', valor_recebido = $1, recebido_em = $2::date WHERE id = $3 AND user_id = $4`,
+        [valor, recebidoEm, id, uid]
       );
     } else if (req.body.acao === 'reabrir') {
       if (row.tipo === 'fixa') {
         await run(
-          `UPDATE receitas_mes SET status = 'pendente', valor_recebido = NULL, recebido_em = NULL WHERE id = $1`,
-          [id]
+          `UPDATE receitas_mes SET status = 'pendente', valor_recebido = NULL, recebido_em = NULL WHERE id = $1 AND user_id = $2`,
+          [id, uid]
         );
       } else {
-        await run(`DELETE FROM receitas_mes WHERE id = $1`, [id]);
+        const r = await run(`DELETE FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
+        if (!r.rowCount) return res.status(404).json({ erro: 'receita nao encontrada' });
         return res.json({ ok: true, removida: true, id });
       }
     } else {
@@ -311,12 +323,12 @@ router.patch('/:id', async (req, res) => {
         vals.push(v);
       }
       if (campos.length) {
-        vals.push(id);
-        await run(`UPDATE receitas_mes SET ${campos.join(', ')} WHERE id = $${i}`, vals);
+        vals.push(id, uid);
+        await run(`UPDATE receitas_mes SET ${campos.join(', ')} WHERE id = $${i} AND user_id = $${i + 1}`, vals);
       }
     }
 
-    const atual = await get(`SELECT * FROM receitas_mes WHERE id = $1`, [id]);
+    const atual = await get(`SELECT * FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
     if (!atual) return res.json({ ok: true, removida: true, id });
     res.json(enriquecerStatus(atual, atual.ym));
   } catch (err) {
@@ -325,14 +337,17 @@ router.patch('/:id', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const id = String(req.params.id);
-    const row = await get(`SELECT tipo FROM receitas_mes WHERE id = $1`, [id]);
+    const row = await get(`SELECT tipo FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
     if (!row) return res.status(404).json({ erro: 'receita nao encontrada' });
     if (row.tipo === 'fixa') {
       return res.status(400).json({ erro: 'renda fixa nao pode ser apagada; reabra o recebimento' });
     }
-    await run(`DELETE FROM receitas_mes WHERE id = $1`, [id]);
+    const r = await run(`DELETE FROM receitas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
+    if (!r.rowCount) return res.status(404).json({ erro: 'receita nao encontrada' });
     res.json({ ok: true, id });
   } catch (err) {
     res.status(500).json({ erro: err.message });

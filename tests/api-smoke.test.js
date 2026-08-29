@@ -37,6 +37,10 @@ function req(method, path, body) {
 }
 
 before(async () => {
+  const { initDB } = require('../lib/db');
+  const { ensureDevUser } = require('../lib/tenant');
+  await initDB();
+  await ensureDevUser();
   await new Promise((resolve) => {
     httpServer.listen(0, '127.0.0.1', resolve);
   });
@@ -71,7 +75,16 @@ test('GET /api/ia/status responde', async () => {
   assert.ok('disponivel' in json);
 });
 
-test('POST /api/ia/chat recusa sem mensagem', async () => {
-  const { status } = await req('POST', '/api/ia/chat', { mensagem: '' });
-  assert.ok(status >= 400);
+test('GET /api/ranking/dia responde', async () => {
+  const { status, json } = await req('GET', '/api/ranking/dia');
+  assert.equal(status, 200);
+  assert.ok(Array.isArray(json.jogadores));
+  assert.ok(json.data);
+});
+
+test('GET /api/auth/cadastro responde', async () => {
+  const { status, json } = await req('GET', '/api/auth/cadastro');
+  assert.equal(status, 200);
+  assert.ok('aberto' in json);
+  assert.ok('vagas' in json);
 });

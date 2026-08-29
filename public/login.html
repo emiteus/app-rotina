@@ -109,13 +109,17 @@
     <h1>🔐 App Rotina</h1>
     <form id="form-login" onsubmit="fazerLogin(event)">
       <div class="form-group">
+        <label for="usuario">Usuário</label>
+        <input type="text" id="usuario" placeholder="Seu usuário" required autofocus autocomplete="username" />
+      </div>
+      <div class="form-group">
         <label for="senha">Senha</label>
         <input
           type="password"
           id="senha"
           placeholder="Digite sua senha"
           required
-          autofocus
+          autocomplete="current-password"
         />
       </div>
       <button type="submit">Entrar</button>
@@ -141,6 +145,7 @@
     async function fazerLogin(event) {
       event.preventDefault();
 
+      const login = (document.getElementById('usuario').value || '').trim().toLowerCase();
       const senha = (document.getElementById('senha').value || '').trim();
       const btn = event.target.querySelector('button');
       const erroEl = document.getElementById('erro-msg');
@@ -154,7 +159,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
-          body: JSON.stringify({ senha })
+          body: JSON.stringify({ login, senha })
         });
 
         const data = await res.json();

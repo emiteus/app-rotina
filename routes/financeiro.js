@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 const { hojeStr, ymAtual, ymdDe } = require('../lib/datas');
 const { nomeBancoDisplay, labelContaExtrato } = require('../lib/banco-nome');
+const { requireUserId } = require('../lib/tenant');
 
 let wsServer; // Será setado pelo server.js
 
@@ -31,20 +32,23 @@ function emitFinanceiroUpdate(tipo, dados) {
 
 // GET todas transacoes + totais (entradas/saídas = últimos 30 dias)
 router.get('/', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const dias = Math.min(Math.max(Number(req.query.dias) || 30, 1), 365);
     const transacoes = await all(`
       SELECT * FROM financeiro
+      WHERE user_id = $1
       ORDER BY data DESC, criado_em DESC
-    `);
+    `, [uid]);
 
     const periodo = await get(`
       SELECT
         COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as entradas,
         COALESCE(SUM(CASE WHEN tipo = 'saida' AND ${SQL_EXCLUI_FATURA} THEN valor ELSE 0 END), 0) as saidas
       FROM financeiro
-      WHERE data >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
-    `, [dias]);
+      WHERE user_id = $1 AND data >= CURRENT_DATE - ($2::int * INTERVAL '1 day')
+    `, [uid, dias]);
 
     const entradas = Number(periodo?.entradas || 0);
     const saidas = Number(periodo?.saidas || 0);
@@ -64,6 +68,8 @@ router.get('/', async (req, res) => {
 
 // GET /api/financeiro/extrato — movimentações com filtros de período e conta
 router.get('/extrato', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const hoje = hojeStr();
     let from = String(req.query.from || '').slice(0, 10);
@@ -88,9 +94,9 @@ router.get('/extrato', async (req, res) => {
     }
     if (!to) to = hoje;
 
-    const where = ['COALESCE(f.data::date, f.criado_em::date) >= $1::date', 'COALESCE(f.data::date, f.criado_em::date) <= $2::date'];
-    const vals = [from, to];
-    let i = 3;
+    const where = ['f.user_id = $1', 'COALESCE(f.data::date, f.criado_em::date) >= $2::date', 'COALESCE(f.data::date, f.criado_em::date) <= $3::date'];
+    const vals = [uid, from, to];
+    let i = 4;
 
     if (accountId === 'manual') {
       where.push('f.account_id IS NULL');
@@ -148,11 +154,13 @@ router.get('/extrato', async (req, res) => {
               COALESCE(i.apelido, i.connector_nome, 'Banco') AS banco
        FROM openfinance_accounts a
        JOIN openfinance_items i ON i.item_id = a.item_id
+       WHERE i.user_id = $1
        ORDER BY
          CASE WHEN a.tipo = 'CREDIT' THEN 1 ELSE 0 END,
          CASE WHEN i.pessoa = 'PJ' THEN 1 ELSE 0 END,
          COALESCE(i.apelido, i.connector_nome, a.nome),
-         a.nome`
+         a.nome`,
+      [uid]
     );
 
     const entradas = Number(resumo?.entradas || 0);
@@ -207,6 +215,8 @@ router.get('/extrato', async (req, res) => {
 
 // GET stats mensais (últimos 18 meses)
 router.get('/stats', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const ymFiltro = /^\d{4}-\d{2}$/.test(String(req.query.ym || '')) ? String(req.query.ym) : null;
     const stats = await all(`
@@ -215,21 +225,21 @@ router.get('/stats', async (req, res) => {
         COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as entradas,
         COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as saidas
       FROM financeiro
-      WHERE data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '18 months'
+      WHERE user_id = $1 AND data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '18 months'
       GROUP BY TO_CHAR(data, 'YYYY-MM')
       ORDER BY mes ASC
-    `);
+    `, [uid]);
 
     const porCategoria = await all(
       `
       SELECT categoria, tipo, SUM(valor) as total
       FROM financeiro
-      WHERE TO_CHAR(data, 'YYYY-MM') = $1
+      WHERE user_id = $1 AND TO_CHAR(data, 'YYYY-MM') = $2
         AND ${SQL_EXCLUI_FATURA}
       GROUP BY categoria, tipo
       ORDER BY total DESC
     `,
-      [ymFiltro || ymAtual()]
+      [uid, ymFiltro || ymAtual()]
     );
 
     res.json({ ym: ymFiltro || ymAtual(), stats, porCategoria });
@@ -240,6 +250,8 @@ router.get('/stats', async (req, res) => {
 
 // GET saldo do período (padrão: 30 dias)
 router.get('/saldo', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const dias = Math.min(Math.max(Number(req.query.dias) || 30, 1), 365);
     const row = await get(`
@@ -247,8 +259,8 @@ router.get('/saldo', async (req, res) => {
         COALESCE(SUM(CASE WHEN tipo = 'entrada' THEN valor ELSE 0 END), 0) as entradas,
         COALESCE(SUM(CASE WHEN tipo = 'saida' THEN valor ELSE 0 END), 0) as saidas
       FROM financeiro
-      WHERE data >= CURRENT_DATE - ($1::int * INTERVAL '1 day')
-    `, [dias]);
+      WHERE user_id = $1 AND data >= CURRENT_DATE - ($2::int * INTERVAL '1 day')
+    `, [uid, dias]);
     const entradas = Number(row?.entradas || 0);
     const saidas = Number(row?.saidas || 0);
     res.json({ saldo: entradas - saidas, entradas, saidas, dias });
@@ -259,6 +271,8 @@ router.get('/saldo', async (req, res) => {
 
 // POST nova transacao
 router.post('/', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   const { tipo, valor, descricao, data, categoria } = req.body;
 
   if (!tipo || !valor) {
@@ -273,12 +287,12 @@ router.post('/', async (req, res) => {
     const dataUso = data || hojeStr();
 
     await run(
-      `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [id, tipo, valor, descricao || '', dataUso, categoria || '']
+      `INSERT INTO financeiro (id, tipo, valor, descricao, data, categoria, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [id, tipo, valor, descricao || '', dataUso, categoria || '', uid]
     );
 
-    const transacao = await get(`SELECT * FROM financeiro WHERE id = $1`, [id]);
+    const transacao = await get(`SELECT * FROM financeiro WHERE id = $1 AND user_id = $2`, [id, uid]);
     emitFinanceiroUpdate('adicionada', transacao);
     res.status(201).json(transacao);
   } catch (err) {
@@ -288,14 +302,16 @@ router.post('/', async (req, res) => {
 
 // PATCH — edita SÓ a categoria desta transação (não vira regra pras futuras)
 router.patch('/:id/categoria', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   const cat = String((req.body && req.body.categoria) || '').trim();
   if (!cat) return res.status(400).json({ erro: 'categoria obrigatória' });
   try {
     const existe = await get(`SELECT chave FROM categorias WHERE chave = $1`, [cat]);
     if (!existe) return res.status(400).json({ erro: 'categoria inválida' });
     const r = await run(
-      `UPDATE financeiro SET categoria = $1, categoria_confirmada = true WHERE id = $2`,
-      [cat, req.params.id]
+      `UPDATE financeiro SET categoria = $1, categoria_confirmada = true WHERE id = $2 AND user_id = $3`,
+      [cat, req.params.id, uid]
     );
     if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
     emitFinanceiroUpdate('atualizada', { id: req.params.id, categoria: cat });
@@ -307,12 +323,14 @@ router.patch('/:id/categoria', async (req, res) => {
 
 // PATCH /api/financeiro/:id/terceiro — pagamento por terceiro / reembolso
 router.patch('/:id/terceiro', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const body = req.body || {};
     const pago = body.pago_terceiro != null ? !!body.pago_terceiro : undefined;
     const nome = body.terceiro_nome != null ? String(body.terceiro_nome).trim() || null : undefined;
     const notas = body.terceiro_notas != null ? String(body.terceiro_notas).trim() || null : undefined;
-    const row = await get(`SELECT id FROM financeiro WHERE id = $1`, [req.params.id]);
+    const row = await get(`SELECT id FROM financeiro WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!row) return res.status(404).json({ erro: 'transação não encontrada' });
     const sets = [];
     const vals = [];
@@ -321,8 +339,9 @@ router.patch('/:id/terceiro', async (req, res) => {
     if (nome !== undefined) { sets.push(`terceiro_nome = $${p++}`); vals.push(nome); }
     if (notas !== undefined) { sets.push(`terceiro_notas = $${p++}`); vals.push(notas); }
     if (!sets.length) return res.status(400).json({ erro: 'nada para atualizar' });
-    vals.push(req.params.id);
-    await run(`UPDATE financeiro SET ${sets.join(', ')} WHERE id = $${p}`, vals);
+    vals.push(req.params.id, uid);
+    const r = await run(`UPDATE financeiro SET ${sets.join(', ')} WHERE id = $${p} AND user_id = $${p + 1}`, vals);
+    if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
     emitFinanceiroUpdate('atualizada', { id: req.params.id });
     res.json({ ok: true });
   } catch (err) {
@@ -332,8 +351,11 @@ router.patch('/:id/terceiro', async (req, res) => {
 
 // DELETE transacao
 router.delete('/:id', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    await run(`DELETE FROM financeiro WHERE id = $1`, [req.params.id]);
+    const r = await run(`DELETE FROM financeiro WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
+    if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
     emitFinanceiroUpdate('deletada', { id: req.params.id });
     res.json({ msg: 'Transacao deletada' });
   } catch (err) {
@@ -343,6 +365,8 @@ router.delete('/:id', async (req, res) => {
 
 // GET /api/financeiro/categoria/:cat — gastos do mês numa categoria (pra revisar "outros" etc.)
 router.get('/categoria/:cat', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const cat = String(req.params.cat || 'outros').trim().toLowerCase() || 'outros';
     const ym = /^\d{4}-\d{2}$/.test(String(req.query.ym || '')) ? String(req.query.ym) : ymAtual();
@@ -353,15 +377,16 @@ router.get('/categoria/:cat', async (req, res) => {
        FROM financeiro f
        LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
        LEFT JOIN openfinance_items i ON i.item_id = a.item_id
-       WHERE f.tipo = 'saida'
-         AND TO_CHAR(f.data, 'YYYY-MM') = $1
+       WHERE f.user_id = $1
+         AND f.tipo = 'saida'
+         AND TO_CHAR(f.data, 'YYYY-MM') = $2
          AND (
-           ($2 = 'outros' AND (f.categoria IS NULL OR f.categoria = '' OR lower(f.categoria) IN ('outros','outro')))
-           OR lower(COALESCE(f.categoria,'')) = $2
+           ($3 = 'outros' AND (f.categoria IS NULL OR f.categoria = '' OR lower(f.categoria) IN ('outros','outro')))
+           OR lower(COALESCE(f.categoria,'')) = $3
          )
        ORDER BY f.valor DESC, f.data DESC
        LIMIT 200`,
-      [ym, cat]
+      [uid, ym, cat]
     );
 
     const gruposMap = {};
@@ -412,13 +437,15 @@ router.get('/categoria/:cat', async (req, res) => {
 
 // GET alertas de gasto incomum (mês atual vs média dos meses anteriores por categoria)
 router.get('/alertas', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const rows = await all(`
       SELECT TO_CHAR(data, 'YYYY-MM') AS mes, categoria, SUM(valor) AS total
       FROM financeiro
-      WHERE tipo = 'saida' AND data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
+      WHERE user_id = $1 AND tipo = 'saida' AND data >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '4 months'
       GROUP BY mes, categoria
-    `);
+    `, [uid]);
     const mesAtual = ymAtual();
     const porCat = {};
     rows.forEach(r => {

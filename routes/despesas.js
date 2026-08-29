@@ -3,6 +3,7 @@ const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
 const { ymAtual, hojeStr, diaDoMes } = require('../lib/datas');
 const plano = require('../lib/plano-financeiro');
+const { requireUserId } = require('../lib/tenant');
 
 const router = express.Router();
 
@@ -23,13 +24,13 @@ function statusInicial(ym, dia) {
   return 'pendente';
 }
 
-async function inserirDespesa(ym, item, statusOverride) {
+async function inserirDespesa(ym, item, statusOverride, userId) {
   const dia = item.dia != null ? Number(item.dia) : null;
   const status = statusOverride || (item.pago ? 'pago' : statusInicial(ym, dia));
   const pagoEm = status === 'pago' ? hojeStr() : null;
   await run(
-    `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem, pago_em, confirmado_por)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,'plano',$8,$9)`,
+    `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem, pago_em, confirmado_por, user_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,'plano',$8,$9,$10)`,
     [
       uuid(),
       ym,
@@ -39,26 +40,27 @@ async function inserirDespesa(ym, item, statusOverride) {
       item.categoria || 'outros',
       status,
       pagoEm,
-      status === 'pago' ? 'manual' : null
+      status === 'pago' ? 'manual' : null,
+      userId
     ]
   );
 }
 
-async function seedMesSeVazio(ym) {
-  const count = await get(`SELECT COUNT(*)::int AS n FROM despesas_mes WHERE ym = $1`, [ym]);
+async function seedMesSeVazio(ym, userId) {
+  const count = await get(`SELECT COUNT(*)::int AS n FROM despesas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   if (count && count.n > 0) return { seeded: false, count: count.n };
 
   const itens = plano.itensDoMes(ym);
   const pagos = new Set((plano.pagosPorMes[ym] || []).map(chaveTitulo));
   for (const item of itens) {
     const pago = item.pago || pagos.has(chaveTitulo(item.titulo));
-    await inserirDespesa(ym, item, pago ? 'pago' : null);
+    await inserirDespesa(ym, item, pago ? 'pago' : null, userId);
   }
   return { seeded: true, count: itens.length };
 }
 
-async function syncPlanoMes(ym) {
-  const rows = await all(`SELECT * FROM despesas_mes WHERE ym = $1`, [ym]);
+async function syncPlanoMes(ym, userId) {
+  const rows = await all(`SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   let criadas = 0;
   let atualizadas = 0;
   let ignoradas = 0;
@@ -66,7 +68,7 @@ async function syncPlanoMes(ym) {
   for (const nome of plano.cancelados) {
     const hit = rows.find((r) => chaveTitulo(r.titulo) === chaveTitulo(nome));
     if (hit && hit.status !== 'ignorado' && hit.status !== 'pago') {
-      await run(`UPDATE despesas_mes SET status = 'ignorado' WHERE id = $1`, [hit.id]);
+      await run(`UPDATE despesas_mes SET status = 'ignorado' WHERE id = $1 AND user_id = $2`, [hit.id, userId]);
       hit.status = 'ignorado';
       ignoradas++;
     }
@@ -79,7 +81,7 @@ async function syncPlanoMes(ym) {
     const existente = rows.find((r) => matchItem(r, item));
     const devePagar = item.pago || pagos.has(chaveTitulo(item.titulo));
     if (!existente) {
-      await inserirDespesa(ym, item, devePagar ? 'pago' : null);
+      await inserirDespesa(ym, item, devePagar ? 'pago' : null, userId);
       criadas++;
       continue;
     }
@@ -114,7 +116,7 @@ async function syncPlanoMes(ym) {
     }
     if (campos.length) {
       vals.push(existente.id);
-      await run(`UPDATE despesas_mes SET ${campos.join(', ')} WHERE id = $${i}`, vals);
+      await run(`UPDATE despesas_mes SET ${campos.join(', ')} WHERE id = $${i} AND user_id = $${i + 1}`, [...vals, userId]);
       atualizadas++;
     }
   }
@@ -200,14 +202,15 @@ function diaDoPago(pagoEm) {
   return d.getUTCDate();
 }
 
-async function preencherVencimentoPeloPagamento(ym) {
+async function preencherVencimentoPeloPagamento(ym, userId) {
   const r = await run(
     `UPDATE despesas_mes
      SET dia_vencimento = EXTRACT(DAY FROM pago_em::date)::int
      WHERE ym = $1
+       AND user_id = $2
        AND dia_vencimento IS NULL
        AND pago_em IS NOT NULL`,
-    [ym]
+    [ym, userId]
   );
   return r?.rowCount || 0;
 }
@@ -253,22 +256,24 @@ function resumo(lista) {
 
 // GET /api/despesas?ym=YYYY-MM  (+ seed se vazio)
 router.get('/', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const ym = ymValido(req.query.ym) ? req.query.ym : ymAtual();
-    const seed = await seedMesSeVazio(ym);
-    const sync = await syncPlanoMes(ym);
-    await preencherVencimentoPeloPagamento(ym);
+    const seed = await seedMesSeVazio(ym, uid);
+    const sync = await syncPlanoMes(ym, uid);
+    await preencherVencimentoPeloPagamento(ym, uid);
     const rows = await all(
-      `SELECT * FROM despesas_mes WHERE ym = $1 ORDER BY
+      `SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2 ORDER BY
         CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'pago' THEN 2 ELSE 3 END,
         COALESCE(dia_vencimento, 99), titulo`,
-      [ym]
+      [ym, uid]
     );
     const despesas = rows.map((r) => enriquecerStatus(r, ym));
     // Persiste status atrasado derivado (só visual → DB se mudou)
     for (const d of despesas) {
       if (d.status === 'atrasado' && rows.find((x) => x.id === d.id)?.status === 'pendente') {
-        await run(`UPDATE despesas_mes SET status = 'atrasado' WHERE id = $1 AND status = 'pendente'`, [d.id]);
+        await run(`UPDATE despesas_mes SET status = 'atrasado' WHERE id = $1 AND user_id = $2 AND status = 'pendente'`, [d.id, uid]);
       }
     }
     res.json({ ym, seed, sync, despesas, resumo: resumo(despesas) });
@@ -279,6 +284,8 @@ router.get('/', async (req, res) => {
 
 // POST /api/despesas
 router.post('/', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const ym = ymValido(req.body.ym) ? req.body.ym : ymAtual();
     const titulo = String(req.body.titulo || '').trim();
@@ -298,11 +305,11 @@ router.post('/', async (req, res) => {
     else if (ym === hojeYm && dia && dia < hojeDia) status = 'atrasado';
 
     await run(
-      `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [id, ym, titulo, valor, dia, categoria, status, origem]
+      `INSERT INTO despesas_mes (id, ym, titulo, valor_esperado, dia_vencimento, categoria, status, origem, user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [id, ym, titulo, valor, dia, categoria, status, origem, uid]
     );
-    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [id]);
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [id, uid]);
     res.status(201).json(enriquecerStatus(row, ym));
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -311,15 +318,17 @@ router.post('/', async (req, res) => {
 
 // POST /api/despesas/reconciliar — antes de /:id
 router.post('/reconciliar', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
     const ym = ymValido(req.query.ym || req.body?.ym) ? (req.query.ym || req.body.ym) : ymAtual();
-    await seedMesSeVazio(ym);
-    await syncPlanoMes(ym);
-    await preencherVencimentoPeloPagamento(ym);
+    await seedMesSeVazio(ym, uid);
+    await syncPlanoMes(ym, uid);
+    await preencherVencimentoPeloPagamento(ym, uid);
 
     const pendentes = await all(
-      `SELECT * FROM despesas_mes WHERE ym = $1 AND status IN ('pendente','atrasado')`,
-      [ym]
+      `SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2 AND status IN ('pendente','atrasado')`,
+      [ym, uid]
     );
 
     // Extrato do mês + mês anterior (ciclo de fatura de cartão)
@@ -328,10 +337,11 @@ router.post('/reconciliar', async (req, res) => {
       `SELECT f.id, f.descricao, f.valor, f.data, f.fonte, a.tipo AS conta_tipo
        FROM financeiro f
        LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
-       WHERE f.tipo = 'saida'
-         AND TO_CHAR(f.data::date, 'YYYY-MM') IN ($1, $2)
-         AND f.id NOT IN (SELECT tx_id FROM despesas_mes WHERE tx_id IS NOT NULL)`,
-      [ym, ymPrev]
+       WHERE f.user_id = $1
+         AND f.tipo = 'saida'
+         AND TO_CHAR(f.data::date, 'YYYY-MM') IN ($2, $3)
+         AND f.id NOT IN (SELECT tx_id FROM despesas_mes WHERE tx_id IS NOT NULL AND user_id = $1)`,
+      [uid, ym, ymPrev]
     );
 
     const usados = new Set();
@@ -396,8 +406,8 @@ router.post('/reconciliar', async (req, res) => {
         await run(
           `UPDATE despesas_mes SET status = 'pago', pago_em = $1, confirmado_por = 'banco', tx_id = $2,
              dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
-           WHERE id = $3`,
-          [pagoEm, melhor.id, desp.id]
+           WHERE id = $3 AND user_id = $4`,
+          [pagoEm, melhor.id, desp.id, uid]
         );
         matched++;
         detalhes.push({
@@ -410,8 +420,8 @@ router.post('/reconciliar', async (req, res) => {
     }
 
     const rows = await all(
-      `SELECT * FROM despesas_mes WHERE ym = $1 ORDER BY dia_vencimento NULLS LAST, titulo`,
-      [ym]
+      `SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2 ORDER BY dia_vencimento NULLS LAST, titulo`,
+      [ym, uid]
     );
     const despesas = rows.map((r) => enriquecerStatus(r, ym));
     res.json({ ym, matched, detalhes, despesas, resumo: resumo(despesas) });
@@ -422,8 +432,10 @@ router.post('/reconciliar', async (req, res) => {
 
 // PATCH /api/despesas/:id
 router.patch('/:id', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!row) return res.status(404).json({ erro: 'Despesa nao encontrada' });
 
     const titulo = req.body.titulo != null ? String(req.body.titulo).trim() : row.titulo;
@@ -464,10 +476,10 @@ router.patch('/:id', async (req, res) => {
       `UPDATE despesas_mes SET
         titulo = $1, valor_esperado = $2, dia_vencimento = $3, categoria = $4,
         status = $5, pago_em = $6::date, confirmado_por = $7, tx_id = $8
-       WHERE id = $9`,
-      [titulo, valor, dia, categoria, status, pago_em, confirmado_por, tx_id, req.params.id]
+       WHERE id = $9 AND user_id = $10`,
+      [titulo, valor, dia, categoria, status, pago_em, confirmado_por, tx_id, req.params.id, uid]
     );
-    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     res.json(enriquecerStatus(updated, updated.ym));
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -476,8 +488,10 @@ router.patch('/:id', async (req, res) => {
 
 // POST /api/despesas/:id/confirmar — atalho mais confiável no mobile/PWA
 router.post('/:id/confirmar', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!row) return res.status(404).json({ erro: 'Despesa nao encontrada' });
     await run(
       `UPDATE despesas_mes SET
@@ -485,10 +499,10 @@ router.post('/:id/confirmar', async (req, res) => {
         pago_em = $1::date,
         confirmado_por = COALESCE($2, 'manual'),
         dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
-       WHERE id = $3`,
-      [hojeStr(), req.body?.confirmado_por || 'manual', req.params.id]
+       WHERE id = $3 AND user_id = $4`,
+      [hojeStr(), req.body?.confirmado_por || 'manual', req.params.id, uid]
     );
-    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     res.json(enriquecerStatus(updated, updated.ym));
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -497,11 +511,13 @@ router.post('/:id/confirmar', async (req, res) => {
 
 // POST /api/despesas/:id/ignorar
 router.post('/:id/ignorar', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!row) return res.status(404).json({ erro: 'Despesa nao encontrada' });
-    await run(`UPDATE despesas_mes SET status = 'ignorado' WHERE id = $1`, [req.params.id]);
-    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    await run(`UPDATE despesas_mes SET status = 'ignorado' WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
+    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     res.json(enriquecerStatus(updated, updated.ym));
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -510,14 +526,16 @@ router.post('/:id/ignorar', async (req, res) => {
 
 // POST /api/despesas/:id/desvincular
 router.post('/:id/desvincular', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const row = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!row) return res.status(404).json({ erro: 'Despesa nao encontrada' });
     await run(
-      `UPDATE despesas_mes SET status = 'pendente', pago_em = NULL, confirmado_por = NULL, tx_id = NULL WHERE id = $1`,
-      [req.params.id]
+      `UPDATE despesas_mes SET status = 'pendente', pago_em = NULL, confirmado_por = NULL, tx_id = NULL WHERE id = $1 AND user_id = $2`,
+      [req.params.id, uid]
     );
-    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const updated = await get(`SELECT * FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     res.json(enriquecerStatus(updated, updated.ym));
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -526,8 +544,11 @@ router.post('/:id/desvincular', async (req, res) => {
 
 // DELETE /api/despesas/:id
 router.delete('/:id', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
   try {
-    await run(`DELETE FROM despesas_mes WHERE id = $1`, [req.params.id]);
+    const r = await run(`DELETE FROM despesas_mes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
+    if (!r.rowCount) return res.status(404).json({ erro: 'Despesa nao encontrada' });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: err.message });
