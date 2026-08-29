@@ -82,6 +82,8 @@
     <div class="sidebar-footer">
       <div class="data-hoje" id="data-hoje"></div>
       <div class="hora-agora" id="hora-agora"></div>
+      <div id="sessao-debug" class="sessao-debug" style="display:none;"></div>
+      <button type="button" id="btn-logout" class="btn-logout-sidebar">Sair</button>
     </div>
   </aside>
 
@@ -1102,6 +1104,17 @@
             window.__currentUser = d.user;
             const el = document.getElementById('header-user-name');
             if (el) el.textContent = d.user.nome;
+            const dbg = document.getElementById('sessao-debug');
+            if (dbg && d.user.stats) {
+              const st = d.user.stats;
+              dbg.style.display = 'block';
+              dbg.textContent = `${d.user.login} · ${st.financeiro} fin · ${st.tasks} tasks`;
+              if (d.db) dbg.title = 'Banco: ' + d.db;
+              if (st.financeiro === 0 && st.tasks === 0) {
+                dbg.style.color = 'var(--danger)';
+                dbg.textContent += ' — conta vazia (banco errado?)';
+              }
+            }
             if (d.erro === 'sessao_invalida') forcarLogout();
           }
         } catch (e) { /* ok */ }
@@ -1194,7 +1207,9 @@
           mostrarLogin();
         }
       })();
-    })();
+      })();
+
+      document.getElementById('btn-logout')?.addEventListener('click', () => forcarLogout());
 
     // ==================== Web Push (Service Worker) ====================
     let __pushConfig = null;

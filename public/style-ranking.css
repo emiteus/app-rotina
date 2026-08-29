@@ -82,6 +82,31 @@
   color: var(--text-muted);
 }
 
+.sessao-debug {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.3;
+  word-break: break-all;
+}
+
+.btn-logout-sidebar {
+  margin-top: 10px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-logout-sidebar:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
 @media (max-width: 640px) {
   .header-user-name {
     max-width: 90px;

@@ -4,6 +4,12 @@ const { get, run } = require('../lib/db');
 const { hashSenha, verificarSenha } = require('../lib/password');
 const { getUserId, SKIP_USER_ID } = require('../lib/tenant');
 
+function dbHostMask() {
+  const cs = process.env.DATABASE_URL || '';
+  const m = cs.match(/@([^/]+)/);
+  return m ? m[1] : 'local';
+}
+
 const router = express.Router();
 
 const LOGIN_MAX = 8;
@@ -238,7 +244,8 @@ router.get('/me', async (req, res) => {
           tasks: Number(stats?.tasks || 0),
           financeiro: Number(stats?.financeiro || 0)
         }
-      }
+      },
+      db: dbHostMask()
     });
   } catch (err) {
     res.status(500).json({ erro: err.message });
