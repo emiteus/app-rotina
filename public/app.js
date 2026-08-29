@@ -5389,12 +5389,13 @@ async function deletarAlarme(id) {
 }
 
 // =====================
-//  STATS 30 DIAS
+//  STATS / HISTÓRICO
 // =====================
 async function carregarStats() {
   try {
-    const res = await fetch('/api/tasks/stats');
+    const res = await fetch('/api/tasks/stats?dias=90');
     const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'stats');
     renderStats(data);
   } catch (err) {
     console.error('Erro stats:', err);
@@ -5405,27 +5406,28 @@ function renderStats(data) {
   const r = data.resumo || {};
   if (typeof _atualizarDeltasKPI === 'function') {
     const hoje = hojeLocal();
-    const tarefasHoje = (allTasks || []).filter(t => t.data_reset && t.data_reset.split('T')[0] === hoje);
+    const tarefasHoje = (allTasks || []).filter(t => t.data_reset && String(t.data_reset).split('T')[0] === hoje);
     _atualizarDeltasKPI(tarefasHoje.filter(t => t.concluida).length, tarefasHoje.length);
   }
-  document.getElementById('stats-concluidas').textContent = r.totalConcluidas || 0;
-  document.getElementById('stats-taxa').textContent = r.taxaMedia || 0;
-  document.getElementById('stats-media').textContent = r.mediaPorDia || 0;
-  document.getElementById('stats-melhor-taxa').textContent = `${Math.round(r.melhorDia?.taxa || 0)}%`;
+  const elConc = document.getElementById('stats-concluidas');
+  const elTaxa = document.getElementById('stats-taxa');
+  const elMedia = document.getElementById('stats-media');
+  const elMelhorTaxa = document.getElementById('stats-melhor-taxa');
+  if (elConc) elConc.textContent = r.totalConcluidas || 0;
+  if (elTaxa) elTaxa.textContent = r.taxaMedia || 0;
+  if (elMedia) elMedia.textContent = r.mediaPorDia || 0;
+  if (elMelhorTaxa) elMelhorTaxa.textContent = `${Math.round(r.melhorDia?.taxa || 0)}%`;
 
   if (r.melhorDia?.data) {
-    const d = new Date(r.melhorDia.data);
-    document.getElementById('stats-melhor-dia').textContent =
-      `Melhor: ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' })}`;
+    const d = new Date(String(r.melhorDia.data).slice(0, 10) + 'T12:00:00');
+    const el = document.getElementById('stats-melhor-dia');
+    if (el) {
+      el.textContent = `Melhor: ${d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`;
+    }
   }
 
-  // Gráfico de barras (30 dias)
   renderChartBars(data.historico || []);
-
-  // Categorias
   renderHorizontalBars('chart-categorias', data.categorias || {}, 'cat');
-
-  // Prioridades
   renderHorizontalBars('chart-prioridades', data.prioridades || {}, 'pri');
 }
 
@@ -5472,7 +5474,7 @@ async function carregarRankingDia() {
   }
 }
 
-let _chartRange = 30;
+let _chartRange = 90;
 let _chartHistorico = [];
 
 function setChartRange(n) {
@@ -5480,41 +5482,60 @@ function setChartRange(n) {
   document.querySelectorAll('.chart-range-btn').forEach(b => {
     b.classList.toggle('active', Number(b.dataset.range) === n);
   });
+  const label = document.getElementById('chart-range-label');
+  if (label) label.textContent = `${n} dias`;
+  const sub = document.getElementById('page-subtitle-range');
+  if (sub) sub.textContent = `Últimos ${n} dias`;
   if (_chartHistorico.length) renderChartBars(_chartHistorico);
 }
 
-function renderChartBars(historicoFull) {
-  _chartHistorico = historicoFull;
-  const historico = historicoFull.slice(-_chartRange);
-  if (historico.length === 0) {
-    const canvas = document.getElementById('chart-bars');
-    if (canvas) {
-      const container = canvas.parentElement;
-      container.innerHTML = '<div class="mini-item-empty">Sem dados ainda</div>';
-    }
-    return;
-  }
-
-  // Preparar dados para o gráfico
-  // h.data vem como "2026-07-20T00:00:00.000Z" (DATE do Postgres UTC); interpretar sem shift.
-  const labels = historico.map(h => {
-    const data = new Date(h.data);
-    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+/** Preenche dias sem registro com 0 pra o gráfico ficar contínuo. */
+function preencherDiasHistorico(rows, dias) {
+  const byDay = new Map();
+  (rows || []).forEach((h) => {
+    const d = String(h.data || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    byDay.set(d, {
+      data: d,
+      total: Number(h.total) || 0,
+      concluidas: Number(h.concluidas) || 0
+    });
   });
-
-  const concluidas = historico.map(h => parseInt(h.concluidas) || 0);
-
-  // Azul escuro Multicap — lê CSS var pra respeitar tema
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1a1b3e';
-
-  // Destruir gráfico anterior se existir
-  if (performanceChart) {
-    performanceChart.destroy();
+  const out = [];
+  const fim = new Date();
+  fim.setHours(12, 0, 0, 0);
+  for (let i = dias - 1; i >= 0; i--) {
+    const d = new Date(fim);
+    d.setDate(fim.getDate() - i);
+    const key = d.toLocaleDateString('en-CA');
+    out.push(byDay.get(key) || { data: key, total: 0, concluidas: 0 });
   }
+  return out;
+}
 
-  const ctx = document.getElementById('chart-bars').getContext('2d');
+function renderChartBars(historicoFull) {
+  _chartHistorico = historicoFull || [];
+  const historico = preencherDiasHistorico(_chartHistorico, _chartRange);
+  const canvas = document.getElementById('chart-bars');
+  if (!canvas) return;
 
-  // Área sob a curva: azul escuro fade
+  const labels = historico.map(h => {
+    const data = new Date(h.data + 'T12:00:00');
+    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  });
+  const concluidas = historico.map(h => parseInt(h.concluidas, 10) || 0);
+
+  const totC = concluidas.reduce((s, n) => s + n, 0);
+  const totT = historico.reduce((s, h) => s + (Number(h.total) || 0), 0);
+  const elConc = document.getElementById('stats-concluidas');
+  const elTaxa = document.getElementById('stats-taxa');
+  if (elConc) elConc.textContent = totC;
+  if (elTaxa) elTaxa.textContent = totT > 0 ? Math.round((totC / totT) * 100) : 0;
+
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1a1b3e';
+  if (performanceChart) performanceChart.destroy();
+
+  const ctx = canvas.getContext('2d');
   const gradient = ctx.createLinearGradient(0, 0, 0, 300);
   gradient.addColorStop(0, 'rgba(26, 27, 62, 0.18)');
   gradient.addColorStop(1, 'rgba(26, 27, 62, 0.0)');
@@ -5522,7 +5543,7 @@ function renderChartBars(historicoFull) {
   performanceChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: labels,
+      labels,
       datasets: [{
         label: 'Concluídas',
         data: concluidas,
@@ -5530,7 +5551,7 @@ function renderChartBars(historicoFull) {
         backgroundColor: gradient,
         borderWidth: 2,
         fill: true,
-        tension: 0.4,
+        tension: 0.35,
         pointRadius: 0,
         pointHoverRadius: 5,
         pointBackgroundColor: accent,
@@ -5556,7 +5577,12 @@ function renderChartBars(historicoFull) {
           padding: 10,
           displayColors: false,
           callbacks: {
-            label: (ctx) => ctx.parsed.y + (ctx.parsed.y === 1 ? ' tarefa' : ' tarefas')
+            label: (ctx) => {
+              const h = historico[ctx.dataIndex];
+              const c = h?.concluidas || 0;
+              const t = h?.total || 0;
+              return t ? `${c}/${t} tarefas` : `${c} tarefa${c === 1 ? '' : 's'}`;
+            }
           }
         }
       },
@@ -5571,8 +5597,6 @@ function renderChartBars(historicoFull) {
             drawTicks: false
           },
           border: { display: false },
-          // ~5 linhas horizontais
-          suggestedMax: undefined,
           afterBuildTicks: (axis) => {
             const max = axis.max || 5;
             const step = Math.max(1, Math.ceil(max / 4));

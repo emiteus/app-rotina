@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -13,8 +13,8 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=77">
-  <link rel="stylesheet" href="style-ranking.css?v=1">
+  <link rel="stylesheet" href="style.css?v=91">
+  <link rel="stylesheet" href="style-ranking.css?v=91">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -51,7 +51,7 @@
         <span class="nav-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </span>
-        <span>Calendário</span>
+        <span>CalendÃ¡rio</span>
       </button>
       <button class="nav-btn" data-tab="financeiro">
         <span class="nav-icon">
@@ -69,7 +69,7 @@
         <span class="nav-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
         </span>
-        <span>Histórico</span>
+        <span>HistÃ³rico</span>
       </button>
       <button class="nav-btn" data-tab="assistente" id="nav-assistente">
         <span class="nav-icon">
@@ -94,10 +94,10 @@
       <div class="page-header" style="justify-content:space-between; align-items:center; display:flex;">
         <div>
           <h1><span id="saudacao"></span></h1>
-          <p class="page-subtitle">Últimos 30 dias</p>
+          <p class="page-subtitle" id="page-subtitle-range">Ãšltimos 90 dias</p>
         </div>
         <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
-          <span id="header-user-name" class="header-user-name" title="Usuário logado"></span>
+          <span id="header-user-name" class="header-user-name" title="UsuÃ¡rio logado"></span>
           <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
           <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
@@ -114,7 +114,7 @@
           <div class="card-value" id="dash-saldo">R$ 0,00</div>
           <div class="card-mini" style="margin-top:12px;">
             <span class="mini-up">+ <span id="dash-entradas">0,00</span></span>
-            <span class="mini-down">− <span id="dash-saidas">0,00</span></span>
+            <span class="mini-down">âˆ’ <span id="dash-saidas">0,00</span></span>
           </div>
         </div>
 
@@ -131,23 +131,23 @@
         <div class="card" id="dash-ranking-card">
           <div class="card-label">Ofensiva do dia</div>
           <div id="dash-ranking-list" class="ranking-list">
-            <div class="ranking-empty">Carregando…</div>
+            <div class="ranking-empty">Carregandoâ€¦</div>
           </div>
           <div class="card-mini ranking-lider" id="dash-ranking-lider"></div>
         </div>
       </div>
 
-      <!-- Chart hero: um único gráfico grande, sem 4 mini stat cards redundantes -->
+      <!-- Chart hero: um Ãºnico grÃ¡fico grande, sem 4 mini stat cards redundantes -->
       <div class="panel dashboard-chart-hero" style="margin-bottom: 24px;">
         <div class="panel-header">
           <div>
-            <div class="card-label" style="margin-bottom:6px;">Atividade — <span id="chart-range-label">30 dias</span></div>
-            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">· <span id="stats-taxa">0</span>% conclusão</span></div>
+            <div class="card-label" style="margin-bottom:6px;">Atividade â€” <span id="chart-range-label">90 dias</span></div>
+            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">Â· <span id="stats-taxa">0</span>% conclusÃ£o</span></div>
           </div>
           <div class="chart-range-toggle">
-            <button class="chart-range-btn" data-range="7" onclick="setChartRange(7); document.getElementById('chart-range-label').textContent='7 dias'">7d</button>
-            <button class="chart-range-btn" data-range="15" onclick="setChartRange(15); document.getElementById('chart-range-label').textContent='15 dias'">15d</button>
-            <button class="chart-range-btn active" data-range="30" onclick="setChartRange(30); document.getElementById('chart-range-label').textContent='30 dias'">30d</button>
+            <button class="chart-range-btn" data-range="30" onclick="setChartRange(30)">30d</button>
+            <button class="chart-range-btn" data-range="60" onclick="setChartRange(60)">60d</button>
+            <button class="chart-range-btn active" data-range="90" onclick="setChartRange(90)">90d</button>
           </div>
         </div>
         <div class="chart-container">
@@ -155,11 +155,11 @@
         </div>
       </div>
 
-      <!-- Últimas transações — lista discreta com link pra Financeiro -->
+      <!-- Ãšltimas transaÃ§Ãµes â€” lista discreta com link pra Financeiro -->
       <div class="panel">
         <div class="panel-header">
-          <h3>Últimas transações</h3>
-          <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas →</button>
+          <h3>Ãšltimas transaÃ§Ãµes</h3>
+          <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas â†’</button>
         </div>
         <div id="dash-transacoes-list" class="mini-list"></div>
       </div>
@@ -186,24 +186,24 @@
 
         <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro'); setTimeout(()=>trocarSubAbaFin('fin-pj'),100);" style="cursor:pointer;">
           <div class="panel-header">
-            <h3>Próximo DAS</h3>
+            <h3>PrÃ³ximo DAS</h3>
           </div>
           <div id="dash-das" class="mini-panel-body">
-            <p class="mini-empty">MEI não configurado</p>
+            <p class="mini-empty">MEI nÃ£o configurado</p>
           </div>
         </div>
 
-        <div class="panel dashboard-mini-card" title="Toque em cada hábito pra marcar hoje">
+        <div class="panel dashboard-mini-card" title="Toque em cada hÃ¡bito pra marcar hoje">
           <div class="panel-header">
-            <h3>Hábitos</h3>
+            <h3>HÃ¡bitos</h3>
           </div>
           <div id="dash-habitos" class="mini-panel-body">
-            <p class="mini-empty">—</p>
+            <p class="mini-empty">â€”</p>
           </div>
         </div>
       </div>
 
-      <!-- IDs escondidos que o app.js escreve mas não devem aparecer visualmente -->
+      <!-- IDs escondidos que o app.js escreve mas nÃ£o devem aparecer visualmente -->
       <div id="player-xp" style="display:none;"></div>
       <div id="dash-alarmes" style="display:none;">0</div>
       <div id="dash-proximo-alarme" style="display:none;"></div>
@@ -229,7 +229,7 @@
         <div class="stats-mini">
           <div class="stat-card">
             <span class="stat-num" id="concluidas">0</span>
-            <span class="stat-label">Concluídas</span>
+            <span class="stat-label">ConcluÃ­das</span>
           </div>
           <div class="stat-card">
             <span class="stat-num" id="total">0</span>
@@ -238,14 +238,14 @@
         </div>
       </div>
 
-      <!-- TAB: Hoje e Amanhã Combinadas -->
+      <!-- TAB: Hoje e AmanhÃ£ Combinadas -->
       <div id="tab-hoje" class="tarefas-tab-content active">
         <div class="form-card task-form-card">
           <div class="form-header">
             <h3>Nova Tarefa</h3>
           </div>
           <div class="form-row form-main">
-            <input type="text" id="nova-tarefa" placeholder="O que você precisa fazer?" class="form-input-main" />
+            <input type="text" id="nova-tarefa" placeholder="O que vocÃª precisa fazer?" class="form-input-main" />
             <button class="btn-primary btn-add-task" onclick="adicionarTarefa()">+ Adicionar</button>
           </div>
           <div class="form-row form-secondary">
@@ -261,7 +261,7 @@
               <label for="prioridade-tarefa" class="form-label">Prioridade</label>
               <select id="prioridade-tarefa" class="form-select">
                 <option value="alta">Alta</option>
-                <option value="media" selected>Média</option>
+                <option value="media" selected>MÃ©dia</option>
                 <option value="baixa">Baixa</option>
               </select>
             </div>
@@ -271,7 +271,7 @@
                 <option value="geral">Geral</option>
                 <option value="trabalho">Trabalho</option>
                 <option value="estudos">Estudos</option>
-                <option value="saude">Saúde</option>
+                <option value="saude">SaÃºde</option>
                 <option value="pessoal">Pessoal</option>
               </select>
             </div>
@@ -282,13 +282,13 @@
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button class="filter-btn active" data-filter="todas">Todas</button>
             <button class="filter-btn" data-filter="pendentes">Pendentes</button>
-            <button class="filter-btn" data-filter="concluidas">Concluídas</button>
+            <button class="filter-btn" data-filter="concluidas">ConcluÃ­das</button>
             <button class="filter-btn" data-filter="alta">Alta</button>
           </div>
           <button class="filter-btn" id="btn-modo-selecao" onclick="toggleModoSelecao()">Selecionar</button>
         </div>
 
-        <!-- Barra de ações em massa (aparece quando modoSelecao ativo) -->
+        <!-- Barra de aÃ§Ãµes em massa (aparece quando modoSelecao ativo) -->
         <div id="bulk-actions" class="bulk-actions">
           <span class="bulk-count-txt"><b id="bulk-count">0</b> selecionada(s)</span>
           <div class="bulk-actions-btns">
@@ -298,7 +298,7 @@
           </div>
         </div>
 
-        <!-- SEÇÃO HOJE (aberta por padrão) -->
+        <!-- SEÃ‡ÃƒO HOJE (aberta por padrÃ£o) -->
         <div class="tarefas-section section-hoje">
           <div class="section-header">
             <h2>Hoje</h2>
@@ -306,29 +306,29 @@
           </div>
           <ul id="lista-tarefas" class="task-list"></ul>
           <div id="empty-tarefas" class="empty-state" style="display: none;">
-            <div class="empty-icon">🎉</div>
+            <div class="empty-icon">ðŸŽ‰</div>
             <h3>Dia livre</h3>
-            <p>Parabéns! Tarefas todas concluídas</p>
+            <p>ParabÃ©ns! Tarefas todas concluÃ­das</p>
           </div>
         </div>
 
-        <!-- SEÇÃO AMANHÃ (colapsada) -->
+        <!-- SEÃ‡ÃƒO AMANHÃƒ (colapsada) -->
         <details class="tarefas-section-collapsible" style="margin-top:20px;">
           <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
-            <span>Amanhã</span>
+            <span>AmanhÃ£</span>
             <span class="section-badge" id="badge-amanha">0</span>
           </summary>
           <div style="margin-top:8px;">
             <ul id="lista-tarefas-amanha" class="task-list"></ul>
             <div id="empty-tarefas-amanha" class="empty-state" style="display: none;">
-              <div class="empty-icon">✨</div>
+              <div class="empty-icon">âœ¨</div>
               <h3>Sem tarefas agendadas</h3>
               <p>Curta esse dia tranquilo!</p>
             </div>
           </div>
         </details>
 
-        <!-- SEÇÃO ONTEM (colapsada) -->
+        <!-- SEÃ‡ÃƒO ONTEM (colapsada) -->
         <details class="tarefas-section-collapsible" style="margin-top:6px;">
           <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
             <span>Ontem</span>
@@ -337,14 +337,14 @@
           <div style="margin-top:8px;">
             <ul id="lista-tarefas-ontem" class="task-list"></ul>
             <div id="empty-tarefas-ontem" class="empty-state" style="display: none;">
-              <div class="empty-icon">📋</div>
+              <div class="empty-icon">ðŸ“‹</div>
               <h3>Sem tarefas de ontem</h3>
-              <p>Já foi!</p>
+              <p>JÃ¡ foi!</p>
             </div>
           </div>
         </details>
 
-        <!-- SEÇÃO ANTEONTEM (colapsada) -->
+        <!-- SEÃ‡ÃƒO ANTEONTEM (colapsada) -->
         <details class="tarefas-section-collapsible" style="margin-top:6px;">
           <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
             <span>Anteontem</span>
@@ -353,27 +353,27 @@
           <div style="margin-top:8px;">
             <ul id="lista-tarefas-anteontem" class="task-list"></ul>
             <div id="empty-tarefas-anteontem" class="empty-state" style="display: none;">
-              <div class="empty-icon">📋</div>
+              <div class="empty-icon">ðŸ“‹</div>
               <h3>Sem tarefas neste dia</h3>
             </div>
           </div>
         </details>
 
-        <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 14px; color: #888;">🔁 RECORRENTES</h3>
+        <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 14px; color: #888;">ðŸ” RECORRENTES</h3>
 
         <div class="form-card">
           <div class="form-row">
             <input type="text" id="rec-titulo" placeholder="Nome da tarefa recorrente" />
             <select id="rec-prioridade">
               <option value="alta">Alta</option>
-              <option value="media" selected>Média</option>
+              <option value="media" selected>MÃ©dia</option>
               <option value="baixa">Baixa</option>
             </select>
             <select id="rec-categoria">
               <option value="geral">Geral</option>
               <option value="trabalho" selected>Trabalho</option>
               <option value="estudos">Estudos</option>
-              <option value="saude">Saúde</option>
+              <option value="saude">SaÃºde</option>
               <option value="pessoal">Pessoal</option>
             </select>
             <button class="btn-primary" onclick="adicionarRecorrente()">+ Adicionar</button>
@@ -396,7 +396,7 @@
         <ul id="lista-recorrentes" class="task-list"></ul>
 
         <div id="empty-recorrentes" class="empty-state" style="display: none;">
-          <div class="empty-icon">🔁</div>
+          <div class="empty-icon">ðŸ”</div>
           <h3>Sem tarefas recorrentes</h3>
           <p>Crie tarefas que aparecem automaticamente todo dia</p>
         </div>
@@ -415,13 +415,13 @@
 
       <!-- Sub-abas do Financeiro -->
       <div class="fin-subtabs">
-        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')">Visão Geral</button>
+        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')">VisÃ£o Geral</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-ganhos" onclick="trocarSubAbaFin('fin-ganhos')">Receita</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-extrato" onclick="trocarSubAbaFin('fin-extrato')">Extrato</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-despesas" onclick="trocarSubAbaFin('fin-despesas')">Despesas do mês</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-despesas" onclick="trocarSubAbaFin('fin-despesas')">Despesas do mÃªs</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-metas" onclick="trocarSubAbaFin('fin-metas')">Metas</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-invest" onclick="trocarSubAbaFin('fin-invest')">Investimentos</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-patrimonio" onclick="trocarSubAbaFin('fin-patrimonio')">Patrimônio</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-patrimonio" onclick="trocarSubAbaFin('fin-patrimonio')">PatrimÃ´nio</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')">PJ / MEI</button>
       </div>
 
@@ -430,13 +430,13 @@
         <div class="receitas-shell">
           <div class="receitas-toolbar">
             <div class="despesas-mes-nav">
-              <button type="button" onclick="ganhosMesAnterior()" aria-label="Mês anterior">‹</button>
-              <span class="despesas-mes-label" id="ganhos-mes-label">—</span>
-              <button type="button" onclick="ganhosMesProximo()" aria-label="Próximo mês">›</button>
+              <button type="button" onclick="ganhosMesAnterior()" aria-label="MÃªs anterior">â€¹</button>
+              <span class="despesas-mes-label" id="ganhos-mes-label">â€”</span>
+              <button type="button" onclick="ganhosMesProximo()" aria-label="PrÃ³ximo mÃªs">â€º</button>
             </div>
             <button class="btn-primary" type="button" onclick="abrirModalNovaReceita()" style="font-size:13px;">+ Nova receita</button>
           </div>
-          <p class="receitas-hint">Só receitas registradas manualmente. PIX, transferências, apostas e entradas do banco ficam no Extrato.</p>
+          <p class="receitas-hint">SÃ³ receitas registradas manualmente. PIX, transferÃªncias, apostas e entradas do banco ficam no Extrato.</p>
           <div class="despesas-resumo" id="ganhos-resumo"></div>
           <div id="painel-receitas"></div>
         </div>
@@ -447,16 +447,16 @@
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
             <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova receita</h3>
-            <button type="button" onclick="fecharModalNovaReceita()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
+            <button type="button" onclick="fecharModalNovaReceita()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">Ã—</button>
           </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <select id="receita-chave" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);">
-              <option value="cortes">Competição de cortes</option>
+              <option value="cortes">CompetiÃ§Ã£o de cortes</option>
               <option value="infoproduto">Infoproduto</option>
               <option value="pj">PJ / MEI</option>
               <option value="outro" selected>Outra receita</option>
             </select>
-            <input type="text" id="receita-titulo" placeholder="Título (opcional se escolher tipo acima)"
+            <input type="text" id="receita-titulo" placeholder="TÃ­tulo (opcional se escolher tipo acima)"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
             <input type="number" id="receita-valor" placeholder="Valor recebido" step="0.01"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
@@ -482,7 +482,7 @@
         <div id="painel-investimentos"></div>
       </div>
 
-      <!-- SUB-ABA: Patrimônio -->
+      <!-- SUB-ABA: PatrimÃ´nio -->
       <div id="fin-patrimonio" class="fin-subtab" style="display:none;">
         <div id="painel-patrimonio"></div>
       </div>
@@ -492,7 +492,7 @@
         <div id="painel-pj"></div>
       </div>
 
-      <!-- SUB-ABA: Visão Geral -->
+      <!-- SUB-ABA: VisÃ£o Geral -->
       <div id="fin-visao" class="fin-subtab">
         <div class="finance-grid">
           <div class="finance-box saldo-box">
@@ -518,21 +518,21 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 7L7 17M17 17H7V7" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <div class="box-body">
-              <p class="box-label">Saídas (30d)</p>
+              <p class="box-label">SaÃ­das (30d)</p>
               <h3 id="total-saidas">R$ 0,00</h3>
             </div>
           </div>
         </div>
 
         <div class="visao-sobra" id="visao-sobra">
-          <span class="label">Sobra estimada (entradas − gastos, 30d · sem pagamento de fatura)</span>
+          <span class="label">Sobra estimada (entradas âˆ’ gastos, 30d Â· sem pagamento de fatura)</span>
           <span class="valor" id="visao-sobra-valor">R$ 0,00</span>
         </div>
 
         <div class="fin-visao-filtros">
-          <label for="fin-visao-mes">Mês da análise</label>
+          <label for="fin-visao-mes">MÃªs da anÃ¡lise</label>
           <select id="fin-visao-mes" onchange="onTrocarMesVisao()">
-            <option value="atual">Mês atual</option>
+            <option value="atual">MÃªs atual</option>
           </select>
         </div>
 
@@ -540,7 +540,7 @@
           <div class="fin-cat-list-card">
             <div class="fin-cat-list-header">
               <h3>Gastos por categoria</h3>
-              <span class="subtitle" id="fin-cat-list-mes">Este mês · sem pagamento de fatura</span>
+              <span class="subtitle" id="fin-cat-list-mes">Este mÃªs Â· sem pagamento de fatura</span>
             </div>
             <div id="fin-cat-list"></div>
             <div class="fin-cat-list-total" id="fin-cat-list-total" style="display:none;">
@@ -549,8 +549,8 @@
           </div>
 
           <div class="fin-donut-card" id="fin-donut-card" style="margin-bottom:0;">
-            <h3>Distribuição</h3>
-            <p class="donut-subtitle">Este mês · sem pagamento de fatura</p>
+            <h3>DistribuiÃ§Ã£o</h3>
+            <p class="donut-subtitle">Este mÃªs Â· sem pagamento de fatura</p>
             <div class="fin-donut-body">
               <div class="fin-donut-canvas-wrap">
                 <canvas id="fin-donut-canvas" width="200" height="200"></canvas>
@@ -565,16 +565,16 @@
         </div>
 
         <div id="fin-cat-empty" class="empty-state" style="display:none;">
-          <h3>Sem despesas neste mês</h3>
-          <p>As categorias aparecem aqui quando você tiver gastos.</p>
+          <h3>Sem despesas neste mÃªs</h3>
+          <p>As categorias aparecem aqui quando vocÃª tiver gastos.</p>
         </div>
 
-        <!-- Bancos: preso no rodapé, colapsado até clicar -->
+        <!-- Bancos: preso no rodapÃ©, colapsado atÃ© clicar -->
         <div class="bancos-pinned" id="bancos-pinned">
           <button type="button" class="bancos-pinned-toggle" id="bancos-pinned-toggle" onclick="toggleBancosDrawer()" aria-expanded="false">
             <span class="bancos-pinned-title">Bancos</span>
             <span class="bancos-pinned-resumo" id="bancos-pinned-resumo"></span>
-            <span class="bancos-pinned-chevron" aria-hidden="true">▴</span>
+            <span class="bancos-pinned-chevron" aria-hidden="true">â–´</span>
           </button>
           <div class="bancos-pinned-body" id="bancos-pinned-body" hidden>
             <div id="painel-bancos"></div>
@@ -589,12 +589,12 @@
             <div class="extrato-filtros-top">
               <div>
                 <p class="extrato-kicker">Extrato</p>
-                <p class="extrato-periodo-label" id="extrato-periodo-label">—</p>
+                <p class="extrato-periodo-label" id="extrato-periodo-label">â€”</p>
               </div>
               <div class="extrato-periodo-chips" id="extrato-periodo-chips">
                 <button type="button" class="extrato-chip" data-periodo="7d" onclick="extratoSetPeriodo('7d')">7d</button>
                 <button type="button" class="extrato-chip active" data-periodo="30d" onclick="extratoSetPeriodo('30d')">30d</button>
-                <button type="button" class="extrato-chip" data-periodo="mes" onclick="extratoSetPeriodo('mes')">Mês</button>
+                <button type="button" class="extrato-chip" data-periodo="mes" onclick="extratoSetPeriodo('mes')">MÃªs</button>
                 <button type="button" class="extrato-chip" data-periodo="mes-passado" onclick="extratoSetPeriodo('mes-passado')">Anterior</button>
                 <button type="button" class="extrato-chip" data-periodo="custom" onclick="extratoSetPeriodo('custom')">Custom</button>
               </div>
@@ -604,15 +604,15 @@
                 <option value="todas">Todas as contas</option>
               </select>
               <select id="extrato-tipo" onchange="carregarExtrato()" aria-label="Tipo">
-                <option value="">Entradas e saídas</option>
-                <option value="entrada">Só entradas</option>
-                <option value="saida">Só saídas</option>
+                <option value="">Entradas e saÃ­das</option>
+                <option value="entrada">SÃ³ entradas</option>
+                <option value="saida">SÃ³ saÃ­das</option>
               </select>
-              <input type="search" id="extrato-busca" placeholder="Buscar…" oninput="extratoBuscaDebounced()" autocomplete="off" />
+              <input type="search" id="extrato-busca" placeholder="Buscarâ€¦" oninput="extratoBuscaDebounced()" autocomplete="off" />
             </div>
             <div class="extrato-datas" id="extrato-datas" hidden>
               <label>De <input type="date" id="extrato-de" onchange="carregarExtrato()" /></label>
-              <label>Até <input type="date" id="extrato-ate" onchange="carregarExtrato()" /></label>
+              <label>AtÃ© <input type="date" id="extrato-ate" onchange="carregarExtrato()" /></label>
             </div>
           </div>
 
@@ -621,16 +621,16 @@
         </div>
       </div>
 
-      <!-- SUB-ABA: Despesas do mês -->
+      <!-- SUB-ABA: Despesas do mÃªs -->
       <div id="fin-despesas" class="fin-subtab" style="display:none;">
         <div class="despesas-toolbar">
           <div class="despesas-mes-nav">
-            <button type="button" onclick="despesasMesAnterior()" aria-label="Mês anterior">‹</button>
-            <span class="despesas-mes-label" id="despesas-mes-label">—</span>
-            <button type="button" onclick="despesasMesProximo()" aria-label="Próximo mês">›</button>
+            <button type="button" onclick="despesasMesAnterior()" aria-label="MÃªs anterior">â€¹</button>
+            <span class="despesas-mes-label" id="despesas-mes-label">â€”</span>
+            <button type="button" onclick="despesasMesProximo()" aria-label="PrÃ³ximo mÃªs">â€º</button>
           </div>
           <div class="despesas-banco">
-            <span class="despesas-banco-status" id="despesas-banco-status">Banco: —</span>
+            <span class="despesas-banco-status" id="despesas-banco-status">Banco: â€”</span>
             <button class="btn-secondary" type="button" onclick="conectarBanco()" style="font-size:12px;">Conectar</button>
             <button class="btn-secondary" type="button" onclick="sincronizarBancosEReconciliar()" style="font-size:12px;">Sincronizar</button>
           </div>
@@ -651,14 +651,14 @@
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
             <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova despesa</h3>
-            <button type="button" onclick="fecharModalNovaDespesa()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
+            <button type="button" onclick="fecharModalNovaDespesa()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">Ã—</button>
           </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
-            <input type="text" id="despesa-titulo" placeholder="Título (ex: Aluguel)"
+            <input type="text" id="despesa-titulo" placeholder="TÃ­tulo (ex: Aluguel)"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
             <input type="number" id="despesa-valor" placeholder="Valor esperado" step="0.01"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
-            <input type="number" id="despesa-dia" placeholder="Dia do vencimento (1–31)" min="1" max="31"
+            <input type="number" id="despesa-dia" placeholder="Dia do vencimento (1â€“31)" min="1" max="31"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
             <select id="despesa-categoria" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);">
               <option value="contas_fixas">Contas fixas</option>
@@ -667,7 +667,7 @@
               <option value="projetos">Projetos</option>
               <option value="faturas">Faturas</option>
               <option value="transporte">Transporte</option>
-              <option value="saude">Saúde</option>
+              <option value="saude">SaÃºde</option>
               <option value="outros" selected>Outros</option>
             </select>
             <div style="display:flex; gap:8px; margin-top:6px;">
@@ -678,29 +678,29 @@
         </div>
       </div>
 
-      <!-- Modal Nova Transação (legado — ainda usado se necessário) -->
+      <!-- Modal Nova TransaÃ§Ã£o (legado â€” ainda usado se necessÃ¡rio) -->
       <div id="modal-nova-transacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova transação</h3>
-            <button onclick="fecharModalNovaTransacao()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">×</button>
+            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova transaÃ§Ã£o</h3>
+            <button onclick="fecharModalNovaTransacao()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">Ã—</button>
           </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <select id="tipo-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
-              <option value="entrada">↑ Entrada</option>
-              <option value="saida">↓ Saída</option>
+              <option value="entrada">â†‘ Entrada</option>
+              <option value="saida">â†“ SaÃ­da</option>
             </select>
             <input type="number" id="valor-transacao" placeholder="R$ 0,00" step="0.01"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
-            <input type="text" id="desc-transacao" placeholder="Descrição"
+            <input type="text" id="desc-transacao" placeholder="DescriÃ§Ã£o"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
             <select id="categoria-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
-              <option value="alimentacao">Alimentação</option>
+              <option value="alimentacao">AlimentaÃ§Ã£o</option>
               <option value="transporte">Transporte</option>
               <option value="moradia">Moradia</option>
               <option value="lazer">Lazer</option>
-              <option value="saude">Saúde</option>
-              <option value="salario">Salário</option>
+              <option value="saude">SaÃºde</option>
+              <option value="salario">SalÃ¡rio</option>
               <option value="freelance">Freelance</option>
               <option value="outros" selected>Outros</option>
             </select>
@@ -739,45 +739,45 @@
       <ul id="lista-alarmes" class="alarm-list"></ul>
 
       <div id="empty-alarmes" class="empty-state" style="display: none;">
-        <div class="empty-icon">⏰</div>
+        <div class="empty-icon">â°</div>
         <h3>Sem alarmes</h3>
-        <p>Crie um alarme pra não esquecer das coisas importantes</p>
+        <p>Crie um alarme pra nÃ£o esquecer das coisas importantes</p>
       </div>
 
       <div class="form-card" style="margin-top:20px;">
-        <h3 style="margin:0 0 6px 0; font-size:16px;">Notificações Push</h3>
-        <p class="page-subtitle" id="push-status" style="margin:0 0 12px 0;">Verificando…</p>
+        <h3 style="margin:0 0 6px 0; font-size:16px;">NotificaÃ§Ãµes Push</h3>
+        <p class="page-subtitle" id="push-status" style="margin:0 0 12px 0;">Verificandoâ€¦</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn-primary" id="push-btn-ativar" onclick="ativarPush()" style="display:none;">Ativar notificações</button>
+          <button class="btn-primary" id="push-btn-ativar" onclick="ativarPush()" style="display:none;">Ativar notificaÃ§Ãµes</button>
           <button class="btn-secondary" id="push-btn-desativar" onclick="desativarPush()" style="display:none;">Desativar</button>
           <button class="btn-secondary" id="push-btn-testar" onclick="testarPush()" style="display:none;">Enviar teste</button>
         </div>
         <p style="margin:10px 0 0 0; font-size:12px; color:var(--text-muted);">
-          Você vai receber avisos de gastos incomuns (10h), sync do dia (14h30) e DAS vencendo (dia 17–19, às 9h).
+          VocÃª vai receber avisos de gastos incomuns (10h), sync do dia (14h30) e DAS vencendo (dia 17â€“19, Ã s 9h).
         </p>
       </div>
     </section>
 
-    <!-- TAB: Calendário -->
+    <!-- TAB: CalendÃ¡rio -->
     <section id="calendario" class="tab-content">
       <div class="page-header">
         <div>
-          <h1>Calendário</h1>
+          <h1>CalendÃ¡rio</h1>
           <p class="page-subtitle">Seus eventos e compromissos</p>
         </div>
         <div class="cal-controls">
-          <button class="cal-nav-btn" onclick="navegarMes(-1)">‹</button>
+          <button class="cal-nav-btn" onclick="navegarMes(-1)">â€¹</button>
           <span id="cal-titulo" class="cal-titulo">Maio 2026</span>
-          <button class="cal-nav-btn" onclick="navegarMes(1)">›</button>
+          <button class="cal-nav-btn" onclick="navegarMes(1)">â€º</button>
           <button class="btn-primary" onclick="abrirEventoModal()">+ Evento</button>
         </div>
       </div>
 
       <div class="calendario-com-detalhes">
-        <!-- Calendário -->
+        <!-- CalendÃ¡rio -->
         <div class="calendario-wrapper">
           <div class="cal-weekdays">
-            <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+            <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>SÃ¡b</div>
           </div>
           <div id="cal-grid" class="cal-grid"></div>
         </div>
@@ -786,7 +786,7 @@
         <div class="cal-detalhes-dia" id="cal-detalhes-dia" style="display: none;">
           <div class="detalhes-header">
             <h3 id="detalhes-titulo">24 de Maio</h3>
-            <button onclick="fecharDetalhes()" class="close-btn">✕</button>
+            <button onclick="fecharDetalhes()" class="close-btn">âœ•</button>
           </div>
 
           <div class="detalhes-section">
@@ -795,42 +795,42 @@
           </div>
 
           <div class="detalhes-section">
-            <div class="detalhes-subtitle">✅ Tarefas (<span id="tarefas-count">0</span>)</div>
+            <div class="detalhes-subtitle">âœ… Tarefas (<span id="tarefas-count">0</span>)</div>
             <div id="detalhes-tarefas" class="detalhes-list"></div>
           </div>
 
           <div class="detalhes-section">
-            <div class="detalhes-subtitle">🎉 Feriados (<span id="feriados-count">0</span>)</div>
+            <div class="detalhes-subtitle">ðŸŽ‰ Feriados (<span id="feriados-count">0</span>)</div>
             <div id="detalhes-feriados" class="detalhes-list"></div>
           </div>
 
           <div class="detalhes-section">
-            <div class="detalhes-subtitle">🎂 Aniversários (<span id="aniversarios-count">0</span>)</div>
+            <div class="detalhes-subtitle">ðŸŽ‚ AniversÃ¡rios (<span id="aniversarios-count">0</span>)</div>
             <div id="detalhes-aniversarios" class="detalhes-list"></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Página de Histórico -->
+    <!-- PÃ¡gina de HistÃ³rico -->
     <section id="historico-page" class="tab-content">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Histórico & Análise</h1>
+          <h1 class="page-title">HistÃ³rico & AnÃ¡lise</h1>
           <p class="page-subtitle">Veja seu progresso ao longo do tempo</p>
         </div>
       </div>
 
-      <!-- Estatísticas Gerais -->
+      <!-- EstatÃ­sticas Gerais -->
       <div class="stats-grid" style="margin-bottom: 30px;">
         <div class="stat-box">
-          <div class="stat-box-icon">📝</div>
+          <div class="stat-box-icon">ðŸ“</div>
           <div class="stat-box-num" id="hist-total-tarefas">0</div>
           <div class="stat-box-label">Tarefas Totais</div>
         </div>
         <div class="stat-box">
           <div class="stat-box-num" id="hist-taxa-conclusao">0%</div>
-          <div class="stat-box-label">Taxa de Conclusão</div>
+          <div class="stat-box-label">Taxa de ConclusÃ£o</div>
         </div>
         <div class="stat-box">
           <div class="stat-box-num" id="hist-melhor-dia">0</div>
@@ -838,45 +838,45 @@
         </div>
         <div class="stat-box">
           <div class="stat-box-num" id="hist-media-diaria">0</div>
-          <div class="stat-box-label">Média Diária</div>
+          <div class="stat-box-label">MÃ©dia DiÃ¡ria</div>
         </div>
       </div>
 
       <!-- Heatmap -->
       <div class="panel">
         <div class="panel-header">
-          <h3>Heatmap de Atividade (últimos 12 meses)</h3>
+          <h3>Heatmap de Atividade (Ãºltimos 12 meses)</h3>
         </div>
         <div id="heatmap-container" class="heatmap-container"></div>
       </div>
 
-      <!-- Tendências -->
+      <!-- TendÃªncias -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-header">
-          <h3>Tendências</h3>
+          <h3>TendÃªncias</h3>
         </div>
         <div id="tendencias-container" class="tendencias-list"></div>
       </div>
 
-      <!-- Consistência de horário -->
+      <!-- ConsistÃªncia de horÃ¡rio -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-header">
-          <h3>Consistência de horário</h3>
+          <h3>ConsistÃªncia de horÃ¡rio</h3>
         </div>
         <p id="consistencia-resumo" style="font-size:13px; color:var(--text-muted); margin:0 0 12px;"></p>
         <div id="consistencia-container" class="tendencias-list"></div>
       </div>
 
-      <!-- Tarefas Concluídas Recentemente -->
+      <!-- Tarefas ConcluÃ­das Recentemente -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-header">
-          <h3>✅ Concluídas Recentemente</h3>
+          <h3>âœ… ConcluÃ­das Recentemente</h3>
         </div>
         <div id="historico-concluidas" class="mini-list"></div>
       </div>
     </section>
 
-    <!-- TAB: Assistente (conteúdo real fica no painel fixo; section só pra ativar a aba no mobile) -->
+    <!-- TAB: Assistente (conteÃºdo real fica no painel fixo; section sÃ³ pra ativar a aba no mobile) -->
     <section id="assistente" class="tab-content assistente-placeholder" aria-hidden="true"></section>
 
   </main>
@@ -889,7 +889,7 @@
           <h3 id="revisar-cat-titulo" style="margin:0; font-size:16px;">Revisar categoria</h3>
           <p id="revisar-cat-sub" style="margin:6px 0 0; font-size:12px; color:var(--text-muted);"></p>
         </div>
-        <button type="button" onclick="fecharRevisaoCategoria()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1;">×</button>
+        <button type="button" onclick="fecharRevisaoCategoria()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1;">Ã—</button>
       </div>
       <div id="revisar-cat-lista" style="overflow:auto; padding:14px 16px 20px; flex:1;"></div>
     </div>
@@ -898,11 +898,11 @@
   <!-- Modal de Evento -->
   <div id="evento-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card modal-form">
-      <div class="modal-icon" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)); border-color: rgba(99,102,241,0.3);">📅</div>
+      <div class="modal-icon" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)); border-color: rgba(99,102,241,0.3);">ðŸ“…</div>
       <h3 class="modal-title" id="evento-modal-titulo">Novo Evento</h3>
       <div class="modal-form-fields">
-        <input type="text" id="evento-titulo" placeholder="Título do evento" class="modal-input" />
-        <textarea id="evento-descricao" placeholder="Descrição (opcional)" class="modal-input" rows="2"></textarea>
+        <input type="text" id="evento-titulo" placeholder="TÃ­tulo do evento" class="modal-input" />
+        <textarea id="evento-descricao" placeholder="DescriÃ§Ã£o (opcional)" class="modal-input" rows="2"></textarea>
         <div class="modal-form-row">
           <input type="date" id="evento-data" class="modal-input" />
           <input type="time" id="evento-hora" class="modal-input" />
@@ -910,16 +910,16 @@
         <div class="modal-form-row">
           <select id="evento-tipo" class="modal-input">
             <option value="evento">Evento</option>
-            <option value="reuniao">👥 Reunião</option>
-            <option value="compromisso">⏰ Compromisso</option>
-            <option value="lembrete">🔔 Lembrete</option>
+            <option value="reuniao">ðŸ‘¥ ReuniÃ£o</option>
+            <option value="compromisso">â° Compromisso</option>
+            <option value="lembrete">ðŸ”” Lembrete</option>
           </select>
           <select id="evento-cor" class="modal-input">
-            <option value="blue">🔵 Azul</option>
-            <option value="green">🟢 Verde</option>
-            <option value="orange">🟠 Laranja</option>
-            <option value="red">🔴 Vermelho</option>
-            <option value="purple">🟣 Roxo</option>
+            <option value="blue">ðŸ”µ Azul</option>
+            <option value="green">ðŸŸ¢ Verde</option>
+            <option value="orange">ðŸŸ  Laranja</option>
+            <option value="red">ðŸ”´ Vermelho</option>
+            <option value="purple">ðŸŸ£ Roxo</option>
           </select>
         </div>
       </div>
@@ -943,11 +943,11 @@
       <div class="assist-historico-head">
         <div>
           <span class="assist-historico-title">Conversas</span>
-          <span class="assist-historico-sub">Histórico salvo</span>
+          <span class="assist-historico-sub">HistÃ³rico salvo</span>
         </div>
-        <button type="button" class="assist-icon-btn" onclick="assistFecharHistorico()" title="Fechar" aria-label="Fechar histórico">×</button>
+        <button type="button" class="assist-icon-btn" onclick="assistFecharHistorico()" title="Fechar" aria-label="Fechar histÃ³rico">Ã—</button>
       </div>
-      <button type="button" class="assist-hist-nova" onclick="assistNovaConversa()">＋ Nova conversa</button>
+      <button type="button" class="assist-hist-nova" onclick="assistNovaConversa()">ï¼‹ Nova conversa</button>
       <div class="assist-historico-lista" id="assist-historico-lista"></div>
     </aside>
     <div class="assist-main" id="assist-main">
@@ -957,18 +957,18 @@
           <span id="assist-subtitulo">Pergunta qualquer coisa dos seus dados</span>
         </div>
         <div class="assist-header-actions">
-          <button type="button" class="assist-icon-btn" onclick="assistNovaConversa()" title="Nova conversa" aria-label="Nova conversa">＋</button>
-          <button type="button" class="assist-icon-btn" id="assist-hist-btn" onclick="assistToggleHistorico()" title="Conversas antigas" aria-label="Conversas antigas" aria-expanded="false">☰</button>
-          <button type="button" class="assist-close" id="assist-close" onclick="fecharAssistente()" aria-label="Fechar">×</button>
+          <button type="button" class="assist-icon-btn" onclick="assistNovaConversa()" title="Nova conversa" aria-label="Nova conversa">ï¼‹</button>
+          <button type="button" class="assist-icon-btn" id="assist-hist-btn" onclick="assistToggleHistorico()" title="Conversas antigas" aria-label="Conversas antigas" aria-expanded="false">â˜°</button>
+          <button type="button" class="assist-close" id="assist-close" onclick="fecharAssistente()" aria-label="Fechar">Ã—</button>
         </div>
       </div>
-      <button type="button" class="assist-hist-backdrop" id="assist-hist-backdrop" onclick="assistFecharHistorico()" hidden aria-label="Fechar histórico"></button>
+      <button type="button" class="assist-hist-backdrop" id="assist-hist-backdrop" onclick="assistFecharHistorico()" hidden aria-label="Fechar histÃ³rico"></button>
       <div class="assist-msgs" id="assist-msgs"></div>
       <div class="assist-chips">
         <button type="button" onclick="checkinHabitoUI('Academia')">Academia</button>
       </div>
       <form class="assist-form" id="assist-form" onsubmit="enviarAssistente(event)">
-        <input id="assist-input" type="text" placeholder="Ex: quantas vezes fui à academia essa semana?" autocomplete="off" maxlength="800" />
+        <input id="assist-input" type="text" placeholder="Ex: quantas vezes fui Ã  academia essa semana?" autocomplete="off" maxlength="800" />
         <button type="submit" id="assist-send" aria-label="Enviar" title="Enviar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
@@ -979,7 +979,7 @@
   <!-- Custom Modal -->
   <div id="custom-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card">
-      <div class="modal-icon" id="modal-icon">❓</div>
+      <div class="modal-icon" id="modal-icon">â“</div>
       <h3 class="modal-title" id="modal-title">Confirmar</h3>
       <p class="modal-message" id="modal-message">Tem certeza?</p>
       <div class="modal-actions">
@@ -997,13 +997,13 @@
       <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
         <input type="text" id="login-nome" placeholder="Seu nome (opcional)" autocomplete="name" enterkeyhint="next"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
-        <input type="text" id="login-usuario" placeholder="Usuário" autocomplete="username" required enterkeyhint="next"
+        <input type="text" id="login-usuario" placeholder="UsuÃ¡rio" autocomplete="username" required enterkeyhint="next"
           style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required enterkeyhint="go"
           style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <input type="password" id="login-senha2" placeholder="Confirmar senha" autocomplete="new-password" enterkeyhint="go"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
-        <input type="text" id="login-codigo" placeholder="Código de convite" autocomplete="off" enterkeyhint="go"
+        <input type="text" id="login-codigo" placeholder="CÃ³digo de convite" autocomplete="off" enterkeyhint="go"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <button type="submit" id="login-btn" style="background:var(--accent); border:none; color:var(--accent-on, #09090B); border-radius:8px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; min-height:48px; touch-action:manipulation;">Entrar</button>
         <p id="login-erro" style="margin:0; font-size:12px; color:var(--danger); display:none;"></p>
@@ -1014,11 +1014,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=1"></script>
-  <script src="js/assist.js?v=1"></script>
-  <script src="app.js?v=90"></script>
+  <script src="js/fin-receitas.js?v=91"></script>
+  <script src="js/assist.js?v=91"></script>
+  <script src="app.js?v=91"></script>
   <script>
-    // ==================== Auth guard (login modal automático) ====================
+    // ==================== Auth guard (login modal automÃ¡tico) ====================
     (function () {
       const overlay = document.getElementById('login-overlay');
       const form = document.getElementById('login-form');
@@ -1058,7 +1058,7 @@
 
       function atualizarModoUI() {
         const showCadastro = modoCadastro && cadastroInfo.aberto;
-        subtitleEl.textContent = showCadastro ? 'Escolhe usuário e senha' : 'Entra pra continuar';
+        subtitleEl.textContent = showCadastro ? 'Escolhe usuÃ¡rio e senha' : 'Entra pra continuar';
         btn.textContent = showCadastro ? 'Criar conta' : 'Entrar';
         inputNome.style.display = showCadastro ? 'block' : 'none';
         inputSenha2.style.display = showCadastro ? 'block' : 'none';
@@ -1067,7 +1067,7 @@
         if (toggleModo) {
           if (cadastroInfo.aberto) {
             toggleModo.style.display = 'block';
-            toggleModo.textContent = showCadastro ? 'Já tenho conta — entrar' : 'Primeira vez? Criar conta';
+            toggleModo.textContent = showCadastro ? 'JÃ¡ tenho conta â€” entrar' : 'Primeira vez? Criar conta';
           } else {
             toggleModo.style.display = 'none';
           }
@@ -1146,15 +1146,15 @@
         const nome = (inputNome.value || '').trim();
         const senha2 = (inputSenha2.value || '').trim();
         const codigo = (inputCodigo.value || '').trim();
-        if (!login) { erroEl.textContent = 'Digite o usuário'; erroEl.style.display = 'block'; return; }
+        if (!login) { erroEl.textContent = 'Digite o usuÃ¡rio'; erroEl.style.display = 'block'; return; }
         if (!senha) { erroEl.textContent = 'Digite a senha'; erroEl.style.display = 'block'; return; }
         if (modoCadastro && cadastroInfo.aberto && senha !== senha2) {
-          erroEl.textContent = 'As senhas não coincidem';
+          erroEl.textContent = 'As senhas nÃ£o coincidem';
           erroEl.style.display = 'block';
           return;
         }
         btn.disabled = true;
-        btn.textContent = modoCadastro && cadastroInfo.aberto ? 'Criando…' : 'Entrando…';
+        btn.textContent = modoCadastro && cadastroInfo.aberto ? 'Criandoâ€¦' : 'Entrandoâ€¦';
         try {
           const url = modoCadastro && cadastroInfo.aberto ? '/api/auth/register' : '/api/auth/login';
           const body = modoCadastro && cadastroInfo.aberto ? { login, senha, nome, codigo } : { login, senha };
@@ -1167,10 +1167,10 @@
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
             esconderLogin();
-            location.href = '/?v=90';
+            location.href = '/?v=91';
             return;
           }
-          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu — tenta de novo');
+          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'NÃ£o deu â€” tenta de novo');
           erroEl.style.display = 'block';
         } catch (err) {
           erroEl.textContent = 'Erro de rede: ' + err.message;
@@ -1214,7 +1214,7 @@
       if (!status) return;
 
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        status.textContent = 'Este navegador não suporta push. (Tenta abrir o app instalado como PWA.)';
+        status.textContent = 'Este navegador nÃ£o suporta push. (Tenta abrir o app instalado como PWA.)';
         return;
       }
       if (!__pushConfig || !__pushConfig.ativo) {
@@ -1222,19 +1222,19 @@
         return;
       }
       if (Notification.permission === 'denied') {
-        status.textContent = 'Permissão de notificação BLOQUEADA — libere nas configurações do navegador.';
+        status.textContent = 'PermissÃ£o de notificaÃ§Ã£o BLOQUEADA â€” libere nas configuraÃ§Ãµes do navegador.';
         return;
       }
 
       const reg = await navigator.serviceWorker.getRegistration();
       const sub = reg ? await reg.pushManager.getSubscription() : null;
       if (sub) {
-        status.textContent = '✅ Notificações ativas neste dispositivo';
+        status.textContent = 'âœ… NotificaÃ§Ãµes ativas neste dispositivo';
         btnA.style.display = 'none';
         btnD.style.display = '';
         btnT.style.display = '';
       } else {
-        status.textContent = 'Notificações desativadas neste dispositivo';
+        status.textContent = 'NotificaÃ§Ãµes desativadas neste dispositivo';
         btnA.style.display = '';
         btnD.style.display = 'none';
         btnT.style.display = 'none';
@@ -1244,12 +1244,12 @@
     async function ativarPush() {
       try {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          if (typeof toast === 'function') toast('Este navegador não suporta push', 'error');
+          if (typeof toast === 'function') toast('Este navegador nÃ£o suporta push', 'error');
           return;
         }
         const perm = await Notification.requestPermission();
         if (perm !== 'granted') {
-          if (typeof toast === 'function') toast('Permissão negada', 'error');
+          if (typeof toast === 'function') toast('PermissÃ£o negada', 'error');
           return;
         }
         if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js');
@@ -1268,7 +1268,7 @@
           if (typeof toast === 'function') toast('Falha ao salvar subscription', 'error');
           return;
         }
-        if (typeof toast === 'function') toast('Notificações ativadas 🔔', 'success');
+        if (typeof toast === 'function') toast('NotificaÃ§Ãµes ativadas ðŸ””', 'success');
         _atualizarUiPush();
       } catch (e) {
         console.error('[Push] ativar falhou:', e);
@@ -1288,7 +1288,7 @@
           }).catch(() => {});
           await sub.unsubscribe();
         }
-        if (typeof toast === 'function') toast('Notificações desativadas', 'info');
+        if (typeof toast === 'function') toast('NotificaÃ§Ãµes desativadas', 'info');
         _atualizarUiPush();
       } catch (e) {
         console.error('[Push] desativar falhou:', e);
@@ -1309,7 +1309,7 @@
       }
     }
 
-    // Boot: registra SW se possível e carrega config
+    // Boot: registra SW se possÃ­vel e carrega config
     (async function () {
       try {
         if (!('serviceWorker' in navigator)) return _atualizarUiPush();
