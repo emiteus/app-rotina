@@ -1018,7 +1018,7 @@
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="js/fin-receitas.js?v=1"></script>
   <script src="js/assist.js?v=1"></script>
-  <script src="app.js?v=88"></script>
+  <script src="app.js?v=89"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1191,7 +1191,7 @@
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
             esconderLogin();
-            location.href = '/?v=88';
+            location.href = '/?v=89';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu — tenta de novo');

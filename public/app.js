@@ -4708,7 +4708,6 @@ function parseBRL(txt) {
   const v = Number(n);
   return Number.isFinite(v) ? v : 0;
 }
-}
 
 async function abrirRevisaoCategoria(catEncoded) {
   const cat = decodeURIComponent(catEncoded || 'outros');
