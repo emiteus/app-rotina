@@ -42,6 +42,25 @@ app.use(session({
   }
 }));
 
+// Sessão inválida (user apagado/trocado) → força login de novo
+app.use(async (req, res, next) => {
+  if (!req.path.startsWith('/api/') || req.path.startsWith('/api/auth')) return next();
+  const { SKIP_USER_ID } = require('./lib/tenant');
+  if (SKIP_USER_ID) return next();
+  const uid = req.session?.userId;
+  if (!uid) return next();
+  try {
+    const { get } = require('./lib/db');
+    const row = await get(`SELECT id FROM usuarios WHERE id = $1 AND ativo = true`, [uid]);
+    if (!row) {
+      return req.session.destroy(() => {
+        res.status(401).json({ erro: 'Sessao invalida, faca login novamente' });
+      });
+    }
+  } catch (e) { /* ok */ }
+  next();
+});
+
 // Rotas publicas
 app.use('/api/auth', authRouter);
 
@@ -149,6 +168,9 @@ function runCron(nome, fn) {
 // (usado quando o Neon Postgres estoura quota mensal e queries são recusadas)
 const CRONS_ENABLED = process.env.CRONS_ENABLED !== 'false';
 if (!CRONS_ENABLED) console.log('[cron] CRONS_ENABLED=false — todos os jobs desligados');
+if (process.env.SKIP_AUTH === 'true' && process.env.NODE_ENV === 'production') {
+  console.warn('[auth] SKIP_AUTH=true ignorado em produção — use login normal');
+}
 function sched(cron, fn) {
   if (!CRONS_ENABLED) return;
   return schedule.scheduleJob({ tz: TZ, rule: cron }, fn);

@@ -199,7 +199,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   if (SKIP_USER_ID) {
     return res.json({
       authenticated: true,
@@ -209,15 +209,40 @@ router.get('/me', (req, res) => {
   if (!req.session?.userId) {
     return res.json({ authenticated: false });
   }
-  res.json({
-    authenticated: true,
-    user: {
-      id: req.session.userId,
-      nome: req.session.userName,
-      login: req.session.userLogin,
-      cor: req.session.userCor
+  try {
+    const user = await get(
+      `SELECT id, login, nome, cor FROM usuarios WHERE id = $1 AND ativo = true`,
+      [req.session.userId]
+    );
+    if (!user) {
+      req.session.destroy(() => {});
+      return res.json({ authenticated: false, erro: 'sessao_invalida' });
     }
-  });
+    req.session.userName = user.nome;
+    req.session.userLogin = user.login;
+    req.session.userCor = user.cor;
+    const stats = await get(
+      `SELECT
+         (SELECT COUNT(*)::int FROM tasks WHERE user_id = $1) AS tasks,
+         (SELECT COUNT(*)::int FROM financeiro WHERE user_id = $1) AS financeiro`,
+      [user.id]
+    );
+    res.json({
+      authenticated: true,
+      user: {
+        id: user.id,
+        nome: user.nome,
+        login: user.login,
+        cor: user.cor,
+        stats: {
+          tasks: Number(stats?.tasks || 0),
+          financeiro: Number(stats?.financeiro || 0)
+        }
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
 router.get('/check', (req, res) => {

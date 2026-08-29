@@ -1102,10 +1102,16 @@
             window.__currentUser = d.user;
             const el = document.getElementById('header-user-name');
             if (el) el.textContent = d.user.nome;
+            if (d.erro === 'sessao_invalida') forcarLogout();
           }
         } catch (e) { /* ok */ }
       }
       carregarUsuarioSessao();
+
+      async function forcarLogout() {
+        try { await originalFetch('/api/auth/logout', { credentials: 'same-origin' }); } catch (e) {}
+        mostrarLogin();
+      }
 
       const originalFetch = window.fetch.bind(window);
       window.fetch = async function (input, init) {
@@ -1179,7 +1185,11 @@
         try {
           const r = await originalFetch('/api/auth/check', { credentials: 'same-origin' });
           const d = await r.json().catch(() => ({}));
-          if (!r.ok || !d.authenticated) mostrarLogin();
+          if (!r.ok || !d.authenticated) {
+            mostrarLogin();
+          } else if (d.erro === 'sessao_invalida' || (d.user?.stats?.financeiro === 0 && d.user?.stats?.tasks === 0)) {
+            // sessão ok mas vazia — deixa passar (pode ser conta nova)
+          }
         } catch (e) {
           mostrarLogin();
         }
