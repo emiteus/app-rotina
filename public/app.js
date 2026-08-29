@@ -4059,7 +4059,9 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 async function carregarTarefas() {
   try {
     const res = await fetch('/api/tasks');
-    allTasks = await res.json();
+    if (!res.ok) throw new Error('tasks HTTP ' + res.status);
+    const data = await res.json();
+    allTasks = Array.isArray(data) ? data : [];
     renderTarefas();        // Hoje primeiro
     renderTarefasAmanha();
     renderTarefasOntem();
@@ -4430,8 +4432,9 @@ document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
 async function carregarTransacoes() {
   try {
     const res = await fetch('/api/financeiro?dias=30');
+    if (!res.ok) throw new Error('financeiro HTTP ' + res.status);
     const data = await res.json();
-    allTransactions = data.transacoes || [];
+    allTransactions = Array.isArray(data.transacoes) ? data.transacoes : [];
 
     const entEl = document.getElementById('total-entradas');
     const saiEl = document.getElementById('total-saidas');
@@ -6016,13 +6019,16 @@ function notificarEventoProximo(evento) {
 function atualizarDashboard() {
   // Tarefas de HOJE apenas (corrigido: antes contava TODAS)
   const hoje = hojeLocal();
-  const tarefasHoje = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === hoje);
+  const tarefasHoje = (allTasks || []).filter(t => t.data_reset && String(t.data_reset).split('T')[0] === hoje);
   const total = tarefasHoje.length;
   const concluidas = tarefasHoje.filter(t => t.concluida).length;
-  document.getElementById('dash-tarefas-total').textContent = total;
-  document.getElementById('dash-tarefas-concluidas').textContent = concluidas;
+  const elTotal = document.getElementById('dash-tarefas-total');
+  const elConc = document.getElementById('dash-tarefas-concluidas');
+  const elBar = document.getElementById('dash-tarefas-bar');
+  if (elTotal) elTotal.textContent = total;
+  if (elConc) elConc.textContent = concluidas;
   const pct = total > 0 ? (concluidas / total) * 100 : 0;
-  document.getElementById('dash-tarefas-bar').style.width = `${pct}%`;
+  if (elBar) elBar.style.width = `${pct}%`;
 
   // Financeiro — entradas/saídas dos últimos 30 dias (não o histórico inteiro)
   const corte30 = (() => {
@@ -6051,44 +6057,47 @@ function atualizarDashboard() {
   _atualizarDeltasKPI(concluidas, total);
 
   // Alarmes
-  const alarmesAtivos = allAlarms.filter(a => a.ativo !== false).length;
-  document.getElementById('dash-alarmes').textContent = alarmesAtivos;
+  const alarmesAtivos = (allAlarms || []).filter(a => a.ativo !== false).length;
+  const elAlarmes = document.getElementById('dash-alarmes');
+  if (elAlarmes) elAlarmes.textContent = alarmesAtivos;
   const proximoAlarme = encontrarProximoAlarme();
-  document.getElementById('dash-proximo-alarme').textContent =
-    proximoAlarme ? `Próximo: ${proximoAlarme.hora}` : 'Nenhum agendado';
-
-  // Streak pessoal permanece em /api/tasks/stats (gráficos); card principal = ranking
+  const elProx = document.getElementById('dash-proximo-alarme');
+  if (elProx) elProx.textContent = proximoAlarme ? `Próximo: ${proximoAlarme.hora}` : 'Nenhum agendado';
 
   // Top tarefas pendentes
-  const pendentes = allTasks.filter(t => !t.concluida).slice(0, 4);
+  const pendentes = (allTasks || []).filter(t => !t.concluida).slice(0, 4);
   const tarefasList = document.getElementById('dash-tarefas-list');
-  if (pendentes.length === 0) {
-    tarefasList.innerHTML = `<div class="mini-item-empty">Tudo em dia! 🎉</div>`;
-  } else {
-    tarefasList.innerHTML = pendentes.map(t => `
-      <div class="mini-item">
-        <span>${escapeHtml(t.titulo)}</span>
-        <span class="task-badge badge-${t.prioridade || 'media'}">${t.prioridade || 'media'}</span>
-      </div>
-    `).join('');
+  if (tarefasList) {
+    if (pendentes.length === 0) {
+      tarefasList.innerHTML = `<div class="mini-item-empty">Tudo em dia! 🎉</div>`;
+    } else {
+      tarefasList.innerHTML = pendentes.map(t => `
+        <div class="mini-item">
+          <span>${escapeHtml(t.titulo)}</span>
+          <span class="task-badge badge-${t.prioridade || 'media'}">${t.prioridade || 'media'}</span>
+        </div>
+      `).join('');
+    }
   }
 
   // Últimas transações
-  const ultimas = allTransactions.slice(0, 4);
+  const ultimas = (allTransactions || []).slice(0, 4);
   const transList = document.getElementById('dash-transacoes-list');
-  if (ultimas.length === 0) {
-    transList.innerHTML = `<div class="mini-item-empty">Nenhuma transação ainda</div>`;
-  } else {
-    transList.innerHTML = ultimas.map(t => {
-      const simbolo = t.tipo === 'entrada' ? '+' : '-';
-      const color = t.tipo === 'entrada' ? 'mini-up' : 'mini-down';
-      return `
-        <div class="mini-item">
-          <span>${escapeHtml(t.descricao || '(sem descrição)')}</span>
-          <span class="${color}">${simbolo} ${formatBRL(Math.abs(t.valor))}</span>
-        </div>
-      `;
-    }).join('');
+  if (transList) {
+    if (ultimas.length === 0) {
+      transList.innerHTML = `<div class="mini-item-empty">Nenhuma transação ainda</div>`;
+    } else {
+      transList.innerHTML = ultimas.map(t => {
+        const simbolo = t.tipo === 'entrada' ? '+' : '-';
+        const color = t.tipo === 'entrada' ? 'mini-up' : 'mini-down';
+        return `
+          <div class="mini-item">
+            <span>${escapeHtml(t.descricao || '(sem descrição)')}</span>
+            <span class="${color}">${simbolo} ${formatBRL(Math.abs(t.valor))}</span>
+          </div>
+        `;
+      }).join('');
+    }
   }
 
   // Saldo real das contas conectadas tem prioridade sobre o fluxo de transações

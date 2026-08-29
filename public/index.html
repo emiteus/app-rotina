@@ -1016,7 +1016,7 @@
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="js/fin-receitas.js?v=1"></script>
   <script src="js/assist.js?v=1"></script>
-  <script src="app.js?v=86"></script>
+  <script src="app.js?v=87"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1113,6 +1113,12 @@
               if (st.financeiro === 0 && st.tasks === 0) {
                 dbg.style.color = 'var(--danger)';
                 dbg.textContent += ' — conta vazia (banco errado?)';
+              } else {
+                dbg.style.color = '';
+                // Garante refresh dos cards depois que a sessão confirma
+                if (typeof carregarTransacoes === 'function') carregarTransacoes();
+                if (typeof carregarTarefas === 'function') carregarTarefas();
+                if (typeof carregarRankingDia === 'function') carregarRankingDia();
               }
             }
             if (d.erro === 'sessao_invalida') forcarLogout();
@@ -1132,7 +1138,7 @@
         const url = typeof input === 'string' ? input : (input && input.url) || '';
         if (res.status === 401 && url.includes('/api/') && !url.includes('/api/auth/')) {
           mostrarLogin();
-          throw new Error('sessao_expirada');
+          // Não lança — senão quebra carregarTransacoes/ranking e a UI fica zerada
         }
         return res;
       };
