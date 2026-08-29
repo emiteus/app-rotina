@@ -13,8 +13,8 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=92">
-  <link rel="stylesheet" href="style-ranking.css?v=92">
+  <link rel="stylesheet" href="style.css?v=93">
+  <link rel="stylesheet" href="style-ranking.css?v=93">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
 <body>
   <script>
     (function () {
-      var V = '92';
+      var V = '93';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -68,7 +68,7 @@
         <span class="nav-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </span>
-        <span>CalendÃ¡rio</span>
+        <span>Calendário</span>
       </button>
       <button class="nav-btn" data-tab="financeiro">
         <span class="nav-icon">
@@ -86,7 +86,7 @@
         <span class="nav-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
         </span>
-        <span>HistÃ³rico</span>
+        <span>Histórico</span>
       </button>
       <button class="nav-btn" data-tab="assistente" id="nav-assistente">
         <span class="nav-icon">
@@ -111,10 +111,10 @@
       <div class="page-header" style="justify-content:space-between; align-items:center; display:flex;">
         <div>
           <h1><span id="saudacao"></span></h1>
-          <p class="page-subtitle" id="page-subtitle-range">Últimos 180 dias</p>
+          <p class="page-subtitle">Seu resumo do dia</p>
         </div>
         <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
-          <span id="header-user-name" class="header-user-name" title="UsuÃ¡rio logado"></span>
+          <span id="header-user-name" class="header-user-name" title="Usuário logado"></span>
           <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
           <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
@@ -154,18 +154,12 @@
         </div>
       </div>
 
-      <!-- Chart hero: um Ãºnico grÃ¡fico grande, sem 4 mini stat cards redundantes -->
+      <!-- Chart hero: um único gráfico grande, sem 4 mini stat cards redundantes -->
       <div class="panel dashboard-chart-hero" style="margin-bottom: 24px;">
         <div class="panel-header">
           <div>
-            <div class="card-label" style="margin-bottom:6px;">Atividade — <span id="chart-range-label">180 dias</span></div>
-            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">· <span id="stats-taxa">0</span>% conclusÃ£o</span></div>
-          </div>
-          <div class="chart-range-toggle">
-            <button class="chart-range-btn" data-range="30" onclick="setChartRange(30)">30d</button>
-            <button class="chart-range-btn" data-range="60" onclick="setChartRange(60)">60d</button>
-            <button class="chart-range-btn" data-range="90" onclick="setChartRange(90)">90d</button>
-            <button class="chart-range-btn active" data-range="180" onclick="setChartRange(180)">180d</button>
+            <div class="card-label" style="margin-bottom:6px;">Histórico de atividade</div>
+            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">· <span id="stats-taxa">0</span>% conclusão</span></div>
           </div>
         </div>
         <div class="chart-container">
@@ -173,11 +167,11 @@
         </div>
       </div>
 
-      <!-- Ãšltimas transaÃ§Ãµes — lista discreta com link pra Financeiro -->
+      <!-- Últimas transações — lista discreta com link pra Financeiro -->
       <div class="panel">
         <div class="panel-header">
-          <h3>Ãšltimas transaÃ§Ãµes</h3>
-          <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas â†’</button>
+          <h3>Últimas transações</h3>
+          <button class="link-btn" onclick="trocarAba('financeiro')">Ver todas →</button>
         </div>
         <div id="dash-transacoes-list" class="mini-list"></div>
       </div>
@@ -204,16 +198,16 @@
 
         <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro'); setTimeout(()=>trocarSubAbaFin('fin-pj'),100);" style="cursor:pointer;">
           <div class="panel-header">
-            <h3>PrÃ³ximo DAS</h3>
+            <h3>Próximo DAS</h3>
           </div>
           <div id="dash-das" class="mini-panel-body">
-            <p class="mini-empty">MEI nÃ£o configurado</p>
+            <p class="mini-empty">MEI não configurado</p>
           </div>
         </div>
 
-        <div class="panel dashboard-mini-card" title="Toque em cada hÃ¡bito pra marcar hoje">
+        <div class="panel dashboard-mini-card" title="Toque em cada hábito pra marcar hoje">
           <div class="panel-header">
-            <h3>HÃ¡bitos</h3>
+            <h3>Hábitos</h3>
           </div>
           <div id="dash-habitos" class="mini-panel-body">
             <p class="mini-empty">—</p>
@@ -221,7 +215,7 @@
         </div>
       </div>
 
-      <!-- IDs escondidos que o app.js escreve mas nÃ£o devem aparecer visualmente -->
+      <!-- IDs escondidos que o app.js escreve mas não devem aparecer visualmente -->
       <div id="player-xp" style="display:none;"></div>
       <div id="dash-alarmes" style="display:none;">0</div>
       <div id="dash-proximo-alarme" style="display:none;"></div>
@@ -247,7 +241,7 @@
         <div class="stats-mini">
           <div class="stat-card">
             <span class="stat-num" id="concluidas">0</span>
-            <span class="stat-label">ConcluÃ­das</span>
+            <span class="stat-label">Concluídas</span>
           </div>
           <div class="stat-card">
             <span class="stat-num" id="total">0</span>
@@ -256,14 +250,14 @@
         </div>
       </div>
 
-      <!-- TAB: Hoje e AmanhÃ£ Combinadas -->
+      <!-- TAB: Hoje e Amanhã Combinadas -->
       <div id="tab-hoje" class="tarefas-tab-content active">
         <div class="form-card task-form-card">
           <div class="form-header">
             <h3>Nova Tarefa</h3>
           </div>
           <div class="form-row form-main">
-            <input type="text" id="nova-tarefa" placeholder="O que vocÃª precisa fazer?" class="form-input-main" />
+            <input type="text" id="nova-tarefa" placeholder="O que você precisa fazer?" class="form-input-main" />
             <button class="btn-primary btn-add-task" onclick="adicionarTarefa()">+ Adicionar</button>
           </div>
           <div class="form-row form-secondary">
@@ -279,7 +273,7 @@
               <label for="prioridade-tarefa" class="form-label">Prioridade</label>
               <select id="prioridade-tarefa" class="form-select">
                 <option value="alta">Alta</option>
-                <option value="media" selected>MÃ©dia</option>
+                <option value="media" selected>Média</option>
                 <option value="baixa">Baixa</option>
               </select>
             </div>
@@ -289,7 +283,7 @@
                 <option value="geral">Geral</option>
                 <option value="trabalho">Trabalho</option>
                 <option value="estudos">Estudos</option>
-                <option value="saude">SaÃºde</option>
+                <option value="saude">Saúde</option>
                 <option value="pessoal">Pessoal</option>
               </select>
             </div>
@@ -300,13 +294,13 @@
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button class="filter-btn active" data-filter="todas">Todas</button>
             <button class="filter-btn" data-filter="pendentes">Pendentes</button>
-            <button class="filter-btn" data-filter="concluidas">ConcluÃ­das</button>
+            <button class="filter-btn" data-filter="concluidas">Concluídas</button>
             <button class="filter-btn" data-filter="alta">Alta</button>
           </div>
           <button class="filter-btn" id="btn-modo-selecao" onclick="toggleModoSelecao()">Selecionar</button>
         </div>
 
-        <!-- Barra de aÃ§Ãµes em massa (aparece quando modoSelecao ativo) -->
+        <!-- Barra de ações em massa (aparece quando modoSelecao ativo) -->
         <div id="bulk-actions" class="bulk-actions">
           <span class="bulk-count-txt"><b id="bulk-count">0</b> selecionada(s)</span>
           <div class="bulk-actions-btns">
@@ -316,7 +310,7 @@
           </div>
         </div>
 
-        <!-- SEÃ‡ÃƒO HOJE (aberta por padrÃ£o) -->
+        <!-- SE!ÒO HOJE (aberta por padrão) -->
         <div class="tarefas-section section-hoje">
           <div class="section-header">
             <h2>Hoje</h2>
@@ -324,16 +318,16 @@
           </div>
           <ul id="lista-tarefas" class="task-list"></ul>
           <div id="empty-tarefas" class="empty-state" style="display: none;">
-            <div class="empty-icon">ðŸŽ‰</div>
+            <div class="empty-icon">x}0</div>
             <h3>Dia livre</h3>
-            <p>ParabÃ©ns! Tarefas todas concluÃ­das</p>
+            <p>Parabéns! Tarefas todas concluídas</p>
           </div>
         </div>
 
-        <!-- SEÃ‡ÃƒO AMANHÃƒ (colapsada) -->
+        <!-- SE!ÒO AMANHÒ (colapsada) -->
         <details class="tarefas-section-collapsible" style="margin-top:20px;">
           <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
-            <span>AmanhÃ£</span>
+            <span>Amanhã</span>
             <span class="section-badge" id="badge-amanha">0</span>
           </summary>
           <div style="margin-top:8px;">
@@ -346,7 +340,7 @@
           </div>
         </details>
 
-        <!-- SEÃ‡ÃƒO ONTEM (colapsada) -->
+        <!-- SE!ÒO ONTEM (colapsada) -->
         <details class="tarefas-section-collapsible" style="margin-top:6px;">
           <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
             <span>Ontem</span>
@@ -355,14 +349,14 @@
           <div style="margin-top:8px;">
             <ul id="lista-tarefas-ontem" class="task-list"></ul>
             <div id="empty-tarefas-ontem" class="empty-state" style="display: none;">
-              <div class="empty-icon">ðŸ“‹</div>
+              <div class="empty-icon">x9</div>
               <h3>Sem tarefas de ontem</h3>
-              <p>JÃ¡ foi!</p>
+              <p>Já foi!</p>
             </div>
           </div>
         </details>
 
-        <!-- SEÃ‡ÃƒO ANTEONTEM (colapsada) -->
+        <!-- SE!ÒO ANTEONTEM (colapsada) -->
         <details class="tarefas-section-collapsible" style="margin-top:6px;">
           <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
             <span>Anteontem</span>
@@ -371,27 +365,27 @@
           <div style="margin-top:8px;">
             <ul id="lista-tarefas-anteontem" class="task-list"></ul>
             <div id="empty-tarefas-anteontem" class="empty-state" style="display: none;">
-              <div class="empty-icon">ðŸ“‹</div>
+              <div class="empty-icon">x9</div>
               <h3>Sem tarefas neste dia</h3>
             </div>
           </div>
         </details>
 
-        <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 14px; color: #888;">ðŸ” RECORRENTES</h3>
+        <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 14px; color: #888;">x RECORRENTES</h3>
 
         <div class="form-card">
           <div class="form-row">
             <input type="text" id="rec-titulo" placeholder="Nome da tarefa recorrente" />
             <select id="rec-prioridade">
               <option value="alta">Alta</option>
-              <option value="media" selected>MÃ©dia</option>
+              <option value="media" selected>Média</option>
               <option value="baixa">Baixa</option>
             </select>
             <select id="rec-categoria">
               <option value="geral">Geral</option>
               <option value="trabalho" selected>Trabalho</option>
               <option value="estudos">Estudos</option>
-              <option value="saude">SaÃºde</option>
+              <option value="saude">Saúde</option>
               <option value="pessoal">Pessoal</option>
             </select>
             <button class="btn-primary" onclick="adicionarRecorrente()">+ Adicionar</button>
@@ -414,7 +408,7 @@
         <ul id="lista-recorrentes" class="task-list"></ul>
 
         <div id="empty-recorrentes" class="empty-state" style="display: none;">
-          <div class="empty-icon">ðŸ”</div>
+          <div class="empty-icon">x</div>
           <h3>Sem tarefas recorrentes</h3>
           <p>Crie tarefas que aparecem automaticamente todo dia</p>
         </div>
@@ -433,13 +427,13 @@
 
       <!-- Sub-abas do Financeiro -->
       <div class="fin-subtabs">
-        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')">VisÃ£o Geral</button>
+        <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')">Visão Geral</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-ganhos" onclick="trocarSubAbaFin('fin-ganhos')">Receita</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-extrato" onclick="trocarSubAbaFin('fin-extrato')">Extrato</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-despesas" onclick="trocarSubAbaFin('fin-despesas')">Despesas do mÃªs</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-despesas" onclick="trocarSubAbaFin('fin-despesas')">Despesas do mês</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-metas" onclick="trocarSubAbaFin('fin-metas')">Metas</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-invest" onclick="trocarSubAbaFin('fin-invest')">Investimentos</button>
-        <button class="fin-subtab-btn" data-fin-tab="fin-patrimonio" onclick="trocarSubAbaFin('fin-patrimonio')">PatrimÃ´nio</button>
+        <button class="fin-subtab-btn" data-fin-tab="fin-patrimonio" onclick="trocarSubAbaFin('fin-patrimonio')">Patrimônio</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-pj" onclick="trocarSubAbaFin('fin-pj')">PJ / MEI</button>
       </div>
 
@@ -448,13 +442,13 @@
         <div class="receitas-shell">
           <div class="receitas-toolbar">
             <div class="despesas-mes-nav">
-              <button type="button" onclick="ganhosMesAnterior()" aria-label="MÃªs anterior">â€¹</button>
+              <button type="button" onclick="ganhosMesAnterior()" aria-label="Mês anterior">⬹</button>
               <span class="despesas-mes-label" id="ganhos-mes-label">—</span>
-              <button type="button" onclick="ganhosMesProximo()" aria-label="PrÃ³ximo mÃªs">â€º</button>
+              <button type="button" onclick="ganhosMesProximo()" aria-label="Próximo mês">⬺</button>
             </div>
             <button class="btn-primary" type="button" onclick="abrirModalNovaReceita()" style="font-size:13px;">+ Nova receita</button>
           </div>
-          <p class="receitas-hint">SÃ³ receitas registradas manualmente. PIX, transferÃªncias, apostas e entradas do banco ficam no Extrato.</p>
+          <p class="receitas-hint">Só receitas registradas manualmente. PIX, transferências, apostas e entradas do banco ficam no Extrato.</p>
           <div class="despesas-resumo" id="ganhos-resumo"></div>
           <div id="painel-receitas"></div>
         </div>
@@ -465,16 +459,16 @@
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
             <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova receita</h3>
-            <button type="button" onclick="fecharModalNovaReceita()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">Ã—</button>
+            <button type="button" onclick="fecharModalNovaReceita()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;"></button>
           </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <select id="receita-chave" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);">
-              <option value="cortes">CompetiÃ§Ã£o de cortes</option>
+              <option value="cortes">Competição de cortes</option>
               <option value="infoproduto">Infoproduto</option>
               <option value="pj">PJ / MEI</option>
               <option value="outro" selected>Outra receita</option>
             </select>
-            <input type="text" id="receita-titulo" placeholder="TÃ­tulo (opcional se escolher tipo acima)"
+            <input type="text" id="receita-titulo" placeholder="Título (opcional se escolher tipo acima)"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
             <input type="number" id="receita-valor" placeholder="Valor recebido" step="0.01"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
@@ -500,7 +494,7 @@
         <div id="painel-investimentos"></div>
       </div>
 
-      <!-- SUB-ABA: PatrimÃ´nio -->
+      <!-- SUB-ABA: Patrimônio -->
       <div id="fin-patrimonio" class="fin-subtab" style="display:none;">
         <div id="painel-patrimonio"></div>
       </div>
@@ -510,7 +504,7 @@
         <div id="painel-pj"></div>
       </div>
 
-      <!-- SUB-ABA: VisÃ£o Geral -->
+      <!-- SUB-ABA: Visão Geral -->
       <div id="fin-visao" class="fin-subtab">
         <div class="finance-grid">
           <div class="finance-box saldo-box">
@@ -548,9 +542,9 @@
         </div>
 
         <div class="fin-visao-filtros">
-          <label for="fin-visao-mes">MÃªs da anÃ¡lise</label>
+          <label for="fin-visao-mes">Mês da análise</label>
           <select id="fin-visao-mes" onchange="onTrocarMesVisao()">
-            <option value="atual">MÃªs atual</option>
+            <option value="atual">Mês atual</option>
           </select>
         </div>
 
@@ -558,7 +552,7 @@
           <div class="fin-cat-list-card">
             <div class="fin-cat-list-header">
               <h3>Gastos por categoria</h3>
-              <span class="subtitle" id="fin-cat-list-mes">Este mÃªs · sem pagamento de fatura</span>
+              <span class="subtitle" id="fin-cat-list-mes">Este mês  sem pagamento de fatura</span>
             </div>
             <div id="fin-cat-list"></div>
             <div class="fin-cat-list-total" id="fin-cat-list-total" style="display:none;">
@@ -567,8 +561,8 @@
           </div>
 
           <div class="fin-donut-card" id="fin-donut-card" style="margin-bottom:0;">
-            <h3>DistribuiÃ§Ã£o</h3>
-            <p class="donut-subtitle">Este mÃªs · sem pagamento de fatura</p>
+            <h3>Distribuição</h3>
+            <p class="donut-subtitle">Este mês  sem pagamento de fatura</p>
             <div class="fin-donut-body">
               <div class="fin-donut-canvas-wrap">
                 <canvas id="fin-donut-canvas" width="200" height="200"></canvas>
@@ -583,11 +577,11 @@
         </div>
 
         <div id="fin-cat-empty" class="empty-state" style="display:none;">
-          <h3>Sem despesas neste mÃªs</h3>
-          <p>As categorias aparecem aqui quando vocÃª tiver gastos.</p>
+          <h3>Sem despesas neste mês</h3>
+          <p>As categorias aparecem aqui quando você tiver gastos.</p>
         </div>
 
-        <!-- Bancos: preso no rodapÃ©, colapsado atÃ© clicar -->
+        <!-- Bancos: preso no rodapé, colapsado até clicar -->
         <div class="bancos-pinned" id="bancos-pinned">
           <button type="button" class="bancos-pinned-toggle" id="bancos-pinned-toggle" onclick="toggleBancosDrawer()" aria-expanded="false">
             <span class="bancos-pinned-title">Bancos</span>
@@ -612,7 +606,7 @@
               <div class="extrato-periodo-chips" id="extrato-periodo-chips">
                 <button type="button" class="extrato-chip" data-periodo="7d" onclick="extratoSetPeriodo('7d')">7d</button>
                 <button type="button" class="extrato-chip active" data-periodo="30d" onclick="extratoSetPeriodo('30d')">30d</button>
-                <button type="button" class="extrato-chip" data-periodo="mes" onclick="extratoSetPeriodo('mes')">MÃªs</button>
+                <button type="button" class="extrato-chip" data-periodo="mes" onclick="extratoSetPeriodo('mes')">Mês</button>
                 <button type="button" class="extrato-chip" data-periodo="mes-passado" onclick="extratoSetPeriodo('mes-passado')">Anterior</button>
                 <button type="button" class="extrato-chip" data-periodo="custom" onclick="extratoSetPeriodo('custom')">Custom</button>
               </div>
@@ -622,15 +616,15 @@
                 <option value="todas">Todas as contas</option>
               </select>
               <select id="extrato-tipo" onchange="carregarExtrato()" aria-label="Tipo">
-                <option value="">Entradas e saÃ­das</option>
-                <option value="entrada">SÃ³ entradas</option>
-                <option value="saida">SÃ³ saÃ­das</option>
+                <option value="">Entradas e saídas</option>
+                <option value="entrada">Só entradas</option>
+                <option value="saida">Só saídas</option>
               </select>
               <input type="search" id="extrato-busca" placeholder="Buscar…" oninput="extratoBuscaDebounced()" autocomplete="off" />
             </div>
             <div class="extrato-datas" id="extrato-datas" hidden>
               <label>De <input type="date" id="extrato-de" onchange="carregarExtrato()" /></label>
-              <label>AtÃ© <input type="date" id="extrato-ate" onchange="carregarExtrato()" /></label>
+              <label>Até <input type="date" id="extrato-ate" onchange="carregarExtrato()" /></label>
             </div>
           </div>
 
@@ -639,13 +633,13 @@
         </div>
       </div>
 
-      <!-- SUB-ABA: Despesas do mÃªs -->
+      <!-- SUB-ABA: Despesas do mês -->
       <div id="fin-despesas" class="fin-subtab" style="display:none;">
         <div class="despesas-toolbar">
           <div class="despesas-mes-nav">
-            <button type="button" onclick="despesasMesAnterior()" aria-label="MÃªs anterior">â€¹</button>
+            <button type="button" onclick="despesasMesAnterior()" aria-label="Mês anterior">⬹</button>
             <span class="despesas-mes-label" id="despesas-mes-label">—</span>
-            <button type="button" onclick="despesasMesProximo()" aria-label="PrÃ³ximo mÃªs">â€º</button>
+            <button type="button" onclick="despesasMesProximo()" aria-label="Próximo mês">⬺</button>
           </div>
           <div class="despesas-banco">
             <span class="despesas-banco-status" id="despesas-banco-status">Banco: —</span>
@@ -669,14 +663,14 @@
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
             <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova despesa</h3>
-            <button type="button" onclick="fecharModalNovaDespesa()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">Ã—</button>
+            <button type="button" onclick="fecharModalNovaDespesa()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;"></button>
           </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
-            <input type="text" id="despesa-titulo" placeholder="TÃ­tulo (ex: Aluguel)"
+            <input type="text" id="despesa-titulo" placeholder="Título (ex: Aluguel)"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
             <input type="number" id="despesa-valor" placeholder="Valor esperado" step="0.01"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
-            <input type="number" id="despesa-dia" placeholder="Dia do vencimento (1â€“31)" min="1" max="31"
+            <input type="number" id="despesa-dia" placeholder="Dia do vencimento (131)" min="1" max="31"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
             <select id="despesa-categoria" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);">
               <option value="contas_fixas">Contas fixas</option>
@@ -685,7 +679,7 @@
               <option value="projetos">Projetos</option>
               <option value="faturas">Faturas</option>
               <option value="transporte">Transporte</option>
-              <option value="saude">SaÃºde</option>
+              <option value="saude">Saúde</option>
               <option value="outros" selected>Outros</option>
             </select>
             <div style="display:flex; gap:8px; margin-top:6px;">
@@ -696,29 +690,29 @@
         </div>
       </div>
 
-      <!-- Modal Nova TransaÃ§Ã£o (legado — ainda usado se necessÃ¡rio) -->
+      <!-- Modal Nova Transação (legado  ainda usado se necessário) -->
       <div id="modal-nova-transacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova transaÃ§Ã£o</h3>
-            <button onclick="fecharModalNovaTransacao()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;">Ã—</button>
+            <h3 style="margin:0; font-size:16px; font-weight:600; color:var(--text-primary);">Nova transação</h3>
+            <button onclick="fecharModalNovaTransacao()" style="background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; padding:0; line-height:1;"></button>
           </div>
           <div style="display:flex; flex-direction:column; gap:10px;">
             <select id="tipo-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
               <option value="entrada">â†‘ Entrada</option>
-              <option value="saida">â†“ SaÃ­da</option>
+              <option value="saida">  Saída</option>
             </select>
             <input type="number" id="valor-transacao" placeholder="R$ 0,00" step="0.01"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
-            <input type="text" id="desc-transacao" placeholder="DescriÃ§Ã£o"
+            <input type="text" id="desc-transacao" placeholder="Descrição"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;" />
             <select id="categoria-transacao" style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px;">
-              <option value="alimentacao">AlimentaÃ§Ã£o</option>
+              <option value="alimentacao">Alimentação</option>
               <option value="transporte">Transporte</option>
               <option value="moradia">Moradia</option>
               <option value="lazer">Lazer</option>
-              <option value="saude">SaÃºde</option>
-              <option value="salario">SalÃ¡rio</option>
+              <option value="saude">Saúde</option>
+              <option value="salario">Salário</option>
               <option value="freelance">Freelance</option>
               <option value="outros" selected>Outros</option>
             </select>
@@ -759,43 +753,43 @@
       <div id="empty-alarmes" class="empty-state" style="display: none;">
         <div class="empty-icon">â°</div>
         <h3>Sem alarmes</h3>
-        <p>Crie um alarme pra nÃ£o esquecer das coisas importantes</p>
+        <p>Crie um alarme pra não esquecer das coisas importantes</p>
       </div>
 
       <div class="form-card" style="margin-top:20px;">
-        <h3 style="margin:0 0 6px 0; font-size:16px;">NotificaÃ§Ãµes Push</h3>
+        <h3 style="margin:0 0 6px 0; font-size:16px;">Notificações Push</h3>
         <p class="page-subtitle" id="push-status" style="margin:0 0 12px 0;">Verificando…</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn-primary" id="push-btn-ativar" onclick="ativarPush()" style="display:none;">Ativar notificaÃ§Ãµes</button>
+          <button class="btn-primary" id="push-btn-ativar" onclick="ativarPush()" style="display:none;">Ativar notificações</button>
           <button class="btn-secondary" id="push-btn-desativar" onclick="desativarPush()" style="display:none;">Desativar</button>
           <button class="btn-secondary" id="push-btn-testar" onclick="testarPush()" style="display:none;">Enviar teste</button>
         </div>
         <p style="margin:10px 0 0 0; font-size:12px; color:var(--text-muted);">
-          VocÃª vai receber avisos de gastos incomuns (10h), sync do dia (14h30) e DAS vencendo (dia 17â€“19, Ã s 9h).
+          Você vai receber avisos de gastos incomuns (10h), sync do dia (14h30) e DAS vencendo (dia 1719, às 9h).
         </p>
       </div>
     </section>
 
-    <!-- TAB: CalendÃ¡rio -->
+    <!-- TAB: Calendário -->
     <section id="calendario" class="tab-content">
       <div class="page-header">
         <div>
-          <h1>CalendÃ¡rio</h1>
+          <h1>Calendário</h1>
           <p class="page-subtitle">Seus eventos e compromissos</p>
         </div>
         <div class="cal-controls">
-          <button class="cal-nav-btn" onclick="navegarMes(-1)">â€¹</button>
+          <button class="cal-nav-btn" onclick="navegarMes(-1)">⬹</button>
           <span id="cal-titulo" class="cal-titulo">Maio 2026</span>
-          <button class="cal-nav-btn" onclick="navegarMes(1)">â€º</button>
+          <button class="cal-nav-btn" onclick="navegarMes(1)">⬺</button>
           <button class="btn-primary" onclick="abrirEventoModal()">+ Evento</button>
         </div>
       </div>
 
       <div class="calendario-com-detalhes">
-        <!-- CalendÃ¡rio -->
+        <!-- Calendário -->
         <div class="calendario-wrapper">
           <div class="cal-weekdays">
-            <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>SÃ¡b</div>
+            <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
           </div>
           <div id="cal-grid" class="cal-grid"></div>
         </div>
@@ -818,37 +812,37 @@
           </div>
 
           <div class="detalhes-section">
-            <div class="detalhes-subtitle">ðŸŽ‰ Feriados (<span id="feriados-count">0</span>)</div>
+            <div class="detalhes-subtitle">x}0 Feriados (<span id="feriados-count">0</span>)</div>
             <div id="detalhes-feriados" class="detalhes-list"></div>
           </div>
 
           <div class="detalhes-section">
-            <div class="detalhes-subtitle">ðŸŽ‚ AniversÃ¡rios (<span id="aniversarios-count">0</span>)</div>
+            <div class="detalhes-subtitle">x} Aniversários (<span id="aniversarios-count">0</span>)</div>
             <div id="detalhes-aniversarios" class="detalhes-list"></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- PÃ¡gina de HistÃ³rico -->
+    <!-- Página de Histórico -->
     <section id="historico-page" class="tab-content">
       <div class="page-header">
         <div>
-          <h1 class="page-title">HistÃ³rico & AnÃ¡lise</h1>
+          <h1 class="page-title">Histórico & Análise</h1>
           <p class="page-subtitle">Veja seu progresso ao longo do tempo</p>
         </div>
       </div>
 
-      <!-- EstatÃ­sticas Gerais -->
+      <!-- Estatísticas Gerais -->
       <div class="stats-grid" style="margin-bottom: 30px;">
         <div class="stat-box">
-          <div class="stat-box-icon">ðŸ“</div>
+          <div class="stat-box-icon">x</div>
           <div class="stat-box-num" id="hist-total-tarefas">0</div>
           <div class="stat-box-label">Tarefas Totais</div>
         </div>
         <div class="stat-box">
           <div class="stat-box-num" id="hist-taxa-conclusao">0%</div>
-          <div class="stat-box-label">Taxa de ConclusÃ£o</div>
+          <div class="stat-box-label">Taxa de Conclusão</div>
         </div>
         <div class="stat-box">
           <div class="stat-box-num" id="hist-melhor-dia">0</div>
@@ -856,45 +850,45 @@
         </div>
         <div class="stat-box">
           <div class="stat-box-num" id="hist-media-diaria">0</div>
-          <div class="stat-box-label">MÃ©dia DiÃ¡ria</div>
+          <div class="stat-box-label">Média Diária</div>
         </div>
       </div>
 
       <!-- Heatmap -->
       <div class="panel">
         <div class="panel-header">
-          <h3>Heatmap de Atividade (Ãºltimos 12 meses)</h3>
+          <h3>Heatmap de Atividade (últimos 12 meses)</h3>
         </div>
         <div id="heatmap-container" class="heatmap-container"></div>
       </div>
 
-      <!-- TendÃªncias -->
+      <!-- Tendências -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-header">
-          <h3>TendÃªncias</h3>
+          <h3>Tendências</h3>
         </div>
         <div id="tendencias-container" class="tendencias-list"></div>
       </div>
 
-      <!-- ConsistÃªncia de horÃ¡rio -->
+      <!-- Consistência de horário -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-header">
-          <h3>ConsistÃªncia de horÃ¡rio</h3>
+          <h3>Consistência de horário</h3>
         </div>
         <p id="consistencia-resumo" style="font-size:13px; color:var(--text-muted); margin:0 0 12px;"></p>
         <div id="consistencia-container" class="tendencias-list"></div>
       </div>
 
-      <!-- Tarefas ConcluÃ­das Recentemente -->
+      <!-- Tarefas Concluídas Recentemente -->
       <div class="panel" style="margin-top: 20px;">
         <div class="panel-header">
-          <h3>âœ… ConcluÃ­das Recentemente</h3>
+          <h3>S& Concluídas Recentemente</h3>
         </div>
         <div id="historico-concluidas" class="mini-list"></div>
       </div>
     </section>
 
-    <!-- TAB: Assistente (conteÃºdo real fica no painel fixo; section sÃ³ pra ativar a aba no mobile) -->
+    <!-- TAB: Assistente (conteúdo real fica no painel fixo; section só pra ativar a aba no mobile) -->
     <section id="assistente" class="tab-content assistente-placeholder" aria-hidden="true"></section>
 
   </main>
@@ -907,7 +901,7 @@
           <h3 id="revisar-cat-titulo" style="margin:0; font-size:16px;">Revisar categoria</h3>
           <p id="revisar-cat-sub" style="margin:6px 0 0; font-size:12px; color:var(--text-muted);"></p>
         </div>
-        <button type="button" onclick="fecharRevisaoCategoria()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1;">Ã—</button>
+        <button type="button" onclick="fecharRevisaoCategoria()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1;"></button>
       </div>
       <div id="revisar-cat-lista" style="overflow:auto; padding:14px 16px 20px; flex:1;"></div>
     </div>
@@ -916,11 +910,11 @@
   <!-- Modal de Evento -->
   <div id="evento-modal" class="modal-overlay" style="display:none;">
     <div class="modal-card modal-form">
-      <div class="modal-icon" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)); border-color: rgba(99,102,241,0.3);">ðŸ“…</div>
+      <div class="modal-icon" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1)); border-color: rgba(99,102,241,0.3);">x&</div>
       <h3 class="modal-title" id="evento-modal-titulo">Novo Evento</h3>
       <div class="modal-form-fields">
-        <input type="text" id="evento-titulo" placeholder="TÃ­tulo do evento" class="modal-input" />
-        <textarea id="evento-descricao" placeholder="DescriÃ§Ã£o (opcional)" class="modal-input" rows="2"></textarea>
+        <input type="text" id="evento-titulo" placeholder="Título do evento" class="modal-input" />
+        <textarea id="evento-descricao" placeholder="Descrição (opcional)" class="modal-input" rows="2"></textarea>
         <div class="modal-form-row">
           <input type="date" id="evento-data" class="modal-input" />
           <input type="time" id="evento-hora" class="modal-input" />
@@ -928,16 +922,16 @@
         <div class="modal-form-row">
           <select id="evento-tipo" class="modal-input">
             <option value="evento">Evento</option>
-            <option value="reuniao">ðŸ‘¥ ReuniÃ£o</option>
+            <option value="reuniao">x Reunião</option>
             <option value="compromisso">â° Compromisso</option>
-            <option value="lembrete">ðŸ”” Lembrete</option>
+            <option value="lembrete">x Lembrete</option>
           </select>
           <select id="evento-cor" class="modal-input">
-            <option value="blue">ðŸ”µ Azul</option>
-            <option value="green">ðŸŸ¢ Verde</option>
-            <option value="orange">ðŸŸ  Laranja</option>
-            <option value="red">ðŸ”´ Vermelho</option>
-            <option value="purple">ðŸŸ£ Roxo</option>
+            <option value="blue">x Azul</option>
+            <option value="green">xx Verde</option>
+            <option value="orange">xx Laranja</option>
+            <option value="red">x Vermelho</option>
+            <option value="purple">xx Roxo</option>
           </select>
         </div>
       </div>
@@ -961,9 +955,9 @@
       <div class="assist-historico-head">
         <div>
           <span class="assist-historico-title">Conversas</span>
-          <span class="assist-historico-sub">HistÃ³rico salvo</span>
+          <span class="assist-historico-sub">Histórico salvo</span>
         </div>
-        <button type="button" class="assist-icon-btn" onclick="assistFecharHistorico()" title="Fechar" aria-label="Fechar histÃ³rico">Ã—</button>
+        <button type="button" class="assist-icon-btn" onclick="assistFecharHistorico()" title="Fechar" aria-label="Fechar histórico"></button>
       </div>
       <button type="button" class="assist-hist-nova" onclick="assistNovaConversa()">ï¼‹ Nova conversa</button>
       <div class="assist-historico-lista" id="assist-historico-lista"></div>
@@ -977,16 +971,16 @@
         <div class="assist-header-actions">
           <button type="button" class="assist-icon-btn" onclick="assistNovaConversa()" title="Nova conversa" aria-label="Nova conversa">ï¼‹</button>
           <button type="button" class="assist-icon-btn" id="assist-hist-btn" onclick="assistToggleHistorico()" title="Conversas antigas" aria-label="Conversas antigas" aria-expanded="false">â˜°</button>
-          <button type="button" class="assist-close" id="assist-close" onclick="fecharAssistente()" aria-label="Fechar">Ã—</button>
+          <button type="button" class="assist-close" id="assist-close" onclick="fecharAssistente()" aria-label="Fechar"></button>
         </div>
       </div>
-      <button type="button" class="assist-hist-backdrop" id="assist-hist-backdrop" onclick="assistFecharHistorico()" hidden aria-label="Fechar histÃ³rico"></button>
+      <button type="button" class="assist-hist-backdrop" id="assist-hist-backdrop" onclick="assistFecharHistorico()" hidden aria-label="Fechar histórico"></button>
       <div class="assist-msgs" id="assist-msgs"></div>
       <div class="assist-chips">
         <button type="button" onclick="checkinHabitoUI('Academia')">Academia</button>
       </div>
       <form class="assist-form" id="assist-form" onsubmit="enviarAssistente(event)">
-        <input id="assist-input" type="text" placeholder="Ex: quantas vezes fui Ã  academia essa semana?" autocomplete="off" maxlength="800" />
+        <input id="assist-input" type="text" placeholder="Ex: quantas vezes fui à academia essa semana?" autocomplete="off" maxlength="800" />
         <button type="submit" id="assist-send" aria-label="Enviar" title="Enviar">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
         </button>
@@ -1015,13 +1009,13 @@
       <form id="login-form" style="display:flex; flex-direction:column; gap:10px;">
         <input type="text" id="login-nome" placeholder="Seu nome (opcional)" autocomplete="name" enterkeyhint="next"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
-        <input type="text" id="login-usuario" placeholder="UsuÃ¡rio" autocomplete="username" required enterkeyhint="next"
+        <input type="text" id="login-usuario" placeholder="Usuário" autocomplete="username" required enterkeyhint="next"
           style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <input type="password" id="login-senha" placeholder="Senha" autocomplete="current-password" required enterkeyhint="go"
           style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <input type="password" id="login-senha2" placeholder="Confirmar senha" autocomplete="new-password" enterkeyhint="go"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
-        <input type="text" id="login-codigo" placeholder="CÃ³digo de convite" autocomplete="off" enterkeyhint="go"
+        <input type="text" id="login-codigo" placeholder="Código de convite" autocomplete="off" enterkeyhint="go"
           style="display:none; background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:14px; font-size:16px; width:100%; box-sizing:border-box;">
         <button type="submit" id="login-btn" style="background:var(--accent); border:none; color:var(--accent-on, #09090B); border-radius:8px; padding:14px; font-size:16px; font-weight:600; cursor:pointer; min-height:48px; touch-action:manipulation;">Entrar</button>
         <p id="login-erro" style="margin:0; font-size:12px; color:var(--danger); display:none;"></p>
@@ -1032,11 +1026,11 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=92"></script>
-  <script src="js/assist.js?v=92"></script>
-  <script src="app.js?v=92"></script>
+  <script src="js/fin-receitas.js?v=93"></script>
+  <script src="js/assist.js?v=93"></script>
+  <script src="app.js?v=93"></script>
   <script>
-    // ==================== Auth guard (login modal automÃ¡tico) ====================
+    // ==================== Auth guard (login modal automático) ====================
     (function () {
       const overlay = document.getElementById('login-overlay');
       const form = document.getElementById('login-form');
@@ -1076,7 +1070,7 @@
 
       function atualizarModoUI() {
         const showCadastro = modoCadastro && cadastroInfo.aberto;
-        subtitleEl.textContent = showCadastro ? 'Escolhe usuÃ¡rio e senha' : 'Entra pra continuar';
+        subtitleEl.textContent = showCadastro ? 'Escolhe usuário e senha' : 'Entra pra continuar';
         btn.textContent = showCadastro ? 'Criar conta' : 'Entrar';
         inputNome.style.display = showCadastro ? 'block' : 'none';
         inputSenha2.style.display = showCadastro ? 'block' : 'none';
@@ -1085,7 +1079,7 @@
         if (toggleModo) {
           if (cadastroInfo.aberto) {
             toggleModo.style.display = 'block';
-            toggleModo.textContent = showCadastro ? 'JÃ¡ tenho conta — entrar' : 'Primeira vez? Criar conta';
+            toggleModo.textContent = showCadastro ? 'Já tenho conta  entrar' : 'Primeira vez? Criar conta';
           } else {
             toggleModo.style.display = 'none';
           }
@@ -1164,10 +1158,10 @@
         const nome = (inputNome.value || '').trim();
         const senha2 = (inputSenha2.value || '').trim();
         const codigo = (inputCodigo.value || '').trim();
-        if (!login) { erroEl.textContent = 'Digite o usuÃ¡rio'; erroEl.style.display = 'block'; return; }
+        if (!login) { erroEl.textContent = 'Digite o usuário'; erroEl.style.display = 'block'; return; }
         if (!senha) { erroEl.textContent = 'Digite a senha'; erroEl.style.display = 'block'; return; }
         if (modoCadastro && cadastroInfo.aberto && senha !== senha2) {
-          erroEl.textContent = 'As senhas nÃ£o coincidem';
+          erroEl.textContent = 'As senhas não coincidem';
           erroEl.style.display = 'block';
           return;
         }
@@ -1185,10 +1179,10 @@
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
             esconderLogin();
-            location.href = '/?v=92';
+            location.href = '/?v=93';
             return;
           }
-          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'NÃ£o deu — tenta de novo');
+          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu  tenta de novo');
           erroEl.style.display = 'block';
         } catch (err) {
           erroEl.textContent = 'Erro de rede: ' + err.message;
@@ -1232,7 +1226,7 @@
       if (!status) return;
 
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        status.textContent = 'Este navegador nÃ£o suporta push. (Tenta abrir o app instalado como PWA.)';
+        status.textContent = 'Este navegador não suporta push. (Tenta abrir o app instalado como PWA.)';
         return;
       }
       if (!__pushConfig || !__pushConfig.ativo) {
@@ -1240,19 +1234,19 @@
         return;
       }
       if (Notification.permission === 'denied') {
-        status.textContent = 'PermissÃ£o de notificaÃ§Ã£o BLOQUEADA — libere nas configuraÃ§Ãµes do navegador.';
+        status.textContent = 'Permissão de notificação BLOQUEADA  libere nas configurações do navegador.';
         return;
       }
 
       const reg = await navigator.serviceWorker.getRegistration();
       const sub = reg ? await reg.pushManager.getSubscription() : null;
       if (sub) {
-        status.textContent = 'âœ… NotificaÃ§Ãµes ativas neste dispositivo';
+        status.textContent = 'S& Notificações ativas neste dispositivo';
         btnA.style.display = 'none';
         btnD.style.display = '';
         btnT.style.display = '';
       } else {
-        status.textContent = 'NotificaÃ§Ãµes desativadas neste dispositivo';
+        status.textContent = 'Notificações desativadas neste dispositivo';
         btnA.style.display = '';
         btnD.style.display = 'none';
         btnT.style.display = 'none';
@@ -1262,15 +1256,15 @@
     async function ativarPush() {
       try {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-          if (typeof toast === 'function') toast('Este navegador nÃ£o suporta push', 'error');
+          if (typeof toast === 'function') toast('Este navegador não suporta push', 'error');
           return;
         }
         const perm = await Notification.requestPermission();
         if (perm !== 'granted') {
-          if (typeof toast === 'function') toast('PermissÃ£o negada', 'error');
+          if (typeof toast === 'function') toast('Permissão negada', 'error');
           return;
         }
-        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=92');
+        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=93');
         const reg = __pushRegistration;
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -1286,7 +1280,7 @@
           if (typeof toast === 'function') toast('Falha ao salvar subscription', 'error');
           return;
         }
-        if (typeof toast === 'function') toast('NotificaÃ§Ãµes ativadas ðŸ””', 'success');
+        if (typeof toast === 'function') toast('Notificações ativadas x', 'success');
         _atualizarUiPush();
       } catch (e) {
         console.error('[Push] ativar falhou:', e);
@@ -1306,7 +1300,7 @@
           }).catch(() => {});
           await sub.unsubscribe();
         }
-        if (typeof toast === 'function') toast('NotificaÃ§Ãµes desativadas', 'info');
+        if (typeof toast === 'function') toast('Notificações desativadas', 'info');
         _atualizarUiPush();
       } catch (e) {
         console.error('[Push] desativar falhou:', e);
@@ -1327,11 +1321,11 @@
       }
     }
 
-    // Boot: registra SW se possÃ­vel e carrega config
+    // Boot: registra SW se possível e carrega config
     (async function () {
       try {
         if (!('serviceWorker' in navigator)) return _atualizarUiPush();
-        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=92').catch(() => null);
+        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=93').catch(() => null);
         const r = await fetch('/api/push/config');
         if (r.ok) __pushConfig = await r.json();
         _atualizarUiPush();

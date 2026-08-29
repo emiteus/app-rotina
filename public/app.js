@@ -5393,7 +5393,7 @@ async function deletarAlarme(id) {
 // =====================
 async function carregarStats() {
   try {
-    const res = await fetch('/api/tasks/stats?dias=180');
+    const res = await fetch('/api/tasks/stats?completo=1');
     const data = await res.json();
     if (!res.ok) throw new Error(data.erro || 'stats');
     renderStats(data);
@@ -5474,64 +5474,19 @@ async function carregarRankingDia() {
   }
 }
 
-let _chartRange = 180;
 let _chartHistorico = [];
 
-function setChartRange(n) {
-  _chartRange = n;
-  document.querySelectorAll('.chart-range-btn').forEach(b => {
-    b.classList.toggle('active', Number(b.dataset.range) === n);
-  });
-  const label = document.getElementById('chart-range-label');
-  if (label) label.textContent = `${n} dias`;
-  const sub = document.getElementById('page-subtitle-range');
-  if (sub) sub.textContent = `Últimos ${n} dias`;
-  if (_chartHistorico.length) renderChartBars(_chartHistorico);
-}
-
-/** Preenche dias sem registro com 0 pra o gráfico ficar contínuo. */
-function preencherDiasHistorico(rows, dias) {
-  const byDay = new Map();
-  (rows || []).forEach((h) => {
-    const d = String(h.data || '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
-    byDay.set(d, {
-      data: d,
-      total: Number(h.total) || 0,
-      concluidas: Number(h.concluidas) || 0
-    });
-  });
-  const out = [];
-  const fim = new Date();
-  fim.setHours(12, 0, 0, 0);
-  for (let i = dias - 1; i >= 0; i--) {
-    const d = new Date(fim);
-    d.setDate(fim.getDate() - i);
-    const key = d.toLocaleDateString('en-CA');
-    out.push(byDay.get(key) || { data: key, total: 0, concluidas: 0 });
-  }
-  return out;
-}
-
 function renderChartBars(historicoFull) {
-  _chartHistorico = historicoFull || [];
-  const historico = preencherDiasHistorico(_chartHistorico, _chartRange);
+  _chartHistorico = (historicoFull || []).filter((h) => Number(h.total) > 0 || Number(h.concluidas) > 0);
+  const historico = _chartHistorico;
   const canvas = document.getElementById('chart-bars');
   if (!canvas) return;
 
   const labels = historico.map(h => {
-    const data = new Date(h.data + 'T12:00:00');
+    const data = new Date(String(h.data).slice(0, 10) + 'T12:00:00');
     return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   });
   const concluidas = historico.map(h => parseInt(h.concluidas, 10) || 0);
-
-  const totC = concluidas.reduce((s, n) => s + n, 0);
-  const totT = historico.reduce((s, h) => s + (Number(h.total) || 0), 0);
-  const elConc = document.getElementById('stats-concluidas');
-  const elTaxa = document.getElementById('stats-taxa');
-  if (elConc) elConc.textContent = totC;
-  if (elTaxa) elTaxa.textContent = totT > 0 ? Math.round((totC / totT) * 100) : 0;
-
   const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1a1b3e';
   if (performanceChart) performanceChart.destroy();
 
@@ -6960,7 +6915,7 @@ async function renderHistoricoFromApi() {
   let totalHistorico = 0;
   let concluidasHistorico = 0;
   try {
-    const res = await fetch('/api/tasks/stats?dias=180');
+    const res = await fetch('/api/tasks/stats?completo=1');
     const data = await res.json();
     if (res.ok && Array.isArray(data.historico)) {
       data.historico.forEach((h) => {

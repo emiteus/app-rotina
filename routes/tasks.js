@@ -87,15 +87,33 @@ router.get('/stats', async (req, res) => {
   const uid = requireUserId(req, res);
   if (!uid) return;
   try {
-    const dias = Math.min(Math.max(Number(req.query.dias) || 90, 7), 180);
-    // Prefere task_historico (agregados diários persistidos); overlay com tasks ao vivo
-    const histRows = await all(`
+    const completo = req.query.completo === '1' || req.query.dias === '0';
+    const dias = completo
+      ? null
+      : Math.min(Math.max(Number(req.query.dias) || 90, 7), 365);
+    const histRows = completo
+      ? await all(`
+      SELECT data, total, concluidas
+      FROM task_historico
+      WHERE user_id = $1 AND total > 0
+      ORDER BY data ASC
+    `, [uid])
+      : await all(`
       SELECT data, total, concluidas
       FROM task_historico
       WHERE user_id = $1 AND data >= CURRENT_DATE - ($2::int * INTERVAL '1 day')
       ORDER BY data ASC
     `, [uid, dias]);
-    const liveRows = await all(`
+    const liveRows = completo
+      ? await all(`
+      SELECT DATE(data_reset) AS data,
+        COUNT(*)::int AS total,
+        SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
+      FROM tasks
+      WHERE user_id = $1 AND data_reset IS NOT NULL
+      GROUP BY DATE(data_reset) ORDER BY DATE(data_reset) ASC
+    `, [uid])
+      : await all(`
       SELECT DATE(data_reset) AS data,
         COUNT(*)::int AS total,
         SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
@@ -126,13 +144,25 @@ router.get('/stats', async (req, res) => {
     });
     const historico = [...byDay.values()].sort((a, b) => a.data.localeCompare(b.data));
 
-    const catRows = await all(`
+    const catRows = completo
+      ? await all(`
+      SELECT COALESCE(categoria,'geral') AS c, COUNT(*)::int AS n FROM tasks
+      WHERE user_id = $1 AND data_reset IS NOT NULL
+      GROUP BY COALESCE(categoria,'geral')
+    `, [uid])
+      : await all(`
       SELECT COALESCE(categoria,'geral') AS c, COUNT(*)::int AS n FROM tasks
       WHERE user_id = $1 AND data_reset IS NOT NULL
         AND DATE(data_reset) >= CURRENT_DATE - ($2::int * INTERVAL '1 day')
       GROUP BY COALESCE(categoria,'geral')
     `, [uid, dias]);
-    const priRows = await all(`
+    const priRows = completo
+      ? await all(`
+      SELECT COALESCE(prioridade,'media') AS p, COUNT(*)::int AS n FROM tasks
+      WHERE user_id = $1 AND data_reset IS NOT NULL
+      GROUP BY COALESCE(prioridade,'media')
+    `, [uid])
+      : await all(`
       SELECT COALESCE(prioridade,'media') AS p, COUNT(*)::int AS n FROM tasks
       WHERE user_id = $1 AND data_reset IS NOT NULL
         AND DATE(data_reset) >= CURRENT_DATE - ($2::int * INTERVAL '1 day')
@@ -169,11 +199,12 @@ router.get('/stats', async (req, res) => {
     const diasComTarefas = historico.length;
     const taxaMedia = totalCriadas > 0 ? Math.round((totalConcluidas / totalCriadas) * 100) : 0;
     const mediaPorDia = diasComTarefas > 0 ? (totalConcluidas / diasComTarefas).toFixed(1) : 0;
-    const consistencia = await analisarConsistencia(dias, uid).catch(() => null);
+    const consistencia = await analisarConsistencia(completo ? 90 : dias, uid).catch(() => null);
 
     res.json({
       historico,
-      dias,
+      dias: completo ? historico.length : dias,
+      completo,
       resumo: { totalCriadas, totalConcluidas, taxaMedia, mediaPorDia, diasAtivos: diasComTarefas, streak, melhorDia, piorDia },
       categorias, prioridades, consistencia
     });
