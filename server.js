@@ -119,7 +119,7 @@ app.use('/api/ia', requireAuth, iaRouter);
 // Arquivos estaticos (index.html nao requer auth, auth.js vai verificar)
 app.use(express.static('public', {
   setHeaders(res, filePath) {
-    if (filePath.endsWith('.html') || filePath.endsWith('app.js') || filePath.endsWith('style.css')) {
+    if (/\.(html|js|css)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     }
   }

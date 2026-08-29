@@ -1,12 +1,27 @@
-// App Rotina — Service Worker (Web Push + PWA offline básico)
-const CACHE = 'app-rotina-v1';
+// App Rotina — Service Worker (Web Push + cache bust)
+const CACHE = 'app-rotina-v92';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => clients.claim())
+  );
+});
+
+// Rede primeiro para HTML/JS/CSS — evita versão antiga presa no cache
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
+  if (!/\.(html|js|css)$/.test(url.pathname) && url.pathname !== '/') return;
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(event.request))
+  );
 });
 
 // Push recebido do servidor

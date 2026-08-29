@@ -5393,7 +5393,7 @@ async function deletarAlarme(id) {
 // =====================
 async function carregarStats() {
   try {
-    const res = await fetch('/api/tasks/stats?dias=90');
+    const res = await fetch('/api/tasks/stats?dias=180');
     const data = await res.json();
     if (!res.ok) throw new Error(data.erro || 'stats');
     renderStats(data);
@@ -5474,7 +5474,7 @@ async function carregarRankingDia() {
   }
 }
 
-let _chartRange = 90;
+let _chartRange = 180;
 let _chartHistorico = [];
 
 function setChartRange(n) {
@@ -6952,23 +6952,47 @@ function filtrarAmanhaFilter(filtro) {
 // =====================
 
 function renderHistorico() {
-  // Calcular estatísticas
-  const totalTarefas = allTasks.length;
-  const concluidas = allTasks.filter(t => t.concluida).length;
-  const taxaConc = totalTarefas > 0 ? Math.round((concluidas / totalTarefas) * 100) : 0;
+  renderHistoricoFromApi().catch((err) => console.error('Erro histórico:', err));
+}
 
-  document.getElementById('hist-total-tarefas').textContent = totalTarefas;
+async function renderHistoricoFromApi() {
+  let porDia = {};
+  let totalHistorico = 0;
+  let concluidasHistorico = 0;
+  try {
+    const res = await fetch('/api/tasks/stats?dias=180');
+    const data = await res.json();
+    if (res.ok && Array.isArray(data.historico)) {
+      data.historico.forEach((h) => {
+        const dia = String(h.data || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return;
+        porDia[dia] = {
+          total: Number(h.total) || 0,
+          concluidas: Number(h.concluidas) || 0
+        };
+        totalHistorico += porDia[dia].total;
+        concluidasHistorico += porDia[dia].concluidas;
+      });
+    }
+  } catch (e) { /* fallback abaixo */ }
+
+  if (!Object.keys(porDia).length) {
+    allTasks.forEach(t => {
+      if (!t.data_reset) return;
+      const dia = t.data_reset.split('T')[0];
+      if (!porDia[dia]) porDia[dia] = { total: 0, concluidas: 0 };
+      porDia[dia].total++;
+      if (t.concluida) porDia[dia].concluidas++;
+    });
+    totalHistorico = allTasks.length;
+    concluidasHistorico = allTasks.filter(t => t.concluida).length;
+  }
+
+  const diasComDados = Object.keys(porDia).length;
+  const taxaConc = totalHistorico > 0 ? Math.round((concluidasHistorico / totalHistorico) * 100) : 0;
+
+  document.getElementById('hist-total-tarefas').textContent = totalHistorico;
   document.getElementById('hist-taxa-conclusao').textContent = taxaConc + '%';
-
-  // Melhor dia (maior número de tarefas concluídas)
-  const porDia = {};
-  allTasks.forEach(t => {
-    if (!t.data_reset) return;
-    const dia = t.data_reset.split('T')[0];
-    if (!porDia[dia]) porDia[dia] = { total: 0, concluidas: 0 };
-    porDia[dia].total++;
-    if (t.concluida) porDia[dia].concluidas++;
-  });
 
   let melhorDia = 0;
   Object.values(porDia).forEach(d => {
@@ -6976,16 +7000,11 @@ function renderHistorico() {
   });
   document.getElementById('hist-melhor-dia').textContent = melhorDia;
 
-  // Média diária
-  const dias = Object.keys(porDia).length;
-  const mediaDiaria = dias > 0 ? Math.round(concluidas / dias) : 0;
+  const mediaDiaria = diasComDados > 0 ? Math.round(concluidasHistorico / diasComDados) : 0;
   document.getElementById('hist-media-diaria').textContent = mediaDiaria;
 
-  // Render heatmap
   renderHeatmap(porDia);
-
-  // Render tendências
-  renderTendencias(porDia);
+  renderTendencias(porDia, { totalHistorico, diasComDados });
 
   renderConsistenciaHorario();
 
@@ -7097,14 +7116,14 @@ function renderHeatmap(porDia) {
   container.innerHTML = html;
 }
 
-function renderTendencias(porDia) {
+function renderTendencias(porDia, meta = {}) {
   const container = document.getElementById('tendencias-container');
   const dias = Object.entries(porDia).sort((a, b) => new Date(b[0]) - new Date(a[0])).slice(0, 7);
 
   const tendencias = [];
 
   // Analisar padrões
-  const taxas = dias.map(([_, d]) => (d.concluidas / d.total) * 100);
+  const taxas = dias.map(([_, d]) => (d.total > 0 ? (d.concluidas / d.total) * 100 : 0));
   const taxaMedia = taxas.length > 0 ? taxas.reduce((a, b) => a + b, 0) / taxas.length : 0;
 
   tendencias.push(`Taxa média: ${Math.round(taxaMedia)}%`);
@@ -7116,7 +7135,8 @@ function renderTendencias(porDia) {
     tendencias.push({ label: 'Tendência', value: progressao, arrow: seta });
   }
 
-  tendencias.push(`Total de tarefas: ${allTasks.length}`);
+  tendencias.push(`Total no período: ${meta.totalHistorico ?? Object.values(porDia).reduce((s, d) => s + d.total, 0)}`);
+  tendencias.push(`Dias com atividade: ${meta.diasComDados ?? Object.keys(porDia).length}`);
   tendencias.push(`Maior dia: ${Object.values(porDia).reduce((max, d) => Math.max(max, d.concluidas), 0)} tarefas`);
 
   container.innerHTML = tendencias.map(t => {
