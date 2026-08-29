@@ -1,11 +1,25 @@
-.header-user-name {
-  font-size: 13px;
+.sessao-debug-top {
+  font-size: 11px;
   color: var(--text-muted);
-  font-weight: 500;
-  max-width: 140px;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.btn-logout-top {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.btn-logout-top:hover {
+  color: var(--text-primary);
 }
 
 .ranking-list {

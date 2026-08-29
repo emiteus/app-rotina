@@ -97,8 +97,10 @@
           <h1><span id="saudacao">Boa noite</span></h1>
           <p class="page-subtitle">Últimos 30 dias</p>
         </div>
-        <div style="display:flex; align-items:center; gap:12px; flex-shrink:0;">
+        <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
           <span id="header-user-name" class="header-user-name" title="Usuário logado"></span>
+          <span id="sessao-debug-top" class="sessao-debug-top"></span>
+          <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
           <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
             Analisar meu dia
@@ -1016,7 +1018,7 @@
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="js/fin-receitas.js?v=1"></script>
   <script src="js/assist.js?v=1"></script>
-  <script src="app.js?v=87"></script>
+  <script src="app.js?v=88"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1036,9 +1038,19 @@
       let modoCadastro = false;
       let cadastroInfo = { aberto: false, precisaCodigo: false };
 
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async function (input, init) {
+        const res = await originalFetch(input, { credentials: 'same-origin', ...init });
+        const url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (res.status === 401 && url.includes('/api/') && !url.includes('/api/auth/')) {
+          mostrarLogin();
+        }
+        return res;
+      };
+
       async function carregarCadastroInfo() {
         try {
-          const r = await fetch('/api/auth/cadastro', { credentials: 'same-origin' });
+          const r = await originalFetch('/api/auth/cadastro', { credentials: 'same-origin' });
           cadastroInfo = await r.json().catch(() => ({}));
         } catch (e) {
           cadastroInfo = { aberto: false, precisaCodigo: false };
@@ -1048,9 +1060,7 @@
 
       function atualizarModoUI() {
         const showCadastro = modoCadastro && cadastroInfo.aberto;
-        subtitleEl.textContent = showCadastro
-          ? 'Escolhe usuário e senha'
-          : 'Entra pra continuar';
+        subtitleEl.textContent = showCadastro ? 'Escolhe usuário e senha' : 'Entra pra continuar';
         btn.textContent = showCadastro ? 'Criar conta' : 'Entrar';
         inputNome.style.display = showCadastro ? 'block' : 'none';
         inputSenha2.style.display = showCadastro ? 'block' : 'none';
@@ -1095,53 +1105,61 @@
         atualizarModoUI();
       }
 
-      window.__currentUser = null;
+      function pintarSessao(d) {
+        const user = d && d.user;
+        if (!user) return;
+        window.__currentUser = user;
+        const el = document.getElementById('header-user-name');
+        if (el) el.textContent = user.nome || user.login || '';
+        const st = user.stats || {};
+        const txt = (user.login || '?') + ' · ' + (st.financeiro ?? '?') + ' fin · ' + (st.tasks ?? '?') + ' tasks';
+        const nodes = [document.getElementById('sessao-debug'), document.getElementById('sessao-debug-top')];
+        nodes.forEach((node) => {
+          if (!node) return;
+          node.style.display = 'block';
+          node.textContent = txt;
+          if (d.db) node.title = 'Banco: ' + d.db;
+          if (Number(st.financeiro) === 0 && Number(st.tasks) === 0) {
+            node.style.color = 'var(--danger)';
+            node.textContent += ' — vazio';
+          } else {
+            node.style.color = '';
+          }
+        });
+        if (Number(st.financeiro) > 0 || Number(st.tasks) > 0) {
+          setTimeout(() => {
+            if (typeof carregarTransacoes === 'function') carregarTransacoes();
+            if (typeof carregarTarefas === 'function') carregarTarefas();
+            if (typeof carregarRankingDia === 'function') carregarRankingDia();
+            if (typeof carregarStats === 'function') carregarStats();
+          }, 150);
+        }
+      }
+
+      async function forcarLogout() {
+        try { await originalFetch('/api/auth/logout', { credentials: 'same-origin' }); } catch (e) {}
+        window.__currentUser = null;
+        mostrarLogin();
+      }
+
       async function carregarUsuarioSessao() {
         try {
           const r = await originalFetch('/api/auth/me', { credentials: 'same-origin' });
           const d = await r.json().catch(() => ({}));
-          if (d.user) {
-            window.__currentUser = d.user;
-            const el = document.getElementById('header-user-name');
-            if (el) el.textContent = d.user.nome;
-            const dbg = document.getElementById('sessao-debug');
-            if (dbg && d.user.stats) {
-              const st = d.user.stats;
-              dbg.style.display = 'block';
-              dbg.textContent = `${d.user.login} · ${st.financeiro} fin · ${st.tasks} tasks`;
-              if (d.db) dbg.title = 'Banco: ' + d.db;
-              if (st.financeiro === 0 && st.tasks === 0) {
-                dbg.style.color = 'var(--danger)';
-                dbg.textContent += ' — conta vazia (banco errado?)';
-              } else {
-                dbg.style.color = '';
-                // Garante refresh dos cards depois que a sessão confirma
-                if (typeof carregarTransacoes === 'function') carregarTransacoes();
-                if (typeof carregarTarefas === 'function') carregarTarefas();
-                if (typeof carregarRankingDia === 'function') carregarRankingDia();
-              }
-            }
-            if (d.erro === 'sessao_invalida') forcarLogout();
+          if (d.erro === 'sessao_invalida') return forcarLogout();
+          if (d.user) pintarSessao(d);
+        } catch (e) {
+          const top = document.getElementById('sessao-debug-top');
+          if (top) {
+            top.style.display = 'block';
+            top.style.color = 'var(--danger)';
+            top.textContent = 'erro sessão: ' + ((e && e.message) || e);
           }
-        } catch (e) { /* ok */ }
-      }
-      carregarUsuarioSessao();
-
-      async function forcarLogout() {
-        try { await originalFetch('/api/auth/logout', { credentials: 'same-origin' }); } catch (e) {}
-        mostrarLogin();
-      }
-
-      const originalFetch = window.fetch.bind(window);
-      window.fetch = async function (input, init) {
-        const res = await originalFetch(input, { credentials: 'same-origin', ...init });
-        const url = typeof input === 'string' ? input : (input && input.url) || '';
-        if (res.status === 401 && url.includes('/api/') && !url.includes('/api/auth/')) {
-          mostrarLogin();
-          // Não lança — senão quebra carregarTransacoes/ranking e a UI fica zerada
         }
-        return res;
-      };
+      }
+
+      document.getElementById('btn-logout')?.addEventListener('click', () => forcarLogout());
+      document.getElementById('btn-logout-top')?.addEventListener('click', () => forcarLogout());
 
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1152,30 +1170,18 @@
         const nome = (inputNome.value || '').trim();
         const senha2 = (inputSenha2.value || '').trim();
         const codigo = (inputCodigo.value || '').trim();
-        if (!login) {
-          erroEl.textContent = 'Digite o usuário';
+        if (!login) { erroEl.textContent = 'Digite o usuário'; erroEl.style.display = 'block'; return; }
+        if (!senha) { erroEl.textContent = 'Digite a senha'; erroEl.style.display = 'block'; return; }
+        if (modoCadastro && cadastroInfo.aberto && senha !== senha2) {
+          erroEl.textContent = 'As senhas não coincidem';
           erroEl.style.display = 'block';
           return;
-        }
-        if (!senha) {
-          erroEl.textContent = 'Digite a senha';
-          erroEl.style.display = 'block';
-          return;
-        }
-        if (modoCadastro && cadastroInfo.aberto) {
-          if (senha !== senha2) {
-            erroEl.textContent = 'As senhas não coincidem';
-            erroEl.style.display = 'block';
-            return;
-          }
         }
         btn.disabled = true;
         btn.textContent = modoCadastro && cadastroInfo.aberto ? 'Criando…' : 'Entrando…';
         try {
           const url = modoCadastro && cadastroInfo.aberto ? '/api/auth/register' : '/api/auth/login';
-          const body = modoCadastro && cadastroInfo.aberto
-            ? { login, senha, nome, codigo }
-            : { login, senha };
+          const body = modoCadastro && cadastroInfo.aberto ? { login, senha, nome, codigo } : { login, senha };
           const r = await originalFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1185,7 +1191,7 @@
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
             esconderLogin();
-            location.reload();
+            location.href = '/?v=88';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu — tenta de novo');
@@ -1199,23 +1205,17 @@
         }
       });
 
-      // Boot: checa sessão antes de deixar o app.js rodar seus fetches
       (async () => {
         try {
           const r = await originalFetch('/api/auth/check', { credentials: 'same-origin' });
           const d = await r.json().catch(() => ({}));
-          if (!r.ok || !d.authenticated) {
-            mostrarLogin();
-          } else if (d.erro === 'sessao_invalida' || (d.user?.stats?.financeiro === 0 && d.user?.stats?.tasks === 0)) {
-            // sessão ok mas vazia — deixa passar (pode ser conta nova)
-          }
+          if (!r.ok || !d.authenticated) mostrarLogin();
+          else await carregarUsuarioSessao();
         } catch (e) {
           mostrarLogin();
         }
       })();
-      })();
-
-      document.getElementById('btn-logout')?.addEventListener('click', () => forcarLogout());
+    })();
 
     // ==================== Web Push (Service Worker) ====================
     let __pushConfig = null;
