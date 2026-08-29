@@ -94,7 +94,7 @@
       <div class="page-header" style="justify-content:space-between; align-items:center; display:flex;">
         <div>
           <h1><span id="saudacao"></span></h1>
-          <p class="page-subtitle" id="page-subtitle-range">Ãšltimos 90 dias</p>
+          <p class="page-subtitle" id="page-subtitle-range">Últimos 90 dias</p>
         </div>
         <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
           <span id="header-user-name" class="header-user-name" title="UsuÃ¡rio logado"></span>
@@ -114,7 +114,7 @@
           <div class="card-value" id="dash-saldo">R$ 0,00</div>
           <div class="card-mini" style="margin-top:12px;">
             <span class="mini-up">+ <span id="dash-entradas">0,00</span></span>
-            <span class="mini-down">âˆ’ <span id="dash-saidas">0,00</span></span>
+            <span class="mini-down">− <span id="dash-saidas">0,00</span></span>
           </div>
         </div>
 
@@ -131,7 +131,7 @@
         <div class="card" id="dash-ranking-card">
           <div class="card-label">Ofensiva do dia</div>
           <div id="dash-ranking-list" class="ranking-list">
-            <div class="ranking-empty">Carregandoâ€¦</div>
+            <div class="ranking-empty">Carregando…</div>
           </div>
           <div class="card-mini ranking-lider" id="dash-ranking-lider"></div>
         </div>
@@ -141,8 +141,8 @@
       <div class="panel dashboard-chart-hero" style="margin-bottom: 24px;">
         <div class="panel-header">
           <div>
-            <div class="card-label" style="margin-bottom:6px;">Atividade â€” <span id="chart-range-label">90 dias</span></div>
-            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">Â· <span id="stats-taxa">0</span>% conclusÃ£o</span></div>
+            <div class="card-label" style="margin-bottom:6px;">Atividade — <span id="chart-range-label">90 dias</span></div>
+            <div class="card-value" style="font-size:26px;"><span id="stats-concluidas">0</span> tarefas <span style="color:var(--text-muted); font-weight:500; font-size:14px;">· <span id="stats-taxa">0</span>% conclusÃ£o</span></div>
           </div>
           <div class="chart-range-toggle">
             <button class="chart-range-btn" data-range="30" onclick="setChartRange(30)">30d</button>
@@ -155,7 +155,7 @@
         </div>
       </div>
 
-      <!-- Ãšltimas transaÃ§Ãµes â€” lista discreta com link pra Financeiro -->
+      <!-- Ãšltimas transaÃ§Ãµes — lista discreta com link pra Financeiro -->
       <div class="panel">
         <div class="panel-header">
           <h3>Ãšltimas transaÃ§Ãµes</h3>
@@ -198,7 +198,7 @@
             <h3>HÃ¡bitos</h3>
           </div>
           <div id="dash-habitos" class="mini-panel-body">
-            <p class="mini-empty">â€”</p>
+            <p class="mini-empty">—</p>
           </div>
         </div>
       </div>
@@ -431,7 +431,7 @@
           <div class="receitas-toolbar">
             <div class="despesas-mes-nav">
               <button type="button" onclick="ganhosMesAnterior()" aria-label="MÃªs anterior">â€¹</button>
-              <span class="despesas-mes-label" id="ganhos-mes-label">â€”</span>
+              <span class="despesas-mes-label" id="ganhos-mes-label">—</span>
               <button type="button" onclick="ganhosMesProximo()" aria-label="PrÃ³ximo mÃªs">â€º</button>
             </div>
             <button class="btn-primary" type="button" onclick="abrirModalNovaReceita()" style="font-size:13px;">+ Nova receita</button>
@@ -518,14 +518,14 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 7L7 17M17 17H7V7" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <div class="box-body">
-              <p class="box-label">SaÃ­das (30d)</p>
+              <p class="box-label">Saídas (30d)</p>
               <h3 id="total-saidas">R$ 0,00</h3>
             </div>
           </div>
         </div>
 
         <div class="visao-sobra" id="visao-sobra">
-          <span class="label">Sobra estimada (entradas âˆ’ gastos, 30d Â· sem pagamento de fatura)</span>
+          <span class="label">Sobra estimada (entradas − gastos, 30d · sem pagamento de fatura)</span>
           <span class="valor" id="visao-sobra-valor">R$ 0,00</span>
         </div>
 
@@ -540,7 +540,7 @@
           <div class="fin-cat-list-card">
             <div class="fin-cat-list-header">
               <h3>Gastos por categoria</h3>
-              <span class="subtitle" id="fin-cat-list-mes">Este mÃªs Â· sem pagamento de fatura</span>
+              <span class="subtitle" id="fin-cat-list-mes">Este mÃªs · sem pagamento de fatura</span>
             </div>
             <div id="fin-cat-list"></div>
             <div class="fin-cat-list-total" id="fin-cat-list-total" style="display:none;">
@@ -550,7 +550,7 @@
 
           <div class="fin-donut-card" id="fin-donut-card" style="margin-bottom:0;">
             <h3>DistribuiÃ§Ã£o</h3>
-            <p class="donut-subtitle">Este mÃªs Â· sem pagamento de fatura</p>
+            <p class="donut-subtitle">Este mÃªs · sem pagamento de fatura</p>
             <div class="fin-donut-body">
               <div class="fin-donut-canvas-wrap">
                 <canvas id="fin-donut-canvas" width="200" height="200"></canvas>
@@ -589,7 +589,7 @@
             <div class="extrato-filtros-top">
               <div>
                 <p class="extrato-kicker">Extrato</p>
-                <p class="extrato-periodo-label" id="extrato-periodo-label">â€”</p>
+                <p class="extrato-periodo-label" id="extrato-periodo-label">—</p>
               </div>
               <div class="extrato-periodo-chips" id="extrato-periodo-chips">
                 <button type="button" class="extrato-chip" data-periodo="7d" onclick="extratoSetPeriodo('7d')">7d</button>
@@ -608,7 +608,7 @@
                 <option value="entrada">SÃ³ entradas</option>
                 <option value="saida">SÃ³ saÃ­das</option>
               </select>
-              <input type="search" id="extrato-busca" placeholder="Buscarâ€¦" oninput="extratoBuscaDebounced()" autocomplete="off" />
+              <input type="search" id="extrato-busca" placeholder="Buscar…" oninput="extratoBuscaDebounced()" autocomplete="off" />
             </div>
             <div class="extrato-datas" id="extrato-datas" hidden>
               <label>De <input type="date" id="extrato-de" onchange="carregarExtrato()" /></label>
@@ -626,11 +626,11 @@
         <div class="despesas-toolbar">
           <div class="despesas-mes-nav">
             <button type="button" onclick="despesasMesAnterior()" aria-label="MÃªs anterior">â€¹</button>
-            <span class="despesas-mes-label" id="despesas-mes-label">â€”</span>
+            <span class="despesas-mes-label" id="despesas-mes-label">—</span>
             <button type="button" onclick="despesasMesProximo()" aria-label="PrÃ³ximo mÃªs">â€º</button>
           </div>
           <div class="despesas-banco">
-            <span class="despesas-banco-status" id="despesas-banco-status">Banco: â€”</span>
+            <span class="despesas-banco-status" id="despesas-banco-status">Banco: —</span>
             <button class="btn-secondary" type="button" onclick="conectarBanco()" style="font-size:12px;">Conectar</button>
             <button class="btn-secondary" type="button" onclick="sincronizarBancosEReconciliar()" style="font-size:12px;">Sincronizar</button>
           </div>
@@ -678,7 +678,7 @@
         </div>
       </div>
 
-      <!-- Modal Nova TransaÃ§Ã£o (legado â€” ainda usado se necessÃ¡rio) -->
+      <!-- Modal Nova TransaÃ§Ã£o (legado — ainda usado se necessÃ¡rio) -->
       <div id="modal-nova-transacao" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); z-index:2000; align-items:center; justify-content:center; padding:20px;">
         <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:22px 24px; width:100%; max-width:460px; box-shadow:var(--shadow-lg);">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
@@ -746,7 +746,7 @@
 
       <div class="form-card" style="margin-top:20px;">
         <h3 style="margin:0 0 6px 0; font-size:16px;">NotificaÃ§Ãµes Push</h3>
-        <p class="page-subtitle" id="push-status" style="margin:0 0 12px 0;">Verificandoâ€¦</p>
+        <p class="page-subtitle" id="push-status" style="margin:0 0 12px 0;">Verificando…</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn-primary" id="push-btn-ativar" onclick="ativarPush()" style="display:none;">Ativar notificaÃ§Ãµes</button>
           <button class="btn-secondary" id="push-btn-desativar" onclick="desativarPush()" style="display:none;">Desativar</button>
@@ -1067,7 +1067,7 @@
         if (toggleModo) {
           if (cadastroInfo.aberto) {
             toggleModo.style.display = 'block';
-            toggleModo.textContent = showCadastro ? 'JÃ¡ tenho conta â€” entrar' : 'Primeira vez? Criar conta';
+            toggleModo.textContent = showCadastro ? 'JÃ¡ tenho conta — entrar' : 'Primeira vez? Criar conta';
           } else {
             toggleModo.style.display = 'none';
           }
@@ -1154,7 +1154,7 @@
           return;
         }
         btn.disabled = true;
-        btn.textContent = modoCadastro && cadastroInfo.aberto ? 'Criandoâ€¦' : 'Entrandoâ€¦';
+        btn.textContent = modoCadastro && cadastroInfo.aberto ? 'Criando…' : 'Entrando…';
         try {
           const url = modoCadastro && cadastroInfo.aberto ? '/api/auth/register' : '/api/auth/login';
           const body = modoCadastro && cadastroInfo.aberto ? { login, senha, nome, codigo } : { login, senha };
@@ -1170,7 +1170,7 @@
             location.href = '/?v=91';
             return;
           }
-          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'NÃ£o deu â€” tenta de novo');
+          erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'NÃ£o deu — tenta de novo');
           erroEl.style.display = 'block';
         } catch (err) {
           erroEl.textContent = 'Erro de rede: ' + err.message;
@@ -1222,7 +1222,7 @@
         return;
       }
       if (Notification.permission === 'denied') {
-        status.textContent = 'PermissÃ£o de notificaÃ§Ã£o BLOQUEADA â€” libere nas configuraÃ§Ãµes do navegador.';
+        status.textContent = 'PermissÃ£o de notificaÃ§Ã£o BLOQUEADA — libere nas configuraÃ§Ãµes do navegador.';
         return;
       }
 
