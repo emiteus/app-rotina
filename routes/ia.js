@@ -6,6 +6,8 @@ const { checkinHabito, listarHabitos, analisarConsistencia } = require('../lib/h
 const { hojeStr, ymAtual, addDias, dataResetSql, horaAtual, diaSemana } = require('../lib/datas');
 const { persistirHistoricoDia } = require('../lib/historico');
 const plano = require('../lib/plano-financeiro');
+const openfinanceRouter = require('./openfinance');
+
 
 const router = express.Router();
 
@@ -269,6 +271,11 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     return partes.join(' ');
   }
 
+  if (fails.length && !finOk.length && !String(resposta || '').trim()) {
+    const f = fails.find(x => x.tipo === 'recategorizar') || fails[0];
+    if (f && f.erro) return f.erro;
+  }
+
   if (claim) {
     const err = fails.map(f => f.erro).filter(Boolean)[0];
     if (err) {
@@ -523,7 +530,8 @@ function mapTarefa(t) {
   };
 }
 
-async function snapshotAssistente() {
+async function snapshotAssistente(opts = {}) {
+  const lite = !!opts.lite;
   const hoje = hojeStr();
   const ym = ymAtual();
   const ontem = addDias(-1);
@@ -562,29 +570,29 @@ async function snapshotAssistente() {
     all(
       `SELECT id, titulo, concluida, prioridade, hora, concluida_em, categoria, data_reset
        FROM tasks WHERE data_reset::date = $1
-       ORDER BY concluida, prioridade, hora NULLS LAST LIMIT 50`,
+       ORDER BY concluida, prioridade, hora NULLS LAST LIMIT ${lite ? 25 : 50}`,
       [hoje]
     ).catch(() => []),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, concluida, prioridade, hora, concluida_em, categoria
        FROM tasks WHERE data_reset::date = $1
        ORDER BY concluida, prioridade LIMIT 30`,
       [ontem]
     ).catch(() => []),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, concluida, prioridade, hora, categoria
        FROM tasks WHERE data_reset::date = $1
        ORDER BY prioridade, hora NULLS LAST LIMIT 30`,
       [amanha]
     ).catch(() => []),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, concluida, prioridade, hora, categoria, data_reset
        FROM tasks
        WHERE data_reset::date > $1::date AND data_reset::date <= $2::date
        ORDER BY data_reset, prioridade LIMIT 40`,
       [hoje, fim14]
     ).catch(() => []),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, prioridade, hora, data_reset
        FROM tasks
        WHERE concluida = false
@@ -629,12 +637,13 @@ async function snapshotAssistente() {
       [ym]
     ).catch(() => ({ entradas: 0, saidas: 0 })),
     all(
-      `SELECT id, descricao, valor, tipo, categoria, data, fonte, chave_categoria
+      `SELECT id, descricao, valor, tipo, categoria, data, fonte, chave_categoria,
+              pago_terceiro, terceiro_nome
        FROM financeiro
        ORDER BY data DESC
-       LIMIT 40`
+       LIMIT ${lite ? 20 : 40}`
     ).catch(() => []),
-    all(`SELECT chave, label FROM categorias ORDER BY label LIMIT 80`).catch(() => []),
+    all(`SELECT chave, label FROM categorias ORDER BY label LIMIT ${lite ? 50 : 80}`).catch(() => []),
     all(
       `SELECT COALESCE(NULLIF(categoria,''),'outros') AS categoria,
               SUM(valor)::float AS total, COUNT(*)::int AS qtd
@@ -648,7 +657,7 @@ async function snapshotAssistente() {
        FROM despesas_mes WHERE ym = $1
        ORDER BY CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'pago' THEN 2 ELSE 3 END,
                 dia_vencimento NULLS LAST
-       LIMIT 60`,
+       LIMIT ${lite ? 30 : 60}`,
       [ym]
     ).catch(() => []),
     all(
@@ -657,7 +666,7 @@ async function snapshotAssistente() {
        ORDER BY CASE tipo WHEN 'fixa' THEN 0 ELSE 1 END,
                 CASE status WHEN 'atrasado' THEN 0 WHEN 'pendente' THEN 1 WHEN 'recebido' THEN 2 ELSE 3 END,
                 dia_previsto NULLS LAST
-       LIMIT 40`,
+       LIMIT ${lite ? 20 : 40}`,
       [ym]
     ).catch(() => []),
     all(
@@ -669,12 +678,12 @@ async function snapshotAssistente() {
     ).catch(() => []),
     all(`SELECT id, hora, mensagem, ativo FROM alarmes ORDER BY ativo DESC, hora LIMIT 20`).catch(() => []),
     listarHabitos().catch(() => ({ habitos: [] })),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT titulo, prioridade, categoria, frequencia, dias_semana, ativa
        FROM tarefas_recorrentes WHERE ativa = true
        ORDER BY titulo LIMIT 30`
     ).catch(() => []),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT id, titulo, tipo, data, hora, cor
        FROM eventos
        WHERE data::date >= $1::date AND data::date <= $2::date
@@ -682,14 +691,14 @@ async function snapshotAssistente() {
        LIMIT 25`,
       [hoje, fim14]
     ).catch(() => []),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT data, total, concluidas
        FROM task_historico
        WHERE data::date >= $1::date
        ORDER BY data DESC LIMIT 21`,
       [inicio30]
     ).catch(() => []),
-    all(
+    lite ? Promise.resolve([]) : all(
       `SELECT a.nome, a.tipo, a.saldo, i.pessoa, i.connector_nome
        FROM openfinance_accounts a
        JOIN openfinance_items i ON i.item_id = a.item_id
@@ -702,7 +711,7 @@ async function snapshotAssistente() {
        ORDER BY ym DESC
        LIMIT 6`
     ).catch(() => []),
-    analisarConsistencia(30).catch(() => null)
+    lite ? Promise.resolve(null) : analisarConsistencia(30).catch(() => null)
   ]);
 
   const tHoje = tarefasHoje || [];
@@ -812,7 +821,9 @@ async function snapshotAssistente() {
         categoria: t.categoria || 'outros',
         data: t.data ? String(t.data).slice(0, 10) : null,
         fonte: t.fonte || null,
-        chave: t.chave_categoria || null
+        chave: t.chave_categoria || null,
+        pago_terceiro: !!t.pago_terceiro,
+        terceiro: t.terceiro_nome || null
       })),
       categorias: (categoriasLista || []).map(c => ({ chave: c.chave, label: c.label })),
       gastos_por_categoria_30d: (gastosCat || []).map(c => ({
@@ -1048,6 +1059,17 @@ async function executarAcoes(acoes) {
     let txs = await buscarTxsParaRecategorizar(acao);
     if (txs.length) return txs;
     const f = acao.filtros || {};
+    const trecho = String(f.trecho || '').trim();
+    if (trecho.length >= 8) {
+      const frag = trecho.slice(0, 80).replace(/[%_\\]/g, '');
+      txs = await all(
+        `SELECT id, descricao, valor, tipo, data, chave_categoria, categoria
+         FROM financeiro WHERE descricao ILIKE $1
+         ORDER BY data DESC LIMIT 40`,
+        [`%${frag}%`]
+      );
+      if (txs.length) return txs;
+    }
     // IA às vezes manda "Superbet" mas a descrição é "SPRBT" — tenta de novo só com data/valores
     if (Array.isArray(f.contem) && f.contem.length && (f.data || f.data_de || (f.valores && f.valores.length))) {
       const { contem, ...rest } = f;
@@ -1133,17 +1155,63 @@ async function executarAcoes(acoes) {
           feitos.push({ tipo, ok: false, erro: 'categoria obrigatória' });
           continue;
         }
-        const txs = await buscarTxsComFallback(acao);
+        let txs = await buscarTxsComFallback(acao);
+        let syncInfo = null;
         if (!txs.length) {
-          feitos.push({ tipo, ok: false, erro: 'nenhuma transação encontrada com esses filtros', categoria: cat.chave });
+          const contem = Array.isArray(acao.filtros?.contem) ? acao.filtros.contem : [];
+          if (contem.length && acao.aprender !== false) {
+            for (const token of contem.slice(0, 4)) {
+              const chave = normalizarChave(token).slice(0, 40);
+              if (!chave || chave.length < 3) continue;
+              await run(
+                `INSERT INTO categoria_regras (chave, categoria, exemplo)
+                 VALUES ($1,$2,$3)
+                 ON CONFLICT (chave) DO UPDATE SET categoria = EXCLUDED.categoria`,
+                [chave, cat.chave, String(acao.filtros?.trecho || token).slice(0, 120)]
+              );
+            }
+          }
+          if (contem.length && openfinanceRouter.temCredenciais && openfinanceRouter.temCredenciais()) {
+            try {
+              syncInfo = await openfinanceRouter.syncAll(null, { refresh: false });
+              txs = await buscarTxsComFallback(acao);
+            } catch (syncErr) {
+            }
+          }
+        }
+        if (!txs.length) {
+          const contem = Array.isArray(acao.filtros?.contem) ? acao.filtros.contem : [];
+          const tokTxt = contem.length ? contem.join('", "') : 'esse nome';
+          let totalTxt = '';
+          try {
+            const row = await get(`SELECT COUNT(*)::int AS n FROM financeiro`);
+            totalTxt = row && row.n ? ` (${row.n} lançamentos no extrato)` : '';
+          } catch (e) { /* ok */ }
+          const syncTxt = syncInfo && Number(syncInfo.importadas) > 0
+            ? ` Sincronizei o banco (+${syncInfo.importadas} novos) mas ainda não achei.`
+            : (syncInfo ? ' Sincronizei o banco mas ainda não achei.' : '');
+          feitos.push({
+            tipo,
+            ok: false,
+            erro: `Não achei lançamento com "${tokTxt}" no extrato${totalTxt}.${syncTxt} `
+              + 'Se aparece no app do banco, confira Financeiro → Bancos. '
+              + 'Ou me manda **valor e data** que eu procuro.',
+            categoria: cat.chave,
+            filtros: acao.filtros || null
+          });
           continue;
         }
         const ids = txs.map(t => t.id);
+        const marcarTerceiro = !!(acao.pago_terceiro || acao.terceiro_nome);
+        const nomeTerceiro = String(acao.terceiro_nome || acao.categoria_label || '').trim() || null;
         await run(
           `UPDATE financeiro
-           SET categoria = $1, categoria_confirmada = true
+           SET categoria = $1,
+               categoria_confirmada = true,
+               pago_terceiro = CASE WHEN $3 THEN true ELSE pago_terceiro END,
+               terceiro_nome = CASE WHEN $3 AND $4 IS NOT NULL THEN $4 ELSE terceiro_nome END
            WHERE id = ANY($2::text[])`,
-          [cat.chave, ids]
+          [cat.chave, ids, marcarTerceiro, nomeTerceiro]
         );
         if (acao.aprender !== false) {
           for (const t of txs) {
@@ -1909,12 +1977,15 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       if (!label && /\btio\b/i.test(msg)) label = 'Tio';
       if (!label && /\bpai\b/i.test(msg) && /\bm[aã]e\b/i.test(msg)) label = 'Pai e Mãe';
       if (tokens.length && label) {
-        acoes.push({
+        const acaoDesc = {
           tipo: 'recategorizar',
           categoria_label: label,
-          filtros: { contem: tokens },
-          aprender: true
-        });
+          filtros: { contem: tokens, trecho },
+          aprender: true,
+          pago_terceiro: true,
+          terceiro_nome: label
+        };
+        acoes.push(acaoDesc);
       }
     }
   }
@@ -2047,7 +2118,7 @@ router.post('/chat', async (req, res) => {
       await run(`UPDATE assist_conversas SET titulo = $1 WHERE id = $2`, [tituloDeMensagem(mensagem), conversaId]);
     }
 
-    const snap = await snapshotAssistente();
+    const snap = await snapshotAssistente({ lite: true });
 
     // Atalho: pedidos claros (mover categoria, confirmar receita/despesa etc.)
     // executam sem esperar o Gemini — evita timeout de 35s nesses casos.
@@ -2062,6 +2133,20 @@ router.post('/chat', async (req, res) => {
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
       const acoesExec = await executarAcoes(acoesRapidas);
       if (acoesExec.some(a => a && a.ok)) {
+        const resposta = reconciliarRespostaComAcoes('', acoesExec);
+        await salvarMensagem(conversaId, 'assistant', resposta);
+        return res.json({
+          resposta,
+          acoes: acoesExec,
+          snapshot: snap,
+          provider: 'local',
+          usage: null,
+          conversa_id: conversaId
+        });
+      }
+      const soRecat = acoesRapidas.length === 1 && acoesRapidas[0].tipo === 'recategorizar';
+      const recatFalhou = acoesExec.find(a => a && a.tipo === 'recategorizar' && a.ok === false);
+      if (soRecat && recatFalhou) {
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
         await salvarMensagem(conversaId, 'assistant', resposta);
         return res.json({

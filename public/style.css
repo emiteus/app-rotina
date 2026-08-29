@@ -422,6 +422,7 @@ body {
   text-overflow: ellipsis;
 }
 .extrato-item-meta .sep { opacity: 0.5; }
+.extrato-terceiro { color: var(--accent); font-size: 11px; }
 .extrato-item-valor {
   font-family: var(--font-mono);
   font-size: 13.5px;

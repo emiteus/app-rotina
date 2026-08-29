@@ -423,10 +423,12 @@ function enviarTelegram(mensagem) {
 }
 
 // Inicia servidor HTTP + WebSocket
-httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
-  console.log(`WebSocket disponível em ws://0.0.0.0:${PORT}`);
-  console.log(`Timezone ${TZ} · hoje ${hojeStr()} · ${horaAtual()}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
+    console.log(`WebSocket disponível em ws://0.0.0.0:${PORT}`);
+    console.log(`Timezone ${TZ} · hoje ${hojeStr()} · ${horaAtual()}`);
+  });
+}
 
 module.exports = { app, httpServer, wsServer, enviarTelegram };

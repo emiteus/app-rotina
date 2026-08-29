@@ -117,7 +117,7 @@ router.get('/extrato', async (req, res) => {
 
     const movimentacoes = await all(
       `SELECT f.id, f.tipo, f.valor, f.descricao, TO_CHAR(COALESCE(f.data::date, f.criado_em::date), 'YYYY-MM-DD') AS data,
-              f.categoria, f.fonte, f.account_id,
+              f.categoria, f.fonte, f.account_id, f.pago_terceiro, f.terceiro_nome, f.terceiro_notas,
               a.nome AS conta_nome, a.tipo AS conta_tipo, a.item_id,
               i.apelido, i.connector_nome, i.pessoa,
               COALESCE(i.apelido, i.connector_nome, 'Manual') AS banco
@@ -299,6 +299,31 @@ router.patch('/:id/categoria', async (req, res) => {
     );
     if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
     emitFinanceiroUpdate('atualizada', { id: req.params.id, categoria: cat });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// PATCH /api/financeiro/:id/terceiro — pagamento por terceiro / reembolso
+router.patch('/:id/terceiro', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const pago = body.pago_terceiro != null ? !!body.pago_terceiro : undefined;
+    const nome = body.terceiro_nome != null ? String(body.terceiro_nome).trim() || null : undefined;
+    const notas = body.terceiro_notas != null ? String(body.terceiro_notas).trim() || null : undefined;
+    const row = await get(`SELECT id FROM financeiro WHERE id = $1`, [req.params.id]);
+    if (!row) return res.status(404).json({ erro: 'transação não encontrada' });
+    const sets = [];
+    const vals = [];
+    let p = 1;
+    if (pago !== undefined) { sets.push(`pago_terceiro = $${p++}`); vals.push(pago); }
+    if (nome !== undefined) { sets.push(`terceiro_nome = $${p++}`); vals.push(nome); }
+    if (notas !== undefined) { sets.push(`terceiro_notas = $${p++}`); vals.push(notas); }
+    if (!sets.length) return res.status(400).json({ erro: 'nada para atualizar' });
+    vals.push(req.params.id);
+    await run(`UPDATE financeiro SET ${sets.join(', ')} WHERE id = $${p}`, vals);
+    emitFinanceiroUpdate('atualizada', { id: req.params.id });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: err.message });
