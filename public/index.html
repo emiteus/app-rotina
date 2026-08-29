@@ -82,7 +82,6 @@
     <div class="sidebar-footer">
       <div class="data-hoje" id="data-hoje"></div>
       <div class="hora-agora" id="hora-agora"></div>
-      <div id="sessao-debug" class="sessao-debug" style="display:none;"></div>
       <button type="button" id="btn-logout" class="btn-logout-sidebar">Sair</button>
     </div>
   </aside>
@@ -94,12 +93,11 @@
     <section id="dashboard" class="tab-content active">
       <div class="page-header" style="justify-content:space-between; align-items:center; display:flex;">
         <div>
-          <h1><span id="saudacao">Boa noite</span></h1>
+          <h1><span id="saudacao"></span></h1>
           <p class="page-subtitle">Últimos 30 dias</p>
         </div>
         <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
           <span id="header-user-name" class="header-user-name" title="Usuário logado"></span>
-          <span id="sessao-debug-top" class="sessao-debug-top"></span>
           <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
           <button onclick="analisarDiaIA()" id="btn-analise-ia" title="IA resume seu dia" style="background:rgba(59,130,246,0.14); border:1px solid rgba(59,130,246,0.35); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg>
@@ -1018,7 +1016,7 @@
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
   <script src="js/fin-receitas.js?v=1"></script>
   <script src="js/assist.js?v=1"></script>
-  <script src="app.js?v=89"></script>
+  <script src="app.js?v=90"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1111,22 +1109,7 @@
         window.__currentUser = user;
         const el = document.getElementById('header-user-name');
         if (el) el.textContent = user.nome || user.login || '';
-        const st = user.stats || {};
-        const txt = (user.login || '?') + ' · ' + (st.financeiro ?? '?') + ' fin · ' + (st.tasks ?? '?') + ' tasks';
-        const nodes = [document.getElementById('sessao-debug'), document.getElementById('sessao-debug-top')];
-        nodes.forEach((node) => {
-          if (!node) return;
-          node.style.display = 'block';
-          node.textContent = txt;
-          if (d.db) node.title = 'Banco: ' + d.db;
-          if (Number(st.financeiro) === 0 && Number(st.tasks) === 0) {
-            node.style.color = 'var(--danger)';
-            node.textContent += ' — vazio';
-          } else {
-            node.style.color = '';
-          }
-        });
-        if (Number(st.financeiro) > 0 || Number(st.tasks) > 0) {
+        if (Number(user.stats?.financeiro) > 0 || Number(user.stats?.tasks) > 0) {
           setTimeout(() => {
             if (typeof carregarTransacoes === 'function') carregarTransacoes();
             if (typeof carregarTarefas === 'function') carregarTarefas();
@@ -1148,14 +1131,7 @@
           const d = await r.json().catch(() => ({}));
           if (d.erro === 'sessao_invalida') return forcarLogout();
           if (d.user) pintarSessao(d);
-        } catch (e) {
-          const top = document.getElementById('sessao-debug-top');
-          if (top) {
-            top.style.display = 'block';
-            top.style.color = 'var(--danger)';
-            top.textContent = 'erro sessão: ' + ((e && e.message) || e);
-          }
-        }
+        } catch (e) { /* ok */ }
       }
 
       document.getElementById('btn-logout')?.addEventListener('click', () => forcarLogout());
@@ -1191,7 +1167,7 @@
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
             esconderLogin();
-            location.href = '/?v=89';
+            location.href = '/?v=90';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu — tenta de novo');

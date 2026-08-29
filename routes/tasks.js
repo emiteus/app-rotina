@@ -87,7 +87,14 @@ router.get('/stats', async (req, res) => {
   const uid = requireUserId(req, res);
   if (!uid) return;
   try {
-    const historico = await all(`
+    // Prefere task_historico (agregados diários persistidos); overlay com tasks ao vivo
+    const histRows = await all(`
+      SELECT data, total, concluidas
+      FROM task_historico
+      WHERE user_id = $1 AND data >= CURRENT_DATE - INTERVAL '30 days'
+      ORDER BY data ASC
+    `, [uid]);
+    const liveRows = await all(`
       SELECT DATE(data_reset) AS data,
         COUNT(*)::int AS total,
         SUM(CASE WHEN concluida THEN 1 ELSE 0 END)::int AS concluidas
@@ -96,6 +103,28 @@ router.get('/stats', async (req, res) => {
         AND DATE(data_reset) >= CURRENT_DATE - INTERVAL '30 days'
       GROUP BY DATE(data_reset) ORDER BY DATE(data_reset) ASC
     `, [uid]);
+
+    const byDay = new Map();
+    histRows.forEach((h) => {
+      const d = ymdDe(h.data);
+      if (!d) return;
+      byDay.set(d, {
+        data: d,
+        total: Number(h.total) || 0,
+        concluidas: Number(h.concluidas) || 0
+      });
+    });
+    liveRows.forEach((h) => {
+      const d = ymdDe(h.data);
+      if (!d) return;
+      // Live sobrescreve o dia (mais atual, ex.: hoje)
+      byDay.set(d, {
+        data: d,
+        total: Number(h.total) || 0,
+        concluidas: Number(h.concluidas) || 0
+      });
+    });
+    const historico = [...byDay.values()].sort((a, b) => a.data.localeCompare(b.data));
 
     const catRows = await all(`
       SELECT COALESCE(categoria,'geral') AS c, COUNT(*)::int AS n FROM tasks
