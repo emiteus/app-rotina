@@ -4,7 +4,7 @@ const pkg = require('./package.json');
 
 contextBridge.exposeInMainWorld('electron', {
   appVersion: pkg.version,
-  webBuild: '93',
+  webBuild: '94',
   platform: process.platform,
   isDesktop: true
 });

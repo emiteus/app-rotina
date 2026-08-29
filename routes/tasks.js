@@ -294,10 +294,26 @@ router.delete('/:id', async (req, res) => {
   const uid = requireUserId(req, res);
   if (!uid) return;
   try {
+    const task = await get(`SELECT id, titulo FROM tasks WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
+    if (!task) return res.status(404).json({ erro: 'Tarefa não encontrada' });
+
+    const desativarRecorrente = req.body?.desativar_recorrente === true
+      || req.query.desativar_recorrente === '1';
+
     const r = await run(`DELETE FROM tasks WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
-    if (!r.rowCount) return res.status(404).json({ erro: 'Tarefa não encontrada' });
+
+    let recorrenteDesativada = false;
+    if (desativarRecorrente && task.titulo) {
+      const rec = await run(
+        `UPDATE tarefas_recorrentes SET ativa = false
+         WHERE user_id = $1 AND ativa = true AND lower(trim(titulo)) = lower(trim($2))`,
+        [uid, task.titulo]
+      );
+      recorrenteDesativada = (rec?.rowCount || 0) > 0;
+    }
+
     emitTaskUpdate('deletada', { id: req.params.id }, uid);
-    res.json({ msg: 'Tarefa deletada' });
+    res.json({ msg: 'Tarefa deletada', recorrente_desativada: recorrenteDesativada });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

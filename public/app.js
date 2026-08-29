@@ -4404,11 +4404,33 @@ async function marcarTarefa(id, concluida) {
 }
 
 async function deletarTarefa(id) {
+  const tarefa = allTasks.find(t => t.id === id);
   const ok = await confirmModal('Essa ação não pode ser desfeita.', 'Deletar tarefa?', '🗑️');
   if (!ok) return;
+
+  let desativarRecorrente = false;
+  if (tarefa?.titulo) {
+    try {
+      const recs = await fetch('/api/recorrentes').then(r => r.json());
+      const lista = Array.isArray(recs) ? recs : (recs.recorrentes || []);
+      const match = lista.find(r => r.ativa && r.titulo && r.titulo.trim().toLowerCase() === tarefa.titulo.trim().toLowerCase());
+      if (match) {
+        desativarRecorrente = await confirmModal(
+          `"${tarefa.titulo}" é recorrente e voltaria amanhã. Desativar a série também?`,
+          'Desativar recorrente?',
+          '🔁'
+        );
+      }
+    } catch (e) { /* segue só apagar o dia */ }
+  }
+
   try {
-    await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
-    toast('Tarefa removida', 'info');
+    await fetch(`/api/tasks/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ desativar_recorrente: desativarRecorrente })
+    });
+    toast(desativarRecorrente ? 'Tarefa e recorrente removidas' : 'Tarefa removida', 'info');
     carregarTarefas();
   } catch (err) {
     toast('Erro ao deletar', 'error');

@@ -13,8 +13,8 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=93">
-  <link rel="stylesheet" href="style-ranking.css?v=93">
+  <link rel="stylesheet" href="style.css?v=94">
+  <link rel="stylesheet" href="style-ranking.css?v=94">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
 <body>
   <script>
     (function () {
-      var V = '93';
+      var V = '94';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -1033,9 +1033,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=93"></script>
-  <script src="js/assist.js?v=93"></script>
-  <script src="app.js?v=93"></script>
+  <script src="js/fin-receitas.js?v=94"></script>
+  <script src="js/assist.js?v=94"></script>
+  <script src="app.js?v=94"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1186,7 +1186,7 @@
           const d = await r.json().catch(() => ({}));
           if (r.ok) {
             esconderLogin();
-            location.href = '/?v=93';
+            location.href = '/?v=94';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu  tenta de novo');
@@ -1271,7 +1271,7 @@
           if (typeof toast === 'function') toast('Permissão negada', 'error');
           return;
         }
-        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=93');
+        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=94');
         const reg = __pushRegistration;
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -1332,7 +1332,7 @@
     (async function () {
       try {
         if (!('serviceWorker' in navigator)) return _atualizarUiPush();
-        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=93').catch(() => null);
+        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=94').catch(() => null);
         const r = await fetch('/api/push/config');
         if (r.ok) __pushConfig = await r.json();
         _atualizarUiPush();
