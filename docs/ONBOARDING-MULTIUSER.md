@@ -8,7 +8,7 @@ App Rotina agora suporta **2 usuários** com dados isolados e ranking diário co
 2. No boot, `lib/migrate-multiuser.js` roda automaticamente:
    - Cria tabela `usuarios`
    - Adiciona `user_id` nas tabelas de dados
-   - Atribui dados existentes ao owner (`mateus` ou `OWNER_LOGIN`)
+   - Atribui dados existentes ao owner (`teus` ou `OWNER_LOGIN`)
 3. Opcional: rodar seed manualmente:
    ```bash
    cd app-rotina
@@ -19,7 +19,7 @@ App Rotina agora suporta **2 usuários** com dados isolados e ranking diário co
 
 | Variável | Descrição |
 |----------|-----------|
-| `OWNER_LOGIN` | Login do dono (default: `mateus`) |
+| `OWNER_LOGIN` | Login do dono (default: `teus`) |
 | `OWNER_SENHA` / `APP_PASSWORD` | Senha inicial do owner na migração |
 | `COLEGA_LOGIN` | Login do colega (default: `colega`) |
 | `COLEGA_SENHA` | Senha temporária do colega |

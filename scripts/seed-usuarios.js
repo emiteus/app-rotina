@@ -29,7 +29,7 @@ async function upsertUser({ id, login, nome, senha, cor }) {
 async function main() {
   await initDB();
 
-  const ownerLogin = process.env.OWNER_LOGIN || 'mateus';
+  const ownerLogin = process.env.OWNER_LOGIN || 'teus';
   const ownerNome = process.env.OWNER_NOME || 'Mateus';
   const ownerSenha = process.env.OWNER_SENHA || process.env.APP_PASSWORD || 'senha123';
 
