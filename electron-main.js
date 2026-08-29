@@ -10,6 +10,12 @@ autoUpdater.logger = log;
 const isDev = !app.isPackaged;
 
 const PROD_URL = 'https://app-rotina-production-f84e.up.railway.app/';
+/** Versão do frontend web — manter igual ao ?v= do index.html */
+const WEB_BUILD = '93';
+
+function urlProducao() {
+  return `${PROD_URL}?v=${WEB_BUILD}&electron=1&_=${Date.now()}`;
+}
 
 // Forçar Windows a agrupar/exibir o app com o nosso ID e ícone (não o do electron.exe).
 // Sufixo com versão força Windows a tratar como app "novo" e re-cachear o ícone —
@@ -97,8 +103,9 @@ function createWindow() {
 
   // Dev: localhost com server.js rodando local.
   // Prod (empacotado): aponta pra Railway — sem server embutido, sem segredo no .exe.
-  const startUrl = isDev ? 'http://localhost:3000' : PROD_URL;
+  const startUrl = isDev ? 'http://localhost:3000?v=' + WEB_BUILD : urlProducao();
   let paginaCarregou = false;
+  let reloadForcado = false;
 
   function urlOffline(motivo) {
     const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>App Rotina</title></head>
@@ -137,9 +144,15 @@ function createWindow() {
       paginaCarregou = true;
       clearTimeout(loadTimeout);
       mainWindow.webContents.setZoomFactor(0.95);
+      if (!reloadForcado && !isDev) {
+        reloadForcado = true;
+        mainWindow.webContents.reloadIgnoringCache();
+      }
     }
   });
-  mainWindow.loadURL(startUrl);
+  mainWindow.webContents.loadURL(startUrl, {
+    extraHeaders: 'Cache-Control: no-cache, no-store\r\nPragma: no-cache\r\n'
+  });
 
   // Windows: aplica AUMID+ícone nas propriedades da JANELA em cada momento crítico.
   // Uma chamada só nem sempre pega — Windows Explorer às vezes já cacheou.

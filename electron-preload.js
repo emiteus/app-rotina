@@ -1,9 +1,10 @@
 // Arquivo de preload - fornece APIs seguras do Electron para o renderer
 const { contextBridge } = require('electron');
+const pkg = require('./package.json');
 
 contextBridge.exposeInMainWorld('electron', {
-  // Versão do app
-  appVersion: '1.0.0',
-  // Plataforma
-  platform: process.platform
+  appVersion: pkg.version,
+  webBuild: '93',
+  platform: process.platform,
+  isDesktop: true
 });

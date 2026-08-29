@@ -40,6 +40,13 @@
           localStorage.setItem('app_build', V);
         }
       } catch (e) { /* ok */ }
+      try {
+        if (window.electron || /Electron/i.test(navigator.userAgent)) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+          }).catch(function () {});
+        }
+      } catch (e) { /* ok */ }
     })();
   </script>
   <!-- Sidebar -->
