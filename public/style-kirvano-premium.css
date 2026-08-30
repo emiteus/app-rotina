@@ -889,6 +889,34 @@ html body #dashboard .dashboard-mini-card .panel-header h3 {
   color: var(--text-muted) !important;
 }
 
+html body #dashboard .dashboard-mini-card {
+  min-height: 200px !important;
+}
+
+#dashboard #dash-ranking-card {
+  min-height: 148px !important;
+}
+
+#dashboard #dash-ranking-card .ranking-list {
+  min-height: 56px;
+}
+
+@media (min-width: 1100px) {
+  #dashboard .dashboard-chart-hero .chart-container {
+    height: 380px !important;
+    min-height: 340px !important;
+  }
+
+  html body #dashboard .dashboard-mini-card {
+    min-height: 240px !important;
+  }
+
+  html body #dashboard .dashboard-kpi-grid .card,
+  html body #dashboard .kpi-card {
+    min-height: 160px !important;
+  }
+}
+
 @media (max-width: 768px) {
   .dash-header-toolbar {
     width: 100%;
