@@ -369,19 +369,28 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 24px 0 calc(var(--sidebar-width) + 16px);
+  padding: 0 24px 0 12px;
   background: rgba(10, 10, 10, 0.92);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(12px);
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
 .topbar-brand {
   font-size: 17px;
   font-weight: 700;
-  letter-spacing: -0.04em;
-  text-transform: lowercase;
+  letter-spacing: -0.03em;
+  text-transform: none;
   color: var(--text-primary);
   flex-shrink: 0;
+  line-height: 1;
 }
 
 .topbar-journey {
@@ -390,7 +399,7 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-left: 8px;
+  margin-left: 12px;
 }
 
 .topbar-journey-label {
@@ -1272,12 +1281,9 @@ html body #push-btn-ativar {
   border: none !important;
 }
 
-/* ----- Sidebar toggle (desktop) — estilo Kirvano ----- */
-.sidebar-top {
-  display: none;
-}
-
+/* ----- Sidebar toggle (desktop) — na topbar ----- */
 .sidebar-toggle {
+  display: none;
   width: 36px;
   height: 36px;
   border: none;
@@ -1285,11 +1291,11 @@ html body #push-btn-ativar {
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
-  display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: background 0.18s ease, color 0.18s ease;
+  padding: 0;
 }
 
 .sidebar-toggle:hover {
@@ -1302,12 +1308,8 @@ html body #push-btn-ativar {
 }
 
 @media (min-width: 769px) {
-  .sidebar-top {
-    display: flex;
-    align-items: center;
-    margin-bottom: 14px;
-    padding: 0 10px;
-    min-height: 36px;
+  .sidebar-toggle {
+    display: inline-flex;
   }
 
   html body {
@@ -1321,7 +1323,7 @@ html body #push-btn-ativar {
   }
 
   .app-topbar {
-    transition: padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: none;
   }
 
   html.sidebar-collapsed {
@@ -1335,12 +1337,6 @@ html body #push-btn-ativar {
   html.sidebar-collapsed body aside.sidebar {
     width: var(--sidebar-width-collapsed) !important;
     padding: 68px 8px 20px !important;
-  }
-
-  html.sidebar-collapsed .sidebar-top {
-    justify-content: center;
-    padding: 0;
-    margin-bottom: 10px;
   }
 
   html.sidebar-collapsed .sidebar .logo {

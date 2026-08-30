@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=115">
-  <link rel="stylesheet" href="style-ranking.css?v=115">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=115">
+  <link rel="stylesheet" href="style.css?v=116">
+  <link rel="stylesheet" href="style-ranking.css?v=116">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=116">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
 <body>
   <script>
     (function () {
-      var V = '115';
+      var V = '116';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -61,15 +61,6 @@
   </script>
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="sidebar-top">
-      <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <line x1="4" y1="6" x2="20" y2="6"></line>
-          <line x1="4" y1="12" x2="20" y2="12"></line>
-          <line x1="4" y1="18" x2="20" y2="18"></line>
-        </svg>
-      </button>
-    </div>
     <div class="logo">
       <span class="logo-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -131,7 +122,16 @@
 
   <!-- Topbar global (estilo Kirvano) -->
   <header class="app-topbar">
-    <span class="topbar-brand">rotina</span>
+    <div class="topbar-left">
+      <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6"></line>
+          <line x1="4" y1="12" x2="20" y2="12"></line>
+          <line x1="4" y1="18" x2="20" y2="18"></line>
+        </svg>
+      </button>
+      <span class="topbar-brand">AppRotina</span>
+    </div>
     <div class="topbar-journey" title="Progresso da semana">
       <span class="topbar-journey-label">Sua semana</span>
       <div class="topbar-journey-track"><div class="topbar-journey-fill" id="topbar-journey-fill" style="width:0%"></div></div>
@@ -1094,9 +1094,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=115"></script>
-  <script src="js/assist.js?v=115"></script>
-  <script src="app.js?v=115"></script>
+  <script src="js/fin-receitas.js?v=116"></script>
+  <script src="js/assist.js?v=116"></script>
+  <script src="app.js?v=116"></script>
   <script>
     (function initSidebarToggle() {
       var btn = document.getElementById('sidebar-toggle');
