@@ -330,17 +330,20 @@ body {
   border-top-color: var(--border) !important;
 }
 
-/* ----- Botões (CTA branco estilo Finanças Kirvano) ----- */
+/* ----- Botões primários — teal sólido (estilo "Ativar notificações") ----- */
 .btn-primary {
-  background: #FFFFFF !important;
-  color: #0A0A0A !important;
+  background: var(--accent) !important;
+  background-image: none !important;
+  color: var(--accent-on) !important;
+  border: none !important;
   border-radius: 10px !important;
   font-weight: 600 !important;
   box-shadow: none !important;
 }
 
 .btn-primary:hover {
-  background: #E5E5E5 !important;
+  background: var(--accent-hover) !important;
+  color: var(--accent-on) !important;
   box-shadow: none !important;
 }
 
@@ -1150,4 +1153,40 @@ html body #dashboard .dashboard-mini-card {
 
 .kv-fp-btn-apply:hover {
   background: #E5E5E5;
+}
+
+/* Sobrescreve outline em style.css (~4721) — attribute selector era mais específico */
+html body .btn-primary,
+html body button.btn-primary,
+html body input[type="submit"].btn-primary,
+html body button[onclick*="adicionar"],
+html body button[onclick*="Adicionar"] {
+  background: var(--accent) !important;
+  background-image: none !important;
+  color: var(--accent-on) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 20px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+html body .btn-primary:hover,
+html body button.btn-primary:hover,
+html body button[onclick*="adicionar"]:hover,
+html body button[onclick*="Adicionar"]:hover {
+  background: var(--accent-hover) !important;
+  color: var(--accent-on) !important;
+  border: none !important;
+  transform: none !important;
+}
+
+html body .btn-primary-solid,
+html body #push-btn-ativar {
+  background: var(--accent) !important;
+  color: var(--accent-on) !important;
+  border: none !important;
 }
