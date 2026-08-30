@@ -5510,8 +5510,8 @@ function filterHistoricoPorPeriodo(historico) {
   });
 }
 
-function renderChartBars(historico) {
-  _chartHistorico = (historico || []).filter((h) => Number(h.total) > 0 || Number(h.concluidas) > 0);
+function renderChartBars(historicoFull) {
+  _chartHistorico = (historicoFull || []).filter((h) => Number(h.total) > 0 || Number(h.concluidas) > 0);
   const historico = _chartHistorico;
   const canvas = document.getElementById('chart-bars');
   if (!canvas) return;
