@@ -73,10 +73,19 @@ function abrirAssistente() {
   _assistOpen = true;
   const panel = document.getElementById('assist-panel');
   const fab = document.getElementById('assist-fab');
+  const backdrop = document.getElementById('assist-backdrop');
   const mobile = isAssistMobile();
   document.body.classList.toggle('assist-open', true);
   document.body.classList.toggle('assist-mobile-tab', mobile);
-  if (panel) panel.classList.add('open');
+  if (backdrop) {
+    backdrop.hidden = false;
+    requestAnimationFrame(() => backdrop.classList.add('open'));
+  }
+  if (panel) {
+    // Garante que o browser aplique o estado fechado antes de animar a abertura
+    void panel.offsetWidth;
+    panel.classList.add('open');
+  }
   if (fab) fab.classList.toggle('hidden', true);
 
   if (mobile) {
@@ -90,19 +99,29 @@ function abrirAssistente() {
     _assistCarregado = true;
     assistAbrirUltimaOuNova();
   }
-  setTimeout(() => document.getElementById('assist-input')?.focus(), 50);
+  setTimeout(() => document.getElementById('assist-input')?.focus(), 280);
 }
 
 function fecharAssistente(opts) {
   _assistOpen = false;
   const panel = document.getElementById('assist-panel');
   const fab = document.getElementById('assist-fab');
+  const backdrop = document.getElementById('assist-backdrop');
   document.body.classList.remove('assist-open', 'assist-mobile-tab');
   if (panel) panel.classList.remove('open');
+  if (backdrop) {
+    backdrop.classList.remove('open');
+    const hideBackdrop = () => {
+      if (!_assistOpen) backdrop.hidden = true;
+      backdrop.removeEventListener('transitionend', hideBackdrop);
+    };
+    backdrop.addEventListener('transitionend', hideBackdrop);
+    setTimeout(hideBackdrop, 420);
+  }
   if (fab) fab.classList.toggle('hidden', isAssistMobile());
   if (_assistHistOpen) assistFecharHistorico();
 
-  // Mobile: Ã— volta pro dashboard (a menos que outra aba esteja sendo aberta)
+  // Mobile: × volta pro dashboard (a menos que outra aba esteja sendo aberta)
   if (!opts?.manterAba && isAssistMobile()) {
     const dash = document.querySelector('.nav-btn[data-tab="dashboard"]');
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));

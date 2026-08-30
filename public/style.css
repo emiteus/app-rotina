@@ -5977,6 +5977,27 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   background: transparent !important;
 }
 
+.assist-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2390;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.38s ease,
+    visibility 0s linear 0.38s;
+}
+.assist-backdrop.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity 0.32s ease,
+    visibility 0s linear 0s;
+}
+
 .assist-panel {
   position: fixed;
   z-index: 2400;
@@ -5997,33 +6018,42 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
   border-top: none;
   border-right: none;
   border-bottom: none;
-  transform: translateX(105%);
-  opacity: 1;
+  transform: translateX(104%);
+  opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  will-change: transform, opacity;
   transition:
-    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.28s,
-    width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.32s ease,
+    visibility 0s linear 0.42s,
+    width 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .assist-panel.open {
   transform: translateX(0);
+  opacity: 1;
   pointer-events: auto;
   visibility: visible;
+  transition:
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease,
+    visibility 0s linear 0s,
+    width 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .assist-panel.hist-open {
   width: calc(var(--assist-dock-w) + var(--assist-hist-w));
 }
 body.assist-open {
   padding-right: var(--assist-dock-w);
-  transition: padding-right 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: padding-right 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 body.assist-open:has(.assist-panel.hist-open) {
   padding-right: calc(var(--assist-dock-w) + var(--assist-hist-w));
 }
 @media (prefers-reduced-motion: reduce) {
   .assist-panel,
-  body.assist-open { transition: none; }
+  .assist-backdrop,
+  body.assist-open { transition: none !important; }
 }
 
 .assist-main {
@@ -6440,16 +6470,23 @@ body.assist-open:has(.assist-panel.hist-open) {
     border: none;
     border-radius: 0;
     box-shadow: none;
-    transform: translateY(8px);
+    transform: translateY(18px) scale(0.985);
     opacity: 0;
     transition:
-      transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 0.22s ease,
-      visibility 0.26s;
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.32s ease,
+      visibility 0s linear 0.4s;
   }
   .assist-panel.open {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
+    transition:
+      transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.28s ease,
+      visibility 0s linear 0s;
+  }
+  .assist-backdrop {
+    display: none !important;
   }
   .assist-panel.hist-open {
     width: 100% !important;

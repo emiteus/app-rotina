@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=118">
-  <link rel="stylesheet" href="style-ranking.css?v=118">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=118">
+  <link rel="stylesheet" href="style.css?v=119">
+  <link rel="stylesheet" href="style-ranking.css?v=119">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=119">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
 <body>
   <script>
     (function () {
-      var V = '118';
+      var V = '119';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -1009,6 +1009,7 @@
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
   </button>
+  <div class="assist-backdrop" id="assist-backdrop" hidden onclick="fecharAssistente()" aria-hidden="true"></div>
   <div class="assist-panel" id="assist-panel" role="dialog" aria-label="Assistente">
     <aside class="assist-historico" id="assist-historico" hidden aria-label="Conversas">
       <div class="assist-historico-head">
@@ -1088,9 +1089,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=118"></script>
-  <script src="js/assist.js?v=118"></script>
-  <script src="app.js?v=118"></script>
+  <script src="js/fin-receitas.js?v=119"></script>
+  <script src="js/assist.js?v=119"></script>
+  <script src="app.js?v=119"></script>
   <script>
     (function initSidebarToggle() {
       var btn = document.getElementById('sidebar-toggle');
