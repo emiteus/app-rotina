@@ -4,7 +4,7 @@ const pkg = require('./package.json');
 
 contextBridge.exposeInMainWorld('electron', {
   appVersion: pkg.version,
-  webBuild: '98',
+  webBuild: '99',
   platform: process.platform,
   isDesktop: true,
   auth: {

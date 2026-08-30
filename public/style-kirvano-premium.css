@@ -1,77 +1,112 @@
 /* ============================================================
-   Kirvano Premium Layer — tokens + componentes
-   Referência: kirvano.com + docs dashboard (saldo, KPIs, cards)
+   Kirvano Premium — baseado nos prints reais do dashboard
+   Teal #2DD4BF, fundo #0A0A0A, cards #161616, sidebar com labels
    ============================================================ */
 
 :root {
-  --bg: #0C0C0E;
-  --bg-primary: #0C0C0E;
-  --bg-secondary: #101012;
-  --bg-tertiary: #18181B;
-  --bg-card: #141416;
-  --bg-card-hover: #1A1A1E;
-  --card-bg: #141416;
-  --surface: #141416;
-  --surface-elevated: #1C1C20;
+  --bg: #0A0A0A;
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #0A0A0A;
+  --bg-tertiary: #141414;
+  --bg-card: #161616;
+  --bg-card-hover: #1A1A1A;
+  --card-bg: #161616;
+  --surface: #161616;
+  --surface-elevated: #1C1C1C;
 
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
 
-  --text-primary: #FAFAFA;
-  --text-secondary: #A1A1AA;
-  --text-muted: #71717A;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A1A1A1;
+  --text-muted: #737373;
 
-  /* Verde Kirvano — CTAs, sucesso, progresso */
-  --accent: #22C55E;
-  --accent-hover: #16A34A;
-  --accent-dim: rgba(34, 197, 94, 0.12);
-  --accent-glow: rgba(34, 197, 94, 0.25);
-  --accent-on: #052E16;
+  /* Teal Kirvano — gráficos, barras, destaques */
+  --accent: #2DD4BF;
+  --accent-hover: #14B8A6;
+  --accent-dim: rgba(45, 212, 191, 0.1);
+  --accent-glow: rgba(45, 212, 191, 0.35);
+  --accent-on: #042F2E;
 
   --success: #4ADE80;
+  --success-dim: rgba(74, 222, 128, 0.12);
   --danger: #F87171;
   --warning: #FBBF24;
 
   --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
-  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 8px 32px rgba(0, 0, 0, 0.35);
-  --shadow-card-hover: 0 0 0 1px rgba(34, 197, 94, 0.15), 0 12px 40px rgba(0, 0, 0, 0.4);
+  --shadow-card: none;
+  --shadow-card-hover: none;
 
   --font-ui: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --sidebar-width: 220px;
 }
 
-/* Fundo com profundidade sutil */
 body {
-  background:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 197, 94, 0.06), transparent),
-    var(--bg-primary) !important;
+  background: var(--bg-primary) !important;
 }
 
-/* ----- Sidebar ----- */
-.sidebar {
-  background: rgba(12, 12, 14, 0.95) !important;
-  border-right: 1px solid var(--border) !important;
-  backdrop-filter: blur(12px);
-}
+/* ----- Sidebar estilo Kirvano (com labels) ----- */
+@media (min-width: 769px) {
+  body {
+    padding-left: var(--sidebar-width) !important;
+  }
 
-.logo-icon {
-  background: var(--accent) !important;
-  color: var(--accent) !important;
-  -webkit-text-fill-color: initial !important;
-  border-radius: 10px;
-  padding: 4px;
+  .sidebar {
+    width: var(--sidebar-width) !important;
+    padding: 20px 14px !important;
+    background: var(--bg-primary) !important;
+    border-right: 1px solid var(--border) !important;
+  }
+
+  .sidebar .logo-text,
+  .sidebar .nav-btn span:not(.nav-icon),
+  .sidebar .sidebar-footer {
+    display: block !important;
+  }
+
+  .sidebar .logo {
+    justify-content: flex-start !important;
+    padding: 0 10px !important;
+    margin-bottom: 28px !important;
+  }
+
+  .nav-btn {
+    justify-content: flex-start !important;
+    padding: 10px 12px !important;
+    gap: 12px !important;
+    font-size: 14px !important;
+    border-radius: 10px !important;
+  }
+
+  .nav-btn .nav-icon {
+    filter: none !important;
+    opacity: 0.7;
+  }
+
+  .nav-btn.active .nav-icon {
+    opacity: 1;
+  }
 }
 
 .logo-text {
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-weight: 700 !important;
+  font-size: 18px !important;
+  letter-spacing: -0.04em !important;
+  text-transform: lowercase;
+}
+
+.logo-icon {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  -webkit-text-fill-color: initial !important;
+  padding: 0 !important;
 }
 
 .nav-btn {
-  border-radius: 12px !important;
-  color: var(--text-muted) !important;
+  color: var(--text-secondary) !important;
 }
 
 .nav-btn:hover {
@@ -80,93 +115,105 @@ body {
 }
 
 .nav-btn.active {
-  background: var(--accent-dim) !important;
-  color: var(--accent) !important;
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2) !important;
+  background: #1F1F1F !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
 }
 
-@media (min-width: 769px) {
-  .nav-btn.active {
-    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2) !important;
-  }
+.sidebar-footer {
+  border-top-color: var(--border) !important;
 }
 
-/* ----- Main / header ----- */
+.data-hoje {
+  color: var(--text-muted) !important;
+  font-size: 11px !important;
+}
+
+.hora-agora {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+/* ----- Main ----- */
 .main {
-  padding: 28px 36px 48px !important;
+  padding: 24px 32px 48px !important;
+  max-width: 1280px;
 }
 
 .dash-header {
-  margin-bottom: 28px !important;
+  margin-bottom: 24px !important;
+  align-items: flex-start !important;
 }
 
 .dash-eyebrow {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  margin: 0 0 6px 0;
+  display: none;
 }
 
 #dashboard .page-header h1,
 .dash-header h1 {
-  font-size: 30px !important;
+  font-size: 28px !important;
   font-weight: 700 !important;
-  letter-spacing: -0.03em !important;
-  margin: 0 !important;
+  letter-spacing: -0.02em !important;
 }
 
 #dashboard .page-subtitle {
-  margin-top: 6px;
-  color: var(--text-muted) !important;
+  font-size: 14px !important;
+  color: var(--text-secondary) !important;
+  margin-top: 4px !important;
+  font-weight: 400 !important;
 }
 
 .dash-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding-top: 4px;
 }
 
 .user-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px 6px 10px;
-  border-radius: 999px;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
+  padding: 0;
+  background: transparent;
+  border: none;
+  gap: 10px;
 }
 
 .user-pill-dot {
-  width: 8px;
-  height: 8px;
+  display: none;
+}
+
+.header-user-name {
+  display: none !important;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent-glow);
+  background: #262626;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
 }
 
 .btn-logout-top {
   border-radius: 10px !important;
-  padding: 8px 14px !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
   font-size: 13px !important;
-  border-color: var(--border) !important;
-  transition: border-color 0.18s, color 0.18s, background 0.18s;
 }
 
 .btn-logout-top:hover {
-  border-color: var(--border-strong) !important;
-  background: rgba(255, 255, 255, 0.03) !important;
   color: var(--text-primary) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
 }
 
-/* ----- KPI cards (estilo Kirvano) ----- */
+/* ----- KPI cards ----- */
 .dashboard-kpi-grid {
-  gap: 14px !important;
-  margin-bottom: 18px !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
 }
 
 .dashboard-kpi-grid .card,
@@ -174,132 +221,74 @@ body {
   background: var(--bg-card) !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-md) !important;
-  padding: 22px 24px !important;
-  min-height: 130px !important;
-  box-shadow: var(--shadow-card) !important;
-  transition: box-shadow 0.22s ease, border-color 0.22s ease, transform 0.22s ease !important;
+  padding: 20px 22px !important;
+  min-height: 120px !important;
+  box-shadow: none !important;
 }
 
 .dashboard-kpi-grid .card:hover,
 .kpi-card:hover {
-  border-color: rgba(34, 197, 94, 0.12) !important;
-  box-shadow: var(--shadow-card-hover) !important;
-  transform: translateY(-1px);
+  border-color: var(--border-strong) !important;
+  transform: none !important;
+  background: var(--bg-card-hover) !important;
 }
 
 .kpi-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .kpi-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.kpi-icon svg {
-  width: 20px;
-  height: 20px;
-}
-
-.kpi-icon-money {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--accent);
-}
-
-.kpi-icon-tasks {
-  background: rgba(59, 130, 246, 0.12);
-  color: #60A5FA;
-}
-
-.kpi-icon-rank {
-  background: rgba(251, 191, 36, 0.12);
-  color: #FBBF24;
+  display: none !important;
 }
 
 .dashboard-kpi-grid .card-label {
   font-size: 13px !important;
   color: var(--text-secondary) !important;
-  font-weight: 500 !important;
-  padding-right: 0 !important;
-  flex: 1;
-  line-height: 1.35;
+  font-weight: 400 !important;
 }
 
 .dashboard-kpi-grid .card-value {
-  font-size: 28px !important;
+  font-size: 26px !important;
   font-weight: 700 !important;
-  letter-spacing: -0.03em !important;
-  color: var(--text-primary) !important;
-  line-height: 1.1 !important;
+  letter-spacing: -0.02em !important;
 }
 
 .kpi-pct-big {
-  font-size: 32px !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.03em !important;
-  color: var(--accent) !important;
+  font-size: 26px !important;
+  color: var(--text-primary) !important;
 }
 
 .kpi-pct-sub {
-  font-size: 14px !important;
-  font-weight: 500 !important;
+  font-size: 13px !important;
   color: var(--text-muted) !important;
-  margin-left: 4px;
-}
-
-.card-delta {
-  position: static !important;
-  display: inline-flex !important;
-  margin-left: 8px;
-  vertical-align: middle;
-  font-size: 11px !important;
-  padding: 4px 8px !important;
-  border-radius: 8px !important;
 }
 
 .card-delta.card-delta-pos {
-  background: rgba(34, 197, 94, 0.14) !important;
-  color: var(--accent) !important;
-}
-
-.card-delta.card-delta-neg {
-  background: rgba(248, 113, 113, 0.14) !important;
-  color: var(--danger) !important;
+  background: var(--success-dim) !important;
+  color: var(--success) !important;
 }
 
 .dashboard-kpi-grid .card-mini {
   font-size: 12px !important;
-  margin-top: 4px !important;
+  color: var(--text-muted) !important;
 }
 
 .dashboard-kpi-grid .card-mini .mini-up {
-  color: var(--accent) !important;
+  color: var(--success) !important;
 }
 
 .dashboard-kpi-grid .card-bar {
-  height: 4px !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-radius: 999px !important;
-  margin-top: 12px !important;
+  height: 3px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .dashboard-kpi-grid .card-bar-fill {
-  background: linear-gradient(90deg, var(--accent), #4ADE80) !important;
-  border-radius: 999px !important;
+  background: var(--accent) !important;
 }
 
-/* ----- Painéis secundários ----- */
+/* ----- Painéis ----- */
 .dashboard-extra-grid {
-  gap: 14px !important;
+  gap: 12px !important;
 }
 
 .dashboard-mini-card,
@@ -307,78 +296,65 @@ body {
   background: var(--bg-card) !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-md) !important;
-  box-shadow: var(--shadow-card) !important;
-  padding: 20px 22px !important;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  box-shadow: none !important;
+  padding: 18px 20px !important;
 }
 
 .dashboard-mini-card:hover {
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: var(--shadow-card-hover) !important;
-  transform: translateY(-1px);
+  transform: none !important;
+  border-color: var(--border-strong) !important;
 }
 
 .dashboard-mini-card .panel-header h3,
 .panel-header h3 {
   font-size: 14px !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   color: var(--text-primary) !important;
 }
 
-.mini-panel-body .mini-empty {
-  color: var(--text-muted) !important;
-  font-size: 13px;
+/* ----- Ranking ----- */
+.ranking-pct {
+  color: var(--accent) !important;
+  font-size: 15px !important;
 }
 
-/* ----- Ranking ----- */
-.ranking-bar {
-  background: rgba(255, 255, 255, 0.06) !important;
-  height: 5px !important;
+.ranking-qty {
+  font-size: 11px !important;
 }
 
 .ranking-bar-fill {
-  background: linear-gradient(90deg, var(--accent), #4ADE80) !important;
-}
-
-.ranking-pct {
-  color: var(--accent) !important;
+  background: var(--accent) !important;
 }
 
 .ranking-lider {
-  color: var(--text-muted) !important;
-  font-size: 12px !important;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
-  margin-top: 12px !important;
+  border-top-color: var(--border) !important;
 }
 
-/* ----- Botões globais ----- */
+/* ----- Botões (CTA branco estilo Finanças Kirvano) ----- */
 .btn-primary {
-  background: var(--accent) !important;
-  color: var(--accent-on) !important;
-  border-radius: 12px !important;
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border-radius: 10px !important;
   font-weight: 600 !important;
-  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.25) !important;
+  box-shadow: none !important;
 }
 
 .btn-primary:hover {
-  background: var(--accent-hover) !important;
-  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3) !important;
+  background: #E5E5E5 !important;
+  box-shadow: none !important;
 }
 
-/* ----- Inputs ----- */
 input:focus, select:focus, textarea:focus {
-  border-color: rgba(34, 197, 94, 0.5) !important;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(45, 212, 191, 0.45) !important;
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.12) !important;
 }
 
-/* ----- Scrollbar ----- */
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1) !important;
+.fin-subtab-btn.active {
+  border-bottom-color: var(--accent) !important;
+  color: var(--text-primary) !important;
 }
 
 @media (max-width: 768px) {
-  .main { padding: 20px 16px 100px !important; }
-  .dash-header { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
-  .dashboard-kpi-grid .card-value { font-size: 24px !important; }
+  .main { padding: 18px 14px 96px !important; }
+  .dashboard-kpi-grid .card-value { font-size: 22px !important; }
 }

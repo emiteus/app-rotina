@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#09090B">
+  <meta name="theme-color" content="#0A0A0A">
   <title>App Rotina</title>
 
   <!-- PWA: adicionar como app na tela inicial (sem standalone, iOS cuida das safe areas) -->
@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=98">
-  <link rel="stylesheet" href="style-ranking.css?v=98">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=98">
+  <link rel="stylesheet" href="style.css?v=99">
+  <link rel="stylesheet" href="style-ranking.css?v=99">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=99">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '98';
+      var V = '99';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -120,13 +120,11 @@
         <div class="dash-header-text">
           <p class="dash-eyebrow">Dashboard</p>
           <h1><span id="saudacao"></span></h1>
-          <p class="page-subtitle">Seu resumo do dia</p>
+          <p class="page-subtitle">Pequenas ações geram grandes resultados.</p>
         </div>
         <div class="dash-header-actions">
-          <div class="user-pill" title="Usuário logado">
-            <span class="user-pill-dot"></span>
-            <span id="header-user-name" class="header-user-name"></span>
-          </div>
+          <span id="header-user-avatar" class="user-avatar" title="Usuário logado">?</span>
+          <span id="header-user-name" class="header-user-name" style="display:none"></span>
           <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
         </div>
       </div>
@@ -1029,9 +1027,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=98"></script>
-  <script src="js/assist.js?v=98"></script>
-  <script src="app.js?v=98"></script>
+  <script src="js/fin-receitas.js?v=99"></script>
+  <script src="js/assist.js?v=99"></script>
+  <script src="app.js?v=99"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1230,8 +1228,21 @@
         if (!user) return;
         window.__currentUser = user;
         if (user.login) localStorage.setItem(LS_LAST_LOGIN, user.login);
-        const el = document.getElementById('header-user-name');
-        if (el) el.textContent = user.nome || user.login || '';
+        const saud = document.getElementById('saudacao');
+        if (saud) {
+          const primeiro = String(user.nome || user.login || '').trim().split(/\s+/)[0];
+          saud.textContent = primeiro ? `Olá, ${primeiro}` : (typeof saudacao === 'function' ? saudacao() : 'Olá');
+        }
+        const av = document.getElementById('header-user-avatar');
+        if (av) {
+          const nome = String(user.nome || user.login || '?').trim();
+          const parts = nome.split(/\s+/).filter(Boolean);
+          const ini = parts.length >= 2
+            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+            : nome.slice(0, 2).toUpperCase();
+          av.textContent = ini || '?';
+          av.title = nome;
+        }
         if (Number(user.stats?.financeiro) > 0 || Number(user.stats?.tasks) > 0) {
           setTimeout(() => {
             if (typeof carregarTransacoes === 'function') carregarTransacoes();
@@ -1341,7 +1352,7 @@
               return;
             }
             esconderLogin();
-            location.href = '/?v=98';
+            location.href = '/?v=99';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu  tenta de novo');
@@ -1431,7 +1442,7 @@
           if (typeof toast === 'function') toast('Permissão negada', 'error');
           return;
         }
-        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=98');
+        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=99');
         const reg = __pushRegistration;
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -1492,7 +1503,7 @@
     (async function () {
       try {
         if (!('serviceWorker' in navigator)) return _atualizarUiPush();
-        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=98').catch(() => null);
+        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=99').catch(() => null);
         const r = await fetch('/api/push/config');
         if (r.ok) __pushConfig = await r.json();
         _atualizarUiPush();

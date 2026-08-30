@@ -1,5 +1,5 @@
 // App Rotina — Service Worker (Web Push + cache bust)
-const CACHE = 'app-rotina-v98';
+const CACHE = 'app-rotina-v99';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
