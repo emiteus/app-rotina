@@ -14,7 +14,6 @@ let currentTaskFilter = 'todas';
 let currentFinFilter = 'todas';
 let performanceChart = null;
 let currentChartType = 'line';
-let dashSaldoChart = null;
 let dashPeriodo = { inicio: null, fim: null };
 let dashValoresVisiveis = true;
 let notificacaoPermitida = false;
@@ -6090,95 +6089,6 @@ function initDashToolbar() {
   }
 }
 
-function renderDashSaldoChart(inicio, fim) {
-  const canvas = document.getElementById('dash-saldo-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-
-  const days = [];
-  const start = new Date(`${inicio}T12:00:00`);
-  const end = new Date(`${fim}T12:00:00`);
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
-
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    days.push(d.toLocaleDateString('en-CA'));
-  }
-
-  const byDay = Object.fromEntries(days.map((day) => [day, 0]));
-  (allTransactions || []).forEach((t) => {
-    const dia = (t.data || '').toString().slice(0, 10);
-    if (!dia || dia < inicio || dia > fim) return;
-    const v = parseFloat(t.valor) || 0;
-    byDay[dia] = (byDay[dia] || 0) + (t.tipo === 'entrada' ? v : -v);
-  });
-
-  let acc = 0;
-  const values = days.map((day) => {
-    acc += byDay[day] || 0;
-    return acc;
-  });
-  const labels = days.map((day) => {
-    const d = new Date(`${day}T12:00:00`);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-  });
-
-  if (dashSaldoChart) dashSaldoChart.destroy();
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, 88);
-  gradient.addColorStop(0, 'rgba(45, 212, 191, 0.22)');
-  gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
-
-  dashSaldoChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        borderColor: '#2DD4BF',
-        backgroundColor: gradient,
-        borderWidth: 2,
-        fill: true,
-        tension: 0.35,
-        pointRadius: 0,
-        pointHoverRadius: 3
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { intersect: false, mode: 'index' },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1C1C1C',
-          borderColor: 'rgba(255,255,255,0.08)',
-          borderWidth: 1,
-          titleColor: '#A1A1A1',
-          bodyColor: '#FFFFFF',
-          callbacks: {
-            label(ctx) {
-              const v = ctx.parsed.y;
-              return `Acumulado: ${formatBRL(v)}`;
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          display: true,
-          grid: { display: false },
-          border: { display: false },
-          ticks: {
-            maxTicksLimit: 7,
-            color: '#737373',
-            font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" }
-          }
-        },
-        y: { display: false }
-      }
-    }
-  });
-}
-
 function atualizarDashboard() {
   // Tarefas de HOJE apenas (corrigido: antes contava TODAS)
   const hoje = hojeLocal();
@@ -6215,7 +6125,6 @@ function atualizarDashboard() {
   }
   if (dashEnt) dashEnt.textContent = formatBRL(entradas).replace(/^R\$\s*/, '');
   if (dashSai) dashSai.textContent = formatBRL(saidas).replace(/^R\$\s*/, '');
-  renderDashSaldoChart(corteInicio, corteFim);
 
   // Deltas dos KPIs (Kirvano-style)
   _atualizarDeltasKPI(concluidas, total);

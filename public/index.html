@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=102">
-  <link rel="stylesheet" href="style-ranking.css?v=102">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=102">
+  <link rel="stylesheet" href="style.css?v=103">
+  <link rel="stylesheet" href="style-ranking.css?v=103">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=103">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '102';
+      var V = '103';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -152,9 +152,9 @@
         </div>
       </div>
 
-      <!-- 3 KPI cards, estilo Kirvano -->
+      <!-- 3 KPI cards compactos -->
       <div class="cards-grid dashboard-kpi-grid">
-        <div class="card kpi-card kpi-card-saldo">
+        <div class="card kpi-card">
           <div class="kpi-card-top">
             <span class="kpi-icon kpi-icon-money" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/></svg>
@@ -162,12 +162,9 @@
             <div class="card-label">Saldo total <span class="card-delta" id="dash-saldo-delta"></span></div>
           </div>
           <div class="card-value" id="dash-saldo">R$ 0,00</div>
-          <div class="card-mini kpi-card-mini-row">
+          <div class="card-mini">
             <span class="mini-up">+ <span id="dash-entradas">0,00</span></span>
             <span class="mini-down">− <span id="dash-saidas">0,00</span></span>
-          </div>
-          <div class="kpi-chart-wrap" aria-hidden="true">
-            <canvas id="dash-saldo-chart"></canvas>
           </div>
         </div>
 
@@ -201,7 +198,7 @@
       </div>
 
       <!-- 4 cards Kirvano-style embaixo -->
-      <div class="dashboard-extra-grid" style="margin-top:20px;">
+      <div class="dashboard-extra-grid">
         <div class="panel dashboard-mini-card" onclick="trocarAba('financeiro')" style="cursor:pointer;">
           <div class="panel-header">
             <h3>Alertas do dia</h3>

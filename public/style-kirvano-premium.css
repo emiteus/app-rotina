@@ -810,33 +810,26 @@ input:focus, select:focus, textarea:focus {
   pointer-events: none;
 }
 
-/* ----- KPI hero saldo + chart ----- */
-@media (min-width: 900px) {
-  .dashboard-kpi-grid {
-    grid-template-columns: 2fr 1fr 1fr !important;
-  }
+/* ----- KPI cards — 3 colunas iguais, compactos ----- */
+.dashboard-kpi-grid {
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+  grid-template-columns: repeat(3, 1fr) !important;
 }
 
-.kpi-card-saldo {
-  min-height: 200px !important;
-  display: flex !important;
-  flex-direction: column !important;
+.dashboard-kpi-grid .card,
+.kpi-card {
+  min-height: 120px !important;
 }
 
-.kpi-card-mini-row {
-  margin-top: 6px !important;
+#dashboard .dashboard-extra-grid {
+  margin-top: 12px !important;
+  gap: 12px !important;
 }
 
-.kpi-chart-wrap {
-  flex: 1;
-  min-height: 88px;
-  margin-top: 12px;
-  position: relative;
-}
-
-.kpi-chart-wrap canvas {
-  width: 100% !important;
-  height: 100% !important;
+.dash-header {
+  margin-bottom: 20px !important;
+  gap: 12px !important;
 }
 
 .dashboard-kpi-grid .card-label {
