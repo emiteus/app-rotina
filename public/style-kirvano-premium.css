@@ -1029,6 +1029,19 @@ html body #dashboard .dashboard-mini-card {
   display: none !important;
 }
 
+.flatpickr-calendar.kv-range-picker .flatpickr-innerContainer,
+.flatpickr-calendar.kv-range-picker .flatpickr-rContainer,
+.flatpickr-calendar.kv-range-picker .flatpickr-days {
+  overflow: visible !important;
+}
+
+.flatpickr-calendar.kv-range-picker .dayContainer {
+  padding: 4px 2px 8px !important;
+  min-width: 280px !important;
+  max-width: 280px !important;
+  width: 280px !important;
+}
+
 .flatpickr-calendar.kv-range-picker .flatpickr-months {
   padding: 0 6px 10px !important;
 }
@@ -1054,51 +1067,118 @@ html body #dashboard .dashboard-mini-card {
   font-weight: 600 !important;
 }
 
+.flatpickr-calendar.kv-range-picker .flatpickr-weekdays {
+  padding: 0 2px !important;
+}
+
 .flatpickr-calendar.kv-range-picker .flatpickr-weekday {
   font-size: 11px !important;
   color: var(--text-muted) !important;
   text-transform: lowercase !important;
+  max-width: 38px !important;
+  width: 14.2857143% !important;
 }
 
 .flatpickr-calendar.kv-range-picker .flatpickr-day {
-  border-radius: 10px !important;
-  max-width: 40px !important;
-  height: 40px !important;
-  line-height: 40px !important;
-  margin: 2px !important;
+  border-radius: 8px !important;
+  max-width: 38px !important;
+  width: 14.2857143% !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  margin: 2px 0 !important;
   color: var(--text-primary) !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .flatpickr-calendar.kv-range-picker .flatpickr-day.prevMonthDay,
 .flatpickr-calendar.kv-range-picker .flatpickr-day.nextMonthDay {
   color: var(--text-muted) !important;
-  opacity: 0.45 !important;
+  opacity: 0.4 !important;
 }
 
-.flatpickr-calendar.kv-range-picker .flatpickr-day:hover {
+.flatpickr-calendar.kv-range-picker .flatpickr-day:hover,
+.flatpickr-calendar.kv-range-picker .flatpickr-day:focus {
   background: rgba(255, 255, 255, 0.08) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .flatpickr-calendar.kv-range-picker .flatpickr-day.today {
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
   color: var(--text-primary) !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
+.flatpickr-calendar.kv-range-picker .flatpickr-day.today:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Início / fim do período — branco sólido */
 .flatpickr-calendar.kv-range-picker .flatpickr-day.startRange,
 .flatpickr-calendar.kv-range-picker .flatpickr-day.endRange,
 .flatpickr-calendar.kv-range-picker .flatpickr-day.selected.startRange,
-.flatpickr-calendar.kv-range-picker .flatpickr-day.selected.endRange {
+.flatpickr-calendar.kv-range-picker .flatpickr-day.selected.endRange,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.startRange:hover,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.endRange:hover {
   background: #FFFFFF !important;
   color: #0A0A0A !important;
-  border-color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 8px !important;
   font-weight: 600 !important;
+  box-shadow: none !important;
+  z-index: 2;
 }
 
-.flatpickr-calendar.kv-range-picker .flatpickr-day.inRange {
+/* Dias no meio do período — faixa contínua sem “colchetes” */
+.flatpickr-calendar.kv-range-picker .flatpickr-day.inRange,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.prevMonthDay.inRange,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.nextMonthDay.inRange,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.today.inRange {
   background: rgba(255, 255, 255, 0.1) !important;
   color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-day.inRange:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+/* Mesmo dia selecionado 2x */
+.flatpickr-calendar.kv-range-picker .flatpickr-day.startRange.endRange {
+  border-radius: 8px !important;
+}
+
+/*
+  flatpickr CDN (multiMonth) injeta box-shadow branco nos domingos do 2º mês:
+  .multiMonth .dayContainer:nth-child(n+2) .inRange:nth-child(7n+1)
+  — precisa de especificidade >= essa regra.
+*/
+html body .flatpickr-calendar.kv-range-picker.multiMonth .flatpickr-days .dayContainer .flatpickr-day.inRange,
+html body .flatpickr-calendar.kv-range-picker.multiMonth .flatpickr-days .dayContainer .flatpickr-day.inRange:nth-child(7n+1),
+html body .flatpickr-calendar.kv-range-picker.multiMonth .flatpickr-days .dayContainer .flatpickr-day.inRange:nth-child(7n+7),
+html body .flatpickr-calendar.kv-range-picker.multiMonth .flatpickr-days .dayContainer:nth-child(n+1) .flatpickr-day.inRange:nth-child(7n+7),
+html body .flatpickr-calendar.kv-range-picker.multiMonth .flatpickr-days .dayContainer:nth-child(n+2) .flatpickr-day.inRange:nth-child(7n+1),
+html body .flatpickr-calendar.kv-range-picker.multiMonth .flatpickr-days .dayContainer:nth-child(n+2) .flatpickr-day.prevMonthDay.inRange:nth-child(7n+1),
+html body .flatpickr-calendar.kv-range-picker.multiMonth .flatpickr-days .dayContainer:nth-child(n+2) .flatpickr-day.nextMonthDay.inRange:nth-child(7n+1) {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  background: rgba(255, 255, 255, 0.1) !important;
   border-color: transparent !important;
-  box-shadow: -5px 0 0 rgba(255, 255, 255, 0.1), 5px 0 0 rgba(255, 255, 255, 0.1);
+  border-radius: 0 !important;
+}
+
+/* Separador entre os 2 meses — cinza sutil, não branco */
+html body .flatpickr-calendar.kv-range-picker .dayContainer + .dayContainer {
+  box-shadow: -1px 0 0 rgba(255, 255, 255, 0.1) !important;
+  -webkit-box-shadow: -1px 0 0 rgba(255, 255, 255, 0.1) !important;
 }
 
 .kv-fp-head {
