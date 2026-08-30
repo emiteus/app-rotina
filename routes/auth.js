@@ -19,6 +19,16 @@ const CODIGO_CADASTRO = String(process.env.REGISTRATION_CODE || process.env.CODI
 const CORES_NOVOS = ['#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#14b8a6'];
 const LOGIN_RE = /^[a-z0-9_]{3,20}$/;
 
+/** Logins sem limite de tentativas (ex.: parceiro digitando senha). */
+const LOGIN_ISENTOS = new Set(
+  [
+    ...(process.env.LOGIN_ISENTOS || '').split(','),
+    process.env.COLEGA_LOGIN || 'eriktizon'
+  ]
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+);
+
 const tentativasLogin = new Map();
 
 function ipLogin(req) {
@@ -107,16 +117,19 @@ function requireAuth(req, res, next) {
 
 router.post('/login', async (req, res) => {
   const ip = ipLogin(req);
-  const limite = checarLimiteLogin(ip);
-  if (!limite.ok) {
-    return res.status(429).json({ erro: `Muitas tentativas. Espera ${limite.min} min.` });
-  }
-
   const login = String(req.body?.login || req.body?.usuario || '').trim().toLowerCase();
   const senha = String(req.body?.senha || '').trim();
+  const isento = LOGIN_ISENTOS.has(login);
+
+  if (!isento) {
+    const limite = checarLimiteLogin(ip);
+    if (!limite.ok) {
+      return res.status(429).json({ erro: `Muitas tentativas. Espera ${limite.min} min.` });
+    }
+  }
 
   if (!login || !senha) {
-    registrarFalhaLogin(ip);
+    if (!isento) registrarFalhaLogin(ip);
     return res.status(401).json({ erro: 'Usuário e senha obrigatórios' });
   }
 
@@ -126,7 +139,7 @@ router.post('/login', async (req, res) => {
       [login]
     );
     if (!user || !user.ativo || !verificarSenha(senha, user.senha_hash)) {
-      registrarFalhaLogin(ip);
+      if (!isento) registrarFalhaLogin(ip);
       return res.status(401).json({ erro: 'Usuário ou senha incorretos' });
     }
 
