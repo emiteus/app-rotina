@@ -17,6 +17,7 @@ let currentChartType = 'line';
 let dashPeriodo = { inicio: null, fim: null };
 let chartPeriodo = { inicio: null, fim: null };
 let _chartFp = null;
+let _dashFp = null;
 let _chartPresetDias = 30;
 let dashValoresVisiveis = true;
 let notificacaoPermitida = false;
@@ -6071,26 +6072,85 @@ function getDashPeriodo() {
   return dashPeriodo;
 }
 
-function initDashDateRange() {
-  const inp = document.getElementById('dash-date-range');
-  if (!inp || typeof flatpickr !== 'function') return;
-  const def = dashPeriodoDefault();
-  dashPeriodo = { ...def };
+function initKirvanoRangePicker(inputEl, { defaultDates, onApply, onClear }) {
+  if (!inputEl || typeof flatpickr !== 'function') return null;
   const pt = flatpickr.l10ns.pt || {};
-  flatpickr(inp, {
+  let pendingDates = [];
+
+  const fp = flatpickr(inputEl, {
     locale: { ...pt, rangeSeparator: ' - ' },
     mode: 'range',
+    showMonths: 2,
     dateFormat: 'Y-m-d',
-    defaultDate: [def.inicio, def.fim],
+    defaultDate: defaultDates,
     altInput: true,
     altFormat: 'd/m/Y',
     disableMobile: true,
+    closeOnSelect: false,
+    monthSelectorType: 'dropdown',
     onChange(selectedDates) {
-      if (selectedDates.length !== 2) return;
+      pendingDates = selectedDates || [];
+    },
+    onReady(_d, _s, instance) {
+      const cal = instance.calendarContainer;
+      cal.classList.add('kv-range-picker');
+
+      if (!cal.querySelector('.kv-fp-head')) {
+        const head = document.createElement('div');
+        head.className = 'kv-fp-head';
+        head.innerHTML = '<span class="kv-fp-head-label">Selecione um período</span>';
+        cal.insertBefore(head, cal.firstChild);
+      }
+
+      if (!cal.querySelector('.kv-fp-footer')) {
+        const foot = document.createElement('div');
+        foot.className = 'kv-fp-footer';
+        foot.innerHTML = `
+          <button type="button" class="kv-fp-btn kv-fp-btn-clear">Limpar</button>
+          <button type="button" class="kv-fp-btn kv-fp-btn-apply">Aplicar</button>
+        `;
+        cal.appendChild(foot);
+
+        foot.querySelector('.kv-fp-btn-clear').addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          instance.clear();
+          pendingDates = [];
+          if (onClear) onClear();
+          instance.close();
+        });
+
+        foot.querySelector('.kv-fp-btn-apply').addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const dates = (pendingDates.length === 2 ? pendingDates : instance.selectedDates) || [];
+          if (dates.length === 2 && onApply) onApply(dates[0], dates[1]);
+          instance.close();
+        });
+      }
+    }
+  });
+
+  return fp;
+}
+
+function initDashDateRange() {
+  const inp = document.getElementById('dash-date-range');
+  if (!inp) return;
+  const def = dashPeriodoDefault();
+  dashPeriodo = { ...def };
+  _dashFp = initKirvanoRangePicker(inp, {
+    defaultDates: [def.inicio, def.fim],
+    onApply(inicio, fim) {
       dashPeriodo = {
-        inicio: selectedDates[0].toLocaleDateString('en-CA'),
-        fim: selectedDates[1].toLocaleDateString('en-CA')
+        inicio: inicio.toLocaleDateString('en-CA'),
+        fim: fim.toLocaleDateString('en-CA')
       };
+      atualizarDashboard();
+    },
+    onClear() {
+      dashPeriodo = dashPeriodoDefault();
+      if (_dashFp) _dashFp.setDate([dashPeriodo.inicio, dashPeriodo.fim], false);
       atualizarDashboard();
     }
   });
@@ -6136,24 +6196,19 @@ function initChartFilters() {
   });
 
   const inp = document.getElementById('dash-chart-range');
-  if (!inp || typeof flatpickr !== 'function') return;
-  const pt = flatpickr.l10ns.pt || {};
-  _chartFp = flatpickr(inp, {
-    locale: { ...pt, rangeSeparator: ' - ' },
-    mode: 'range',
-    dateFormat: 'Y-m-d',
-    defaultDate: [chartPeriodo.inicio, chartPeriodo.fim],
-    altInput: true,
-    altFormat: 'd/m/Y',
-    disableMobile: true,
-    onChange(selectedDates) {
-      if (selectedDates.length !== 2) return;
+  if (!inp) return;
+  _chartFp = initKirvanoRangePicker(inp, {
+    defaultDates: [chartPeriodo.inicio, chartPeriodo.fim],
+    onApply(inicio, fim) {
       chartPeriodo = {
-        inicio: selectedDates[0].toLocaleDateString('en-CA'),
-        fim: selectedDates[1].toLocaleDateString('en-CA')
+        inicio: inicio.toLocaleDateString('en-CA'),
+        fim: fim.toLocaleDateString('en-CA')
       };
       document.querySelectorAll('.dash-chart-filter[data-chart-days]').forEach((b) => b.classList.remove('active'));
       atualizarChartPorPeriodo();
+    },
+    onClear() {
+      setChartPreset(_chartPresetDias);
     }
   });
 }

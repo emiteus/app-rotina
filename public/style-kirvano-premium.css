@@ -222,7 +222,7 @@ body {
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-md) !important;
   padding: 20px 22px !important;
-  min-height: 140px !important;
+  min-height: 144px !important;
   box-shadow: none !important;
 }
 
@@ -819,7 +819,7 @@ input:focus, select:focus, textarea:focus {
 
 .dashboard-kpi-grid .card,
 .kpi-card {
-  min-height: 140px !important;
+  min-height: 144px !important;
 }
 
 #dashboard .dashboard-extra-grid {
@@ -929,8 +929,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 #dashboard .dashboard-chart-hero .chart-container {
-  height: 260px !important;
-  min-height: 240px !important;
+  height: 272px !important;
+  min-height: 252px !important;
 }
 
 .dash-header {
@@ -955,11 +955,11 @@ html body #dashboard .dashboard-mini-card .panel-header h3 {
 }
 
 html body #dashboard .dashboard-mini-card {
-  min-height: 168px !important;
+  min-height: 176px !important;
 }
 
 #dashboard #dash-ranking-card {
-  min-height: 140px !important;
+  min-height: 144px !important;
 }
 
 #dashboard #dash-ranking-card .ranking-list {
@@ -968,17 +968,17 @@ html body #dashboard .dashboard-mini-card {
 
 @media (min-width: 1100px) {
   #dashboard .dashboard-chart-hero .chart-container {
-    height: 280px !important;
-    min-height: 260px !important;
+    height: 292px !important;
+    min-height: 272px !important;
   }
 
   html body #dashboard .dashboard-mini-card {
-    min-height: 180px !important;
+    min-height: 188px !important;
   }
 
   html body #dashboard .dashboard-kpi-grid .card,
   html body #dashboard .kpi-card {
-    min-height: 144px !important;
+    min-height: 148px !important;
   }
 }
 
@@ -1005,4 +1005,149 @@ html body #dashboard .dashboard-mini-card {
   html body #dashboard .dashboard-mini-card {
     min-height: 160px !important;
   }
+}
+
+/* ----- Calendário Kirvano (flatpickr range) ----- */
+.flatpickr-calendar.kv-range-picker {
+  width: auto !important;
+  max-width: none !important;
+  padding: 14px 14px 0 !important;
+  background: #161616 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55) !important;
+}
+
+.flatpickr-calendar.kv-range-picker.arrowTop::before,
+.flatpickr-calendar.kv-range-picker.arrowTop::after,
+.flatpickr-calendar.kv-range-picker.arrowBottom::before,
+.flatpickr-calendar.kv-range-picker.arrowBottom::after {
+  display: none !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-months {
+  padding: 0 6px 10px !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-month {
+  height: 44px !important;
+  color: var(--text-primary) !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-current-month {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  padding-top: 8px !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-calendar.kv-range-picker .flatpickr-current-month input.cur-year {
+  background: #1C1C1C !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 5px 10px !important;
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-weekday {
+  font-size: 11px !important;
+  color: var(--text-muted) !important;
+  text-transform: lowercase !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-day {
+  border-radius: 10px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  margin: 2px !important;
+  color: var(--text-primary) !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-day.prevMonthDay,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.nextMonthDay {
+  color: var(--text-muted) !important;
+  opacity: 0.45 !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-day:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-day.today {
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: var(--text-primary) !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-day.startRange,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.endRange,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.selected.startRange,
+.flatpickr-calendar.kv-range-picker .flatpickr-day.selected.endRange {
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border-color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+.flatpickr-calendar.kv-range-picker .flatpickr-day.inRange {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #FFFFFF !important;
+  border-color: transparent !important;
+  box-shadow: -5px 0 0 rgba(255, 255, 255, 0.1), 5px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.kv-fp-head {
+  padding: 2px 6px 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kv-fp-head-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.kv-fp-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 6px 14px;
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kv-fp-btn {
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: opacity 0.18s, background 0.18s;
+}
+
+.kv-fp-btn-clear {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 12px;
+}
+
+.kv-fp-btn-clear:hover {
+  opacity: 0.8;
+}
+
+.kv-fp-btn-apply {
+  border: none;
+  background: #FFFFFF;
+  color: #0A0A0A;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 20px;
+  border-radius: 999px;
+}
+
+.kv-fp-btn-apply:hover {
+  background: #E5E5E5;
 }
