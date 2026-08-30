@@ -14,6 +14,9 @@ let currentTaskFilter = 'todas';
 let currentFinFilter = 'todas';
 let performanceChart = null;
 let currentChartType = 'line';
+let dashSaldoChart = null;
+let dashPeriodo = { inicio: null, fim: null };
+let dashValoresVisiveis = true;
 let notificacaoPermitida = false;
 let modoNoturnoAtivo = false;
 let usarFrasesMotivacionais = true;
@@ -6018,6 +6021,164 @@ function notificarEventoProximo(evento) {
 // =====================
 //  DASHBOARD
 // =====================
+function dashPeriodoDefault() {
+  const fim = new Date();
+  const inicio = new Date();
+  inicio.setDate(inicio.getDate() - 29);
+  return {
+    inicio: inicio.toLocaleDateString('en-CA'),
+    fim: fim.toLocaleDateString('en-CA')
+  };
+}
+
+function getDashPeriodo() {
+  if (!dashPeriodo.inicio || !dashPeriodo.fim) {
+    dashPeriodo = dashPeriodoDefault();
+  }
+  return dashPeriodo;
+}
+
+function initDashDateRange() {
+  const inp = document.getElementById('dash-date-range');
+  if (!inp || typeof flatpickr !== 'function') return;
+  const def = dashPeriodoDefault();
+  dashPeriodo = { ...def };
+  const pt = flatpickr.l10ns.pt || {};
+  flatpickr(inp, {
+    locale: { ...pt, rangeSeparator: ' - ' },
+    mode: 'range',
+    dateFormat: 'Y-m-d',
+    defaultDate: [def.inicio, def.fim],
+    altInput: true,
+    altFormat: 'd/m/Y',
+    disableMobile: true,
+    onChange(selectedDates) {
+      if (selectedDates.length !== 2) return;
+      dashPeriodo = {
+        inicio: selectedDates[0].toLocaleDateString('en-CA'),
+        fim: selectedDates[1].toLocaleDateString('en-CA')
+      };
+      atualizarDashboard();
+    }
+  });
+}
+
+function initDashToolbar() {
+  const search = document.getElementById('dash-search');
+  const eye = document.getElementById('dash-toggle-valores');
+  if (search) {
+    search.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      abrirSearchGlobal();
+      const global = document.getElementById('search-input');
+      if (global && search.value.trim()) global.value = search.value.trim();
+      if (global) realizarBusca(global.value);
+    });
+    search.addEventListener('focus', () => search.select());
+  }
+  if (eye) {
+    eye.addEventListener('click', () => {
+      dashValoresVisiveis = !dashValoresVisiveis;
+      document.getElementById('dashboard')?.classList.toggle('dash-valores-ocultos', !dashValoresVisiveis);
+      eye.classList.toggle('is-active', !dashValoresVisiveis);
+      eye.title = dashValoresVisiveis ? 'Ocultar valores' : 'Mostrar valores';
+      eye.innerHTML = dashValoresVisiveis
+        ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>'
+        : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.8 21.8 0 0 1 5.06-6.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a21.8 21.8 0 0 1-3.17 4.49"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    });
+  }
+}
+
+function renderDashSaldoChart(inicio, fim) {
+  const canvas = document.getElementById('dash-saldo-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const days = [];
+  const start = new Date(`${inicio}T12:00:00`);
+  const end = new Date(`${fim}T12:00:00`);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return;
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    days.push(d.toLocaleDateString('en-CA'));
+  }
+
+  const byDay = Object.fromEntries(days.map((day) => [day, 0]));
+  (allTransactions || []).forEach((t) => {
+    const dia = (t.data || '').toString().slice(0, 10);
+    if (!dia || dia < inicio || dia > fim) return;
+    const v = parseFloat(t.valor) || 0;
+    byDay[dia] = (byDay[dia] || 0) + (t.tipo === 'entrada' ? v : -v);
+  });
+
+  let acc = 0;
+  const values = days.map((day) => {
+    acc += byDay[day] || 0;
+    return acc;
+  });
+  const labels = days.map((day) => {
+    const d = new Date(`${day}T12:00:00`);
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  });
+
+  if (dashSaldoChart) dashSaldoChart.destroy();
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 88);
+  gradient.addColorStop(0, 'rgba(45, 212, 191, 0.22)');
+  gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
+
+  dashSaldoChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: '#2DD4BF',
+        backgroundColor: gradient,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1C1C1C',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          titleColor: '#A1A1A1',
+          bodyColor: '#FFFFFF',
+          callbacks: {
+            label(ctx) {
+              const v = ctx.parsed.y;
+              return `Acumulado: ${formatBRL(v)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: { display: false },
+          border: { display: false },
+          ticks: {
+            maxTicksLimit: 7,
+            color: '#737373',
+            font: { size: 10, family: "'Plus Jakarta Sans', sans-serif" }
+          }
+        },
+        y: { display: false }
+      }
+    }
+  });
+}
+
 function atualizarDashboard() {
   // Tarefas de HOJE apenas (corrigido: antes contava TODAS)
   const hoje = hojeLocal();
@@ -6034,16 +6195,14 @@ function atualizarDashboard() {
   if (elPct) elPct.textContent = `${pct}%`;
   if (elBar) elBar.style.width = `${pct}%`;
 
-  // Financeiro — entradas/saídas dos últimos 30 dias (não o histórico inteiro)
-  const corte30 = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toLocaleDateString('en-CA');
-  })();
+  // Financeiro — entradas/saídas do período selecionado
+  const periodo = getDashPeriodo();
+  const corteInicio = periodo.inicio;
+  const corteFim = periodo.fim;
   let entradas = 0, saidas = 0;
   allTransactions.forEach(t => {
     const dia = (t.data || '').toString().slice(0, 10);
-    if (dia && dia < corte30) return;
+    if (dia && (dia < corteInicio || dia > corteFim)) return;
     if (t.tipo === 'entrada') entradas += parseFloat(t.valor) || 0;
     else saidas += parseFloat(t.valor) || 0;
   });
@@ -6056,6 +6215,7 @@ function atualizarDashboard() {
   }
   if (dashEnt) dashEnt.textContent = formatBRL(entradas).replace(/^R\$\s*/, '');
   if (dashSai) dashSai.textContent = formatBRL(saidas).replace(/^R\$\s*/, '');
+  renderDashSaldoChart(corteInicio, corteFim);
 
   // Deltas dos KPIs (Kirvano-style)
   _atualizarDeltasKPI(concluidas, total);
@@ -6651,6 +6811,8 @@ window.addEventListener('load', () => {
   if (dataInput) dataInput.value = hojeLocal();
 
   // v17: aplicar flatpickr em todos inputs de data/hora (tema Kirvano via CSS)
+  initDashDateRange();
+  initDashToolbar();
   if (typeof flatpickr === 'function') {
     document.querySelectorAll('input[type="date"]').forEach(inp => {
       flatpickr(inp, {

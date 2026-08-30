@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=101">
-  <link rel="stylesheet" href="style-ranking.css?v=101">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=101">
+  <link rel="stylesheet" href="style.css?v=102">
+  <link rel="stylesheet" href="style-ranking.css?v=102">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=102">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '101';
+      var V = '102';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -131,18 +131,30 @@
 
     <!-- TAB: Dashboard (redesign minimalista) -->
     <section id="dashboard" class="tab-content active">
-      <div class="page-header dash-header" style="justify-content:space-between; align-items:center; display:flex;">
+      <div class="page-header dash-header" style="justify-content:space-between; align-items:flex-start; display:flex; flex-wrap:wrap; gap:16px;">
         <div class="dash-header-text">
           <p class="dash-eyebrow">Dashboard</p>
           <h1><span id="saudacao"></span></h1>
           <p class="page-subtitle">Pequenas ações geram grandes resultados.</p>
         </div>
-        <div class="dash-header-actions" aria-hidden="true"></div>
+        <div class="dash-header-toolbar">
+          <label class="dash-date-range-wrap" title="Período do dashboard">
+            <svg class="dash-toolbar-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <input type="text" id="dash-date-range" class="dash-date-range" readonly placeholder="Período">
+          </label>
+          <div class="dash-search-wrap">
+            <svg class="dash-toolbar-icon dash-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="dash-search" class="dash-search" placeholder="Buscar tarefa…" autocomplete="off">
+            <button type="button" id="dash-toggle-valores" class="dash-search-eye" title="Ocultar valores" aria-label="Ocultar valores">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- 3 KPI cards, estilo Kirvano -->
       <div class="cards-grid dashboard-kpi-grid">
-        <div class="card kpi-card">
+        <div class="card kpi-card kpi-card-saldo">
           <div class="kpi-card-top">
             <span class="kpi-icon kpi-icon-money" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/></svg>
@@ -150,9 +162,12 @@
             <div class="card-label">Saldo total <span class="card-delta" id="dash-saldo-delta"></span></div>
           </div>
           <div class="card-value" id="dash-saldo">R$ 0,00</div>
-          <div class="card-mini" style="margin-top:8px;">
+          <div class="card-mini kpi-card-mini-row">
             <span class="mini-up">+ <span id="dash-entradas">0,00</span></span>
             <span class="mini-down">− <span id="dash-saidas">0,00</span></span>
+          </div>
+          <div class="kpi-chart-wrap" aria-hidden="true">
+            <canvas id="dash-saldo-chart"></canvas>
           </div>
         </div>
 

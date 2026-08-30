@@ -701,3 +701,172 @@ input:focus, select:focus, textarea:focus {
 #dashboard .btn-logout-top {
   display: none !important;
 }
+
+/* ----- Dashboard toolbar (Kirvano) ----- */
+.dash-header-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  padding-top: 4px;
+}
+
+.dash-date-range-wrap,
+.dash-search-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  background: #141414;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.18s, background 0.18s;
+}
+
+.dash-date-range-wrap:focus-within,
+.dash-search-wrap:focus-within {
+  border-color: var(--border-strong);
+  background: #161616;
+}
+
+.dash-toolbar-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.dash-date-range,
+.dash-date-range-wrap .flatpickr-input {
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-size: 13px !important;
+  font-family: var(--font-ui) !important;
+  padding: 0 !important;
+  min-width: 180px;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.dash-date-range:focus,
+.dash-date-range-wrap .flatpickr-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.dash-search-wrap {
+  min-width: 220px;
+  padding-right: 4px;
+}
+
+.dash-search {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-size: 13px !important;
+  font-family: var(--font-ui) !important;
+  padding: 0 !important;
+  min-width: 0;
+  box-shadow: none !important;
+}
+
+.dash-search::placeholder {
+  color: var(--text-muted);
+}
+
+.dash-search:focus {
+  outline: none !important;
+}
+
+.dash-search-eye {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.18s, background 0.18s;
+}
+
+.dash-search-eye:hover,
+.dash-search-eye.is-active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+#dashboard.dash-valores-ocultos .card-value,
+#dashboard.dash-valores-ocultos .card-mini,
+#dashboard.dash-valores-ocultos .card-delta,
+#dashboard.dash-valores-ocultos .mini-metric {
+  filter: blur(7px);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ----- KPI hero saldo + chart ----- */
+@media (min-width: 900px) {
+  .dashboard-kpi-grid {
+    grid-template-columns: 2fr 1fr 1fr !important;
+  }
+}
+
+.kpi-card-saldo {
+  min-height: 200px !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.kpi-card-mini-row {
+  margin-top: 6px !important;
+}
+
+.kpi-chart-wrap {
+  flex: 1;
+  min-height: 88px;
+  margin-top: 12px;
+  position: relative;
+}
+
+.kpi-chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.dashboard-kpi-grid .card-label {
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+}
+
+html body .dashboard-mini-card .panel-header h3,
+html body #dashboard .dashboard-mini-card .panel-header h3 {
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--text-muted) !important;
+}
+
+@media (max-width: 768px) {
+  .dash-header-toolbar {
+    width: 100%;
+    margin-left: 0;
+  }
+  .dash-date-range-wrap,
+  .dash-search-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+  .dash-date-range {
+    min-width: 0;
+    width: 100%;
+  }
+}
