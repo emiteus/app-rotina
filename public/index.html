@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=112">
-  <link rel="stylesheet" href="style-ranking.css?v=112">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=112">
+  <link rel="stylesheet" href="style.css?v=113">
+  <link rel="stylesheet" href="style-ranking.css?v=113">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=113">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,11 +24,20 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
+  <script>
+    (function () {
+      try {
+        if (window.matchMedia('(min-width: 769px)').matches && localStorage.getItem('sidebarCollapsed') === '1') {
+          document.documentElement.classList.add('sidebar-collapsed');
+        }
+      } catch (e) { /* ok */ }
+    })();
+  </script>
 </head>
 <body>
   <script>
     (function () {
-      var V = '111';
+      var V = '113';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -52,6 +61,15 @@
   </script>
   <!-- Sidebar -->
   <aside class="sidebar">
+    <div class="sidebar-top">
+      <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Recolher menu" aria-expanded="true" title="Recolher menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6"></line>
+          <line x1="4" y1="12" x2="20" y2="12"></line>
+          <line x1="4" y1="18" x2="20" y2="18"></line>
+        </svg>
+      </button>
+    </div>
     <div class="logo">
       <span class="logo-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
@@ -1076,9 +1094,41 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=111"></script>
-  <script src="js/assist.js?v=111"></script>
-  <script src="app.js?v=112"></script>
+  <script src="js/fin-receitas.js?v=113"></script>
+  <script src="js/assist.js?v=113"></script>
+  <script src="app.js?v=113"></script>
+  <script>
+    (function initSidebarToggle() {
+      var btn = document.getElementById('sidebar-toggle');
+      if (!btn) return;
+      var mq = window.matchMedia('(min-width: 769px)');
+      var STORAGE_KEY = 'sidebarCollapsed';
+
+      function apply(collapsed) {
+        document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+        btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        btn.setAttribute('aria-label', collapsed ? 'Expandir menu' : 'Recolher menu');
+        btn.title = collapsed ? 'Expandir menu' : 'Recolher menu';
+      }
+
+      btn.addEventListener('click', function () {
+        if (!mq.matches) return;
+        var collapsed = !document.documentElement.classList.contains('sidebar-collapsed');
+        apply(collapsed);
+        try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (e) { /* ok */ }
+      });
+
+      mq.addEventListener('change', function (e) {
+        if (!e.matches) {
+          document.documentElement.classList.remove('sidebar-collapsed');
+        } else {
+          try {
+            if (localStorage.getItem(STORAGE_KEY) === '1') apply(true);
+          } catch (err) { /* ok */ }
+        }
+      });
+    })();
+  </script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {

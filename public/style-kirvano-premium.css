@@ -42,6 +42,7 @@
 
   --font-ui: 'Plus Jakarta Sans', system-ui, sans-serif;
   --sidebar-width: 220px;
+  --sidebar-width-collapsed: 72px;
 }
 
 body {
@@ -1189,4 +1190,108 @@ html body #push-btn-ativar {
   background: var(--accent) !important;
   color: var(--accent-on) !important;
   border: none !important;
+}
+
+/* ----- Sidebar toggle (desktop) — estilo Kirvano ----- */
+.sidebar-top {
+  display: none;
+}
+
+.sidebar-toggle {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-toggle:focus-visible {
+  outline: 2px solid rgba(45, 212, 191, 0.45);
+  outline-offset: 2px;
+}
+
+@media (min-width: 769px) {
+  .sidebar-top {
+    display: flex;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 0 10px;
+    min-height: 36px;
+  }
+
+  html body {
+    transition: padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html body aside.sidebar {
+    transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+  }
+
+  .app-topbar {
+    transition: padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html.sidebar-collapsed {
+    --sidebar-width: var(--sidebar-width-collapsed);
+  }
+
+  html.sidebar-collapsed body {
+    padding-left: var(--sidebar-width-collapsed) !important;
+  }
+
+  html.sidebar-collapsed body aside.sidebar {
+    width: var(--sidebar-width-collapsed) !important;
+    padding: 68px 8px 20px !important;
+  }
+
+  html.sidebar-collapsed .sidebar-top {
+    justify-content: center;
+    padding: 0;
+    margin-bottom: 10px;
+  }
+
+  html.sidebar-collapsed .sidebar .logo {
+    display: none !important;
+  }
+
+  html.sidebar-collapsed .sidebar .logo-text,
+  html.sidebar-collapsed .sidebar .sidebar-footer {
+    display: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  html.sidebar-collapsed .sidebar .nav-btn span:not(.nav-icon) {
+    opacity: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    pointer-events: none !important;
+  }
+
+  html.sidebar-collapsed .sidebar .nav-btn {
+    justify-content: center !important;
+    gap: 0 !important;
+    padding: 12px !important;
+  }
+
+  html body .sidebar .logo-text,
+  html body .sidebar .sidebar-footer,
+  html body .sidebar .nav-btn span:not(.nav-icon) {
+    transition: opacity 0.22s ease, max-width 0.28s ease, max-height 0.28s ease;
+  }
 }
