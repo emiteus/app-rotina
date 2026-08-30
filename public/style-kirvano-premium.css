@@ -634,3 +634,70 @@ input:focus, select:focus, textarea:focus {
   .topbar-journey { display: none; }
   .sidebar .logo { display: flex !important; }
 }
+
+/* ----- Overrides finais (v101) — vence style.css icon-only + tooltips ----- */
+@media (min-width: 769px) {
+  html body {
+    padding-left: var(--sidebar-width) !important;
+  }
+
+  html body aside.sidebar {
+    width: var(--sidebar-width) !important;
+    padding: 68px 14px 20px !important;
+  }
+
+  html body .sidebar .logo-text,
+  html body .sidebar .sidebar-footer {
+    display: block !important;
+  }
+
+  html body .sidebar .nav-btn span:not(.nav-icon) {
+    display: inline !important;
+    position: static !important;
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    left: auto !important;
+    top: auto !important;
+    z-index: auto !important;
+    color: inherit !important;
+    letter-spacing: normal !important;
+  }
+
+  html body .sidebar .nav-btn {
+    justify-content: flex-start !important;
+    width: 100% !important;
+    gap: 12px !important;
+  }
+
+  html body .sidebar .nav-btn.active {
+    background: #1F1F1F !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
+  }
+
+  html body .sidebar .nav-btn.active .nav-icon {
+    color: var(--text-primary) !important;
+    filter: none !important;
+    opacity: 1 !important;
+  }
+
+  html body .sidebar .logo-icon {
+    color: var(--text-primary) !important;
+    background: transparent !important;
+    -webkit-text-fill-color: currentColor !important;
+  }
+}
+
+.dash-header-actions,
+#dashboard .btn-logout-top {
+  display: none !important;
+}

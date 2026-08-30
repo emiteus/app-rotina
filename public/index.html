@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=100">
-  <link rel="stylesheet" href="style-ranking.css?v=100">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=100">
+  <link rel="stylesheet" href="style.css?v=101">
+  <link rel="stylesheet" href="style-ranking.css?v=101">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=101">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '100';
+      var V = '101';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -137,10 +137,7 @@
           <h1><span id="saudacao"></span></h1>
           <p class="page-subtitle">Pequenas ações geram grandes resultados.</p>
         </div>
-        <div class="dash-header-actions">
-          <span id="header-user-name" class="header-user-name" style="display:none"></span>
-          <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
-        </div>
+        <div class="dash-header-actions" aria-hidden="true"></div>
       </div>
 
       <!-- 3 KPI cards, estilo Kirvano -->
