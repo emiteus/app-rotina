@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=103">
-  <link rel="stylesheet" href="style-ranking.css?v=103">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=103">
+  <link rel="stylesheet" href="style.css?v=104">
+  <link rel="stylesheet" href="style-ranking.css?v=104">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=104">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '103';
+      var V = '104';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -194,6 +194,22 @@
             <div class="ranking-empty">Carregando…</div>
           </div>
           <div class="card-mini ranking-lider" id="dash-ranking-lider"></div>
+        </div>
+      </div>
+
+      <!-- Gráfico de tarefas -->
+      <div class="panel dashboard-chart-hero">
+        <div class="panel-header dash-chart-header">
+          <div>
+            <div class="card-label dash-chart-label">Tarefas concluídas</div>
+            <div class="card-value dash-chart-value">
+              <span id="stats-concluidas">0</span>
+              <span class="dash-chart-sub">· <span id="stats-taxa">0</span>% conclusão</span>
+            </div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="chart-bars"></canvas>
         </div>
       </div>
 

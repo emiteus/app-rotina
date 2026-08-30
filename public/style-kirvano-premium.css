@@ -827,6 +827,47 @@ input:focus, select:focus, textarea:focus {
   gap: 12px !important;
 }
 
+/* ----- Gráfico de tarefas (Kirvano) ----- */
+#dashboard .dashboard-chart-hero {
+  margin: 12px 0 !important;
+  padding: 20px 22px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: none !important;
+}
+
+#dashboard .dash-chart-header {
+  margin-bottom: 14px !important;
+}
+
+#dashboard .dash-chart-label {
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--text-muted) !important;
+  margin-bottom: 6px !important;
+}
+
+#dashboard .dash-chart-value {
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.2 !important;
+}
+
+#dashboard .dash-chart-sub {
+  color: var(--text-muted) !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+#dashboard .dashboard-chart-hero .chart-container {
+  height: 220px !important;
+  min-height: 200px !important;
+}
+
 .dash-header {
   margin-bottom: 20px !important;
   gap: 12px !important;

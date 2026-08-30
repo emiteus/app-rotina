@@ -5428,6 +5428,7 @@ async function carregarStats() {
 
 function renderStats(data) {
   const r = data.resumo || {};
+  _chartHistoricoFull = data.historico || [];
   if (typeof _atualizarDeltasKPI === 'function') {
     const hoje = hojeLocal();
     const tarefasHoje = (allTasks || []).filter(t => t.data_reset && String(t.data_reset).split('T')[0] === hoje);
@@ -5450,7 +5451,7 @@ function renderStats(data) {
     }
   }
 
-  renderChartBars(data.historico || []);
+  renderChartBars(filterHistoricoPorPeriodo(_chartHistoricoFull));
   renderHorizontalBars('chart-categorias', data.categorias || {}, 'cat');
   renderHorizontalBars('chart-prioridades', data.prioridades || {}, 'pri');
 }
@@ -5499,9 +5500,18 @@ async function carregarRankingDia() {
 }
 
 let _chartHistorico = [];
+let _chartHistoricoFull = [];
 
-function renderChartBars(historicoFull) {
-  _chartHistorico = (historicoFull || []).filter((h) => Number(h.total) > 0 || Number(h.concluidas) > 0);
+function filterHistoricoPorPeriodo(historico) {
+  const { inicio, fim } = getDashPeriodo();
+  return (historico || []).filter((h) => {
+    const d = String(h.data || '').slice(0, 10);
+    return d >= inicio && d <= fim;
+  });
+}
+
+function renderChartBars(historico) {
+  _chartHistorico = (historico || []).filter((h) => Number(h.total) > 0 || Number(h.concluidas) > 0);
   const historico = _chartHistorico;
   const canvas = document.getElementById('chart-bars');
   if (!canvas) return;
@@ -5511,13 +5521,13 @@ function renderChartBars(historicoFull) {
     return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   });
   const concluidas = historico.map(h => parseInt(h.concluidas, 10) || 0);
-  const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1a1b3e';
+  const accent = '#2DD4BF';
   if (performanceChart) performanceChart.destroy();
 
   const ctx = canvas.getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient.addColorStop(0, 'rgba(26, 27, 62, 0.18)');
-  gradient.addColorStop(1, 'rgba(26, 27, 62, 0.0)');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+  gradient.addColorStop(0, 'rgba(45, 212, 191, 0.22)');
+  gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
 
   performanceChart = new Chart(ctx, {
     type: 'line',
@@ -5541,17 +5551,17 @@ function renderChartBars(historicoFull) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 10, right: 8, bottom: 4, left: 8 } },
+      layout: { padding: { top: 8, right: 4, bottom: 0, left: 4 } },
       interaction: { intersect: false, mode: 'index' },
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#0f172a',
-          borderColor: 'rgba(15,23,42,0.08)',
+          backgroundColor: '#1C1C1C',
+          borderColor: 'rgba(255,255,255,0.08)',
           borderWidth: 1,
-          titleColor: '#ffffff',
+          titleColor: '#A1A1A1',
           titleFont: { size: 12, weight: '600' },
-          bodyColor: '#ffffff',
+          bodyColor: '#FFFFFF',
           bodyFont: { size: 13, weight: '600' },
           padding: 10,
           displayColors: false,
@@ -5570,28 +5580,21 @@ function renderChartBars(historicoFull) {
           beginAtZero: true,
           ticks: { display: false },
           grid: {
-            color: 'rgba(15, 23, 42, 0.06)',
+            color: 'rgba(255, 255, 255, 0.06)',
             drawBorder: false,
             lineWidth: 1,
             drawTicks: false
           },
-          border: { display: false },
-          afterBuildTicks: (axis) => {
-            const max = axis.max || 5;
-            const step = Math.max(1, Math.ceil(max / 4));
-            const ticks = [];
-            for (let v = 0; v <= max; v += step) ticks.push({ value: v });
-            axis.ticks = ticks;
-          }
+          border: { display: false }
         },
         x: {
           ticks: {
-            color: '#94a3b8',
-            font: { size: 11, weight: '400' },
+            color: '#737373',
+            font: { size: 11, weight: '400', family: "'Plus Jakarta Sans', sans-serif" },
             maxRotation: 0,
             padding: 6,
             autoSkip: true,
-            maxTicksLimit: 8
+            maxTicksLimit: 10
           },
           grid: { display: false, drawBorder: false },
           border: { display: false }
@@ -6058,6 +6061,11 @@ function initDashDateRange() {
         fim: selectedDates[1].toLocaleDateString('en-CA')
       };
       atualizarDashboard();
+      if (_chartHistoricoFull.length) {
+        renderChartBars(filterHistoricoPorPeriodo(_chartHistoricoFull));
+      } else if (typeof carregarStats === 'function') {
+        carregarStats();
+      }
     }
   });
 }
