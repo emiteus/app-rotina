@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=99">
-  <link rel="stylesheet" href="style-ranking.css?v=99">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=99">
+  <link rel="stylesheet" href="style.css?v=100">
+  <link rel="stylesheet" href="style-ranking.css?v=100">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=100">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '99';
+      var V = '100';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -111,6 +111,21 @@
     </div>
   </aside>
 
+  <!-- Topbar global (estilo Kirvano) -->
+  <header class="app-topbar">
+    <span class="topbar-brand">rotina</span>
+    <div class="topbar-journey" title="Progresso da semana">
+      <span class="topbar-journey-label">Sua semana</span>
+      <div class="topbar-journey-track"><div class="topbar-journey-fill" id="topbar-journey-fill" style="width:0%"></div></div>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="topbar-icon-btn" title="Suporte" onclick="toggleAssistente()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+      </button>
+      <span id="header-user-avatar" class="user-avatar" title="Usuário logado">?</span>
+    </div>
+  </header>
+
   <!-- Main Content -->
   <main class="main">
 
@@ -123,7 +138,6 @@
           <p class="page-subtitle">Pequenas ações geram grandes resultados.</p>
         </div>
         <div class="dash-header-actions">
-          <span id="header-user-avatar" class="user-avatar" title="Usuário logado">?</span>
           <span id="header-user-name" class="header-user-name" style="display:none"></span>
           <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
         </div>
@@ -424,7 +438,7 @@
       </div>
 
       <!-- Sub-abas do Financeiro -->
-      <div class="fin-subtabs">
+      <div class="fin-subtabs fin-subtabs--pills">
         <button class="fin-subtab-btn active" data-fin-tab="fin-visao" onclick="trocarSubAbaFin('fin-visao')">Visão Geral</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-ganhos" onclick="trocarSubAbaFin('fin-ganhos')">Receita</button>
         <button class="fin-subtab-btn" data-fin-tab="fin-extrato" onclick="trocarSubAbaFin('fin-extrato')">Extrato</button>
@@ -1027,9 +1041,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=99"></script>
-  <script src="js/assist.js?v=99"></script>
-  <script src="app.js?v=99"></script>
+  <script src="js/fin-receitas.js?v=100"></script>
+  <script src="js/assist.js?v=100"></script>
+  <script src="app.js?v=100"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1285,6 +1299,7 @@
           const d = await r.json().catch(() => ({}));
           if (d.erro === 'sessao_invalida') return forcarLogout();
           if (d.user) pintarSessao(d);
+          if (typeof atualizarTopbarJornada === 'function') atualizarTopbarJornada();
         } catch (e) { /* ok */ }
       }
 
@@ -1352,7 +1367,7 @@
               return;
             }
             esconderLogin();
-            location.href = '/?v=99';
+            location.href = '/?v=100';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu  tenta de novo');
@@ -1442,7 +1457,7 @@
           if (typeof toast === 'function') toast('Permissão negada', 'error');
           return;
         }
-        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=99');
+        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=100');
         const reg = __pushRegistration;
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -1503,7 +1518,7 @@
     (async function () {
       try {
         if (!('serviceWorker' in navigator)) return _atualizarUiPush();
-        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=99').catch(() => null);
+        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=100').catch(() => null);
         const r = await fetch('/api/push/config');
         if (r.ok) __pushConfig = await r.json();
         _atualizarUiPush();

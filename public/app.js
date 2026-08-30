@@ -6059,6 +6059,7 @@ function atualizarDashboard() {
 
   // Deltas dos KPIs (Kirvano-style)
   _atualizarDeltasKPI(concluidas, total);
+  if (typeof atualizarTopbarJornada === 'function') atualizarTopbarJornada(concluidas, total);
 
   // Alarmes
   const alarmesAtivos = (allAlarms || []).filter(a => a.ativo !== false).length;
@@ -6107,6 +6108,21 @@ function atualizarDashboard() {
   // Saldo real das contas conectadas tem prioridade sobre o fluxo de transações
   if (typeof aplicarSaldosReais === 'function') aplicarSaldosReais();
 
+}
+
+function atualizarTopbarJornada(concluidas, total) {
+  const fill = document.getElementById('topbar-journey-fill');
+  if (!fill) return;
+  let c = concluidas;
+  let t = total;
+  if (c == null || t == null) {
+    const hoje = hojeLocal();
+    const tarefasHoje = (allTasks || []).filter(x => x.data_reset && String(x.data_reset).split('T')[0] === hoje);
+    t = tarefasHoje.length;
+    c = tarefasHoje.filter(x => x.concluida).length;
+  }
+  const pct = t > 0 ? Math.round((c / t) * 100) : 0;
+  fill.style.width = `${pct}%`;
 }
 
 // Preenche os 3 badges de delta dos KPIs (Kirvano-style)
