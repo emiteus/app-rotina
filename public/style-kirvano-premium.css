@@ -1741,3 +1741,246 @@ html body #push-btn-ativar {
 .fin-subtab-btn.fin-subtab-btn-pulse {
   animation: chartFilterPulse 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+/* append v124 — topbar progresso claro + aba tarefas reorganizada */
+
+.topbar-journey {
+  max-width: 360px;
+  gap: 5px;
+}
+.topbar-journey-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.topbar-journey-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.topbar-journey-week {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.topbar-day {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: default;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.topbar-day--today {
+  box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.55);
+  color: var(--text-primary);
+}
+.topbar-day--done {
+  background: rgba(45, 212, 191, 0.85);
+  color: #0a0a0a;
+}
+.topbar-day--partial {
+  background: rgba(45, 212, 191, 0.35);
+  color: var(--text-primary);
+}
+.topbar-day--pending {
+  background: rgba(255, 255, 255, 0.1);
+}
+.topbar-day--empty {
+  opacity: 0.35;
+}
+.topbar-day:hover {
+  transform: scale(1.12);
+}
+
+@media (max-width: 768px) {
+  .topbar-journey {
+    display: flex !important;
+    max-width: 140px;
+    flex: 1;
+    min-width: 0;
+  }
+  .topbar-journey-week {
+    display: none;
+  }
+}
+
+/* ----- Tarefas ----- */
+#tarefas .tasks-page-header {
+  align-items: flex-end;
+}
+.tasks-header-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 160px;
+}
+.tasks-stat-block {
+  text-align: right;
+}
+.tasks-stat-num {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.tasks-stat-sep {
+  opacity: 0.35;
+  margin: 0 2px;
+}
+.tasks-stat-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.tasks-stat-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 180px;
+}
+.tasks-stat-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.tasks-stat-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tasks-stat-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 32px;
+  text-align: right;
+}
+
+.tasks-subtabs {
+  margin-bottom: 18px;
+}
+
+.tasks-add-form {
+  margin-bottom: 16px;
+}
+.tasks-add-form > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  padding: 8px 0;
+  user-select: none;
+}
+.tasks-add-form > summary::-webkit-details-marker {
+  display: none;
+}
+.tasks-add-form > summary::before {
+  content: '+ ';
+  font-weight: 700;
+}
+.tasks-add-form[open] > summary::before {
+  content: '− ';
+}
+.tasks-add-form .task-form-card {
+  margin-top: 8px;
+}
+
+.tasks-filter-bar {
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.tasks-filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tasks-day-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.tasks-day-panel--hoje {
+  border-color: rgba(45, 212, 191, 0.25);
+}
+.tasks-day-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.tasks-day-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  flex: 1;
+}
+.tasks-day-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+#tarefas .section-badge {
+  background: rgba(45, 212, 191, 0.15) !important;
+  color: var(--accent) !important;
+  box-shadow: none !important;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.tasks-rec-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+  line-height: 1.45;
+}
+
+#tarefas .empty-state {
+  padding: 28px 16px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+#tarefas .empty-state h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+#tarefas .empty-state p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  #tarefas .tasks-page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .tasks-header-stats {
+    align-items: flex-start;
+    width: 100%;
+  }
+  .tasks-stat-bar-wrap {
+    max-width: none;
+  }
+}

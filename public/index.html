@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=123">
-  <link rel="stylesheet" href="style-ranking.css?v=123">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=123">
+  <link rel="stylesheet" href="style.css?v=124">
+  <link rel="stylesheet" href="style-ranking.css?v=124">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=124">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -137,9 +137,15 @@
       </button>
       <span class="topbar-brand">AppRotina</span>
     </div>
-    <div class="topbar-journey" title="Progresso da semana">
-      <span class="topbar-journey-label">Sua semana</span>
-      <div class="topbar-journey-track"><div class="topbar-journey-fill" id="topbar-journey-fill" style="width:0%"></div></div>
+    <div class="topbar-journey" id="topbar-journey" title="Progresso de hoje e da semana">
+      <div class="topbar-journey-head">
+        <span class="topbar-journey-label">Hoje</span>
+        <span class="topbar-journey-value" id="topbar-journey-value">0/0</span>
+      </div>
+      <div class="topbar-journey-track">
+        <div class="topbar-journey-fill" id="topbar-journey-fill" style="width:0%"></div>
+      </div>
+      <div class="topbar-journey-week" id="topbar-journey-week" aria-label="Dias da semana"></div>
     </div>
   </header>
 
@@ -297,187 +303,198 @@
 
     <!-- TAB: Rotina -->
     <section id="tarefas" class="tab-content">
-      <div class="page-header">
+      <div class="page-header tasks-page-header">
         <div>
           <h1>Tarefas</h1>
-          <p class="page-subtitle">Foco no que importa</p>
+          <p class="page-subtitle">Foco no que importa hoje</p>
         </div>
-        <div class="stats-mini">
-          <div class="stat-card">
-            <span class="stat-num" id="concluidas">0</span>
-            <span class="stat-label">Concluídas</span>
+        <div class="tasks-header-stats">
+          <div class="tasks-stat-block">
+            <span class="tasks-stat-num"><span id="concluidas">0</span><span class="tasks-stat-sep">/</span><span id="total">0</span></span>
+            <span class="tasks-stat-label">concluídas hoje</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-num" id="total">0</span>
-            <span class="stat-label">Total</span>
+          <div class="tasks-stat-bar-wrap">
+            <div class="tasks-stat-bar"><div class="tasks-stat-bar-fill" id="tasks-hoje-bar" style="width:0%"></div></div>
+            <span class="tasks-stat-pct" id="tasks-hoje-pct">0%</span>
           </div>
         </div>
       </div>
 
-      <!-- TAB: Hoje e Amanhã Combinadas -->
-      <div id="tab-hoje" class="tarefas-tab-content active">
-        <div class="form-card task-form-card">
-          <div class="form-header">
-            <h3>Nova Tarefa</h3>
+      <div class="tasks-subtabs fin-subtabs--pills">
+        <button type="button" class="fin-subtab-btn active" data-tasks-tab="tasks-hoje" onclick="trocarSubAbaTarefas('tasks-hoje')">Hoje</button>
+        <button type="button" class="fin-subtab-btn" data-tasks-tab="tasks-dias" onclick="trocarSubAbaTarefas('tasks-dias')">Outros dias</button>
+        <button type="button" class="fin-subtab-btn" data-tasks-tab="tasks-recorrentes" onclick="trocarSubAbaTarefas('tasks-recorrentes')">Recorrentes</button>
+      </div>
+
+      <!-- Aba: Hoje -->
+      <div id="tasks-hoje" class="tasks-subtab tasks-subtab--active">
+        <details class="tasks-add-form" open>
+          <summary class="tasks-add-summary">Nova tarefa</summary>
+          <div class="form-card task-form-card">
+            <div class="form-row form-main">
+              <input type="text" id="nova-tarefa" placeholder="O que você precisa fazer?" class="form-input-main" />
+              <button class="btn-primary btn-add-task" onclick="adicionarTarefa()">Adicionar</button>
+            </div>
+            <div class="form-row form-secondary">
+              <div class="form-group">
+                <label for="data-tarefa" class="form-label">Data</label>
+                <input type="date" id="data-tarefa" class="form-input-date" />
+              </div>
+              <div class="form-group">
+                <label for="hora-tarefa" class="form-label">Hora</label>
+                <input type="time" id="hora-tarefa" class="form-input-date" />
+              </div>
+              <div class="form-group">
+                <label for="prioridade-tarefa" class="form-label">Prioridade</label>
+                <select id="prioridade-tarefa" class="form-select">
+                  <option value="alta">Alta</option>
+                  <option value="media" selected>Média</option>
+                  <option value="baixa">Baixa</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="categoria-tarefa" class="form-label">Categoria</label>
+                <select id="categoria-tarefa" class="form-select">
+                  <option value="geral">Geral</option>
+                  <option value="trabalho">Trabalho</option>
+                  <option value="estudos">Estudos</option>
+                  <option value="saude">Saúde</option>
+                  <option value="pessoal">Pessoal</option>
+                </select>
+              </div>
+            </div>
           </div>
+        </details>
+
+        <div class="filter-bar tasks-filter-bar">
+          <div class="tasks-filter-pills">
+            <button type="button" class="filter-btn active" data-filter="todas">Todas</button>
+            <button type="button" class="filter-btn" data-filter="pendentes">Pendentes</button>
+            <button type="button" class="filter-btn" data-filter="concluidas">Concluídas</button>
+            <button type="button" class="filter-btn" data-filter="alta">Alta</button>
+          </div>
+          <button type="button" class="filter-btn" id="btn-modo-selecao" onclick="toggleModoSelecao()">Selecionar</button>
+        </div>
+
+        <div id="bulk-actions" class="bulk-actions">
+          <span class="bulk-count-txt"><b id="bulk-count">0</b> selecionada(s)</span>
+          <div class="bulk-actions-btns">
+            <button type="button" onclick="bulkConcluir()" class="bulk-btn bulk-btn-ok">Concluir</button>
+            <button type="button" onclick="bulkExcluir()" class="bulk-btn bulk-btn-danger">Excluir</button>
+            <button type="button" onclick="toggleModoSelecao()" class="bulk-btn">Cancelar</button>
+          </div>
+        </div>
+
+        <div class="tasks-day-panel tasks-day-panel--hoje">
+          <div class="tasks-day-head">
+            <h2>Hoje</h2>
+            <span class="tasks-day-meta" id="meta-hoje"></span>
+            <span class="section-badge" id="badge-hoje">0</span>
+          </div>
+          <ul id="lista-tarefas" class="task-list"></ul>
+          <div id="empty-tarefas" class="empty-state" style="display: none;">
+            <h3>Nada para hoje</h3>
+            <p>Adicione uma tarefa ou aproveite o dia livre.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba: Outros dias -->
+      <div id="tasks-dias" class="tasks-subtab" style="display:none">
+        <div class="filter-bar tasks-filter-bar">
+          <div class="tasks-filter-pills">
+            <button type="button" class="filter-btn active" data-filter="todas">Todas</button>
+            <button type="button" class="filter-btn" data-filter="pendentes">Pendentes</button>
+            <button type="button" class="filter-btn" data-filter="concluidas">Concluídas</button>
+            <button type="button" class="filter-btn" data-filter="alta">Alta</button>
+          </div>
+        </div>
+
+        <div class="tasks-day-panel">
+          <div class="tasks-day-head">
+            <h2>Amanhã</h2>
+            <span class="section-badge" id="badge-amanha">0</span>
+          </div>
+          <ul id="lista-tarefas-amanha" class="task-list"></ul>
+          <div id="empty-tarefas-amanha" class="empty-state" style="display: none;">
+            <h3>Sem tarefas amanhã</h3>
+            <p>Nada agendado por enquanto.</p>
+          </div>
+        </div>
+
+        <div class="tasks-day-panel">
+          <div class="tasks-day-head">
+            <h2>Ontem</h2>
+            <span class="section-badge" id="badge-ontem">0</span>
+          </div>
+          <ul id="lista-tarefas-ontem" class="task-list"></ul>
+          <div id="empty-tarefas-ontem" class="empty-state" style="display: none;">
+            <h3>Sem tarefas ontem</h3>
+            <p>Nenhuma tarefa registrada neste dia.</p>
+          </div>
+        </div>
+
+        <div class="tasks-day-panel">
+          <div class="tasks-day-head">
+            <h2>Anteontem</h2>
+            <span class="section-badge" id="badge-anteontem">0</span>
+          </div>
+          <ul id="lista-tarefas-anteontem" class="task-list"></ul>
+          <div id="empty-tarefas-anteontem" class="empty-state" style="display: none;">
+            <h3>Sem tarefas neste dia</h3>
+            <p>Nenhuma tarefa registrada.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aba: Recorrentes -->
+      <div id="tasks-recorrentes" class="tasks-subtab" style="display:none">
+        <p class="tasks-rec-hint">Tarefas que se repetem automaticamente nos dias escolhidos.</p>
+        <div class="form-card task-form-card">
           <div class="form-row form-main">
-            <input type="text" id="nova-tarefa" placeholder="O que você precisa fazer?" class="form-input-main" />
-            <button class="btn-primary btn-add-task" onclick="adicionarTarefa()">+ Adicionar</button>
+            <input type="text" id="rec-titulo" placeholder="Nome da tarefa recorrente" class="form-input-main" />
+            <button type="button" class="btn-primary" onclick="adicionarRecorrente()">Adicionar</button>
           </div>
           <div class="form-row form-secondary">
             <div class="form-group">
-              <label for="data-tarefa" class="form-label">Data</label>
-              <input type="date" id="data-tarefa" class="form-input-date" />
-            </div>
-            <div class="form-group">
-              <label for="hora-tarefa" class="form-label">Hora</label>
-              <input type="time" id="hora-tarefa" class="form-input-date" />
-            </div>
-            <div class="form-group">
-              <label for="prioridade-tarefa" class="form-label">Prioridade</label>
-              <select id="prioridade-tarefa" class="form-select">
+              <label for="rec-prioridade" class="form-label">Prioridade</label>
+              <select id="rec-prioridade" class="form-select">
                 <option value="alta">Alta</option>
                 <option value="media" selected>Média</option>
                 <option value="baixa">Baixa</option>
               </select>
             </div>
             <div class="form-group">
-              <label for="categoria-tarefa" class="form-label">Categoria</label>
-              <select id="categoria-tarefa" class="form-select">
+              <label for="rec-categoria" class="form-label">Categoria</label>
+              <select id="rec-categoria" class="form-select">
                 <option value="geral">Geral</option>
-                <option value="trabalho">Trabalho</option>
+                <option value="trabalho" selected>Trabalho</option>
                 <option value="estudos">Estudos</option>
                 <option value="saude">Saúde</option>
                 <option value="pessoal">Pessoal</option>
               </select>
             </div>
           </div>
-        </div>
-
-        <div class="filter-bar" style="justify-content: space-between;">
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button class="filter-btn active" data-filter="todas">Todas</button>
-            <button class="filter-btn" data-filter="pendentes">Pendentes</button>
-            <button class="filter-btn" data-filter="concluidas">Concluídas</button>
-            <button class="filter-btn" data-filter="alta">Alta</button>
-          </div>
-          <button class="filter-btn" id="btn-modo-selecao" onclick="toggleModoSelecao()">Selecionar</button>
-        </div>
-
-        <!-- Barra de ações em massa (aparece quando modoSelecao ativo) -->
-        <div id="bulk-actions" class="bulk-actions">
-          <span class="bulk-count-txt"><b id="bulk-count">0</b> selecionada(s)</span>
-          <div class="bulk-actions-btns">
-            <button onclick="bulkConcluir()" class="bulk-btn bulk-btn-ok">Concluir</button>
-            <button onclick="bulkExcluir()" class="bulk-btn bulk-btn-danger">Excluir</button>
-            <button onclick="toggleModoSelecao()" class="bulk-btn">Cancelar</button>
-          </div>
-        </div>
-
-        <!-- SE!ÒO HOJE (aberta por padrão) -->
-        <div class="tarefas-section section-hoje">
-          <div class="section-header">
-            <h2>Hoje</h2>
-            <span class="section-badge" id="badge-hoje">0</span>
-          </div>
-          <ul id="lista-tarefas" class="task-list"></ul>
-          <div id="empty-tarefas" class="empty-state" style="display: none;">
-            <div class="empty-icon">x}0</div>
-            <h3>Dia livre</h3>
-            <p>Parabéns! Tarefas todas concluídas</p>
-          </div>
-        </div>
-
-        <!-- SE!ÒO AMANHÒ (colapsada) -->
-        <details class="tarefas-section-collapsible" style="margin-top:20px;">
-          <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
-            <span>Amanhã</span>
-            <span class="section-badge" id="badge-amanha">0</span>
-          </summary>
-          <div style="margin-top:8px;">
-            <ul id="lista-tarefas-amanha" class="task-list"></ul>
-            <div id="empty-tarefas-amanha" class="empty-state" style="display: none;">
-              <div class="empty-icon">âœ¨</div>
-              <h3>Sem tarefas agendadas</h3>
-              <p>Curta esse dia tranquilo!</p>
-            </div>
-          </div>
-        </details>
-
-        <!-- SE!ÒO ONTEM (colapsada) -->
-        <details class="tarefas-section-collapsible" style="margin-top:6px;">
-          <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
-            <span>Ontem</span>
-            <span class="section-badge" id="badge-ontem">0</span>
-          </summary>
-          <div style="margin-top:8px;">
-            <ul id="lista-tarefas-ontem" class="task-list"></ul>
-            <div id="empty-tarefas-ontem" class="empty-state" style="display: none;">
-              <div class="empty-icon">x9</div>
-              <h3>Sem tarefas de ontem</h3>
-              <p>Já foi!</p>
-            </div>
-          </div>
-        </details>
-
-        <!-- SE!ÒO ANTEONTEM (colapsada) -->
-        <details class="tarefas-section-collapsible" style="margin-top:6px;">
-          <summary style="cursor:pointer; padding:10px 4px; font-weight:600; font-size:14px; display:flex; align-items:center; gap:10px;">
-            <span>Anteontem</span>
-            <span class="section-badge" id="badge-anteontem">0</span>
-          </summary>
-          <div style="margin-top:8px;">
-            <ul id="lista-tarefas-anteontem" class="task-list"></ul>
-            <div id="empty-tarefas-anteontem" class="empty-state" style="display: none;">
-              <div class="empty-icon">x9</div>
-              <h3>Sem tarefas neste dia</h3>
-            </div>
-          </div>
-        </details>
-
-        <h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 14px; color: #888;">x RECORRENTES</h3>
-
-        <div class="form-card">
-          <div class="form-row">
-            <input type="text" id="rec-titulo" placeholder="Nome da tarefa recorrente" />
-            <select id="rec-prioridade">
-              <option value="alta">Alta</option>
-              <option value="media" selected>Média</option>
-              <option value="baixa">Baixa</option>
-            </select>
-            <select id="rec-categoria">
-              <option value="geral">Geral</option>
-              <option value="trabalho" selected>Trabalho</option>
-              <option value="estudos">Estudos</option>
-              <option value="saude">Saúde</option>
-              <option value="pessoal">Pessoal</option>
-            </select>
-            <button class="btn-primary" onclick="adicionarRecorrente()">+ Adicionar</button>
-          </div>
-
           <div class="dias-semana-picker">
             <label class="dias-label">Repetir nos dias:</label>
             <div class="dias-btns">
-              <button class="dia-btn active" data-dia="0">D</button>
-              <button class="dia-btn active" data-dia="1">S</button>
-              <button class="dia-btn active" data-dia="2">T</button>
-              <button class="dia-btn active" data-dia="3">Q</button>
-              <button class="dia-btn active" data-dia="4">Q</button>
-              <button class="dia-btn active" data-dia="5">S</button>
-              <button class="dia-btn active" data-dia="6">S</button>
+              <button type="button" class="dia-btn active" data-dia="0">D</button>
+              <button type="button" class="dia-btn active" data-dia="1">S</button>
+              <button type="button" class="dia-btn active" data-dia="2">T</button>
+              <button type="button" class="dia-btn active" data-dia="3">Q</button>
+              <button type="button" class="dia-btn active" data-dia="4">Q</button>
+              <button type="button" class="dia-btn active" data-dia="5">S</button>
+              <button type="button" class="dia-btn active" data-dia="6">S</button>
             </div>
           </div>
         </div>
 
         <ul id="lista-recorrentes" class="task-list"></ul>
-
         <div id="empty-recorrentes" class="empty-state" style="display: none;">
-          <div class="empty-icon">x</div>
           <h3>Sem tarefas recorrentes</h3>
-          <p>Crie tarefas que aparecem automaticamente todo dia</p>
+          <p>Crie hábitos que aparecem sozinhos todo dia.</p>
         </div>
       </div>
-
     </section>
 
     <!-- TAB: Financeiro -->
@@ -1101,9 +1118,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=123"></script>
-  <script src="js/assist.js?v=123"></script>
-  <script src="app.js?v=123"></script>
+  <script src="js/fin-receitas.js?v=124"></script>
+  <script src="js/assist.js?v=124"></script>
+  <script src="app.js?v=124"></script>
   <script>
     (function initSidebarToggle() {
       var btn = document.getElementById('sidebar-toggle');

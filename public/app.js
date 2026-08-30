@@ -107,6 +107,27 @@ function anteontemLocal() {
   return `${y}-${m}-${day}`;
 }
 
+function diasSemanaLocal() {
+  const hoje = new Date();
+  hoje.setHours(12, 0, 0, 0);
+  const start = new Date(hoje);
+  start.setDate(hoje.getDate() - hoje.getDay());
+  const dias = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    dias.push(d.toLocaleDateString('en-CA'));
+  }
+  return dias;
+}
+
+function progressoDiaTarefas(dataStr) {
+  const tasks = (allTasks || []).filter(t => t.data_reset && String(t.data_reset).split('T')[0] === dataStr);
+  if (!tasks.length) return null;
+  const done = tasks.filter(t => t.concluida).length;
+  return { total: tasks.length, done, pct: Math.round((done / tasks.length) * 100) };
+}
+
 // Frases motivacionais
 const FRASES_MOTIVACIONAIS = {
   manha: [
@@ -1132,6 +1153,33 @@ function verificarAnaliseDiaria() {
 // =====================
 //  SUB-ABAS DO FINANCEIRO
 // =====================
+function trocarSubAbaTarefas(id) {
+  const alvo = document.getElementById(id);
+  if (!alvo || alvo.classList.contains('tasks-subtab--active')) return;
+
+  document.querySelectorAll('.tasks-subtab').forEach(el => {
+    el.style.display = 'none';
+    el.classList.remove('tasks-subtab--active', 'fin-subtab-enter', 'fin-subtab-enter-active');
+  });
+
+  alvo.style.display = 'block';
+  alvo.classList.add('tasks-subtab--active', 'fin-subtab-enter');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => alvo.classList.add('fin-subtab-enter-active'));
+  });
+  setTimeout(() => alvo.classList.remove('fin-subtab-enter', 'fin-subtab-enter-active'), 340);
+
+  document.querySelectorAll('[data-tasks-tab]').forEach(btn => {
+    const ativo = btn.getAttribute('data-tasks-tab') === id;
+    btn.classList.toggle('active', ativo);
+    if (ativo) {
+      btn.classList.remove('fin-subtab-btn-pulse');
+      void btn.offsetWidth;
+      btn.classList.add('fin-subtab-btn-pulse');
+    }
+  });
+}
+
 function trocarSubAbaFin(id) {
   const atual = document.querySelector('.fin-subtab.fin-subtab--active');
   const alvo = document.getElementById(id);
@@ -4150,6 +4198,27 @@ function atualizarBadgesTarefas() {
   if (badgeAmanha) badgeAmanha.textContent = tarefasAmanha;
 }
 
+function renderTaskItemHTML(task) {
+  const prioridade = task.prioridade || 'media';
+  const categoria = task.categoria || 'geral';
+  const catLabels = { geral: 'Geral', trabalho: 'Trabalho', estudos: 'Estudos', saude: 'Saúde', pessoal: 'Pessoal' };
+  const horaHtml = task.hora ? `<span class="task-hora">${task.hora}</span>` : '';
+  return `
+    <li class="task-item ${task.concluida ? 'completed' : ''}">
+      <input type="checkbox" class="task-check" ${task.concluida ? 'checked' : ''}
+             onchange="marcarTarefa('${task.id}', this.checked)">
+      <div class="task-content">
+        <div class="task-text">${escapeHtml(task.titulo)}</div>
+        <div class="task-meta">
+          ${horaHtml}
+          <span class="task-badge badge-${prioridade}">${prioridade}</span>
+          <span class="task-cat">${catLabels[categoria] || categoria}</span>
+        </div>
+      </div>
+      <button type="button" class="btn-delete" onclick="deletarTarefa('${task.id}')" title="Deletar">✕</button>
+    </li>`;
+}
+
 function renderTarefasDia(dataStr, listaId, emptyId) {
   const lista = document.getElementById(listaId);
   const empty = document.getElementById(emptyId);
@@ -4170,26 +4239,7 @@ function renderTarefasDia(dataStr, listaId, emptyId) {
     return;
   }
   if (empty) empty.style.display = 'none';
-  lista.innerHTML = filtered.map(task => {
-    const prioridade = task.prioridade || 'media';
-    const categoria = task.categoria || 'geral';
-    const catIcons = { geral: '📌', trabalho: '💼', estudos: '📚', saude: '💪', pessoal: '🏠' };
-    const horaHtml = task.hora ? `<span class="task-hora">⏰ ${task.hora}</span>` : '';
-    return `
-      <li class="task-item ${task.concluida ? 'completed' : ''}">
-        <input type="checkbox" class="task-check" ${task.concluida ? 'checked' : ''}
-               onchange="marcarTarefa('${task.id}', this.checked)">
-        <div class="task-content">
-          <div class="task-text">${escapeHtml(task.titulo)}</div>
-          <div class="task-meta">
-            ${horaHtml}
-            <span class="task-badge badge-${prioridade}">${prioridade}</span>
-            <span class="task-cat">${catIcons[categoria] || '📌'} ${categoria}</span>
-          </div>
-        </div>
-        <button class="btn-delete" onclick="deletarTarefa('${task.id}')" title="Deletar">✕</button>
-      </li>`;
-  }).join('');
+  lista.innerHTML = filtered.map(task => renderTaskItemHTML(task)).join('');
 }
 
 function renderTarefasAnteontem() {
@@ -4197,124 +4247,36 @@ function renderTarefasAnteontem() {
 }
 
 function renderTarefasOntem() {
-  const lista = document.getElementById('lista-tarefas-ontem');
-  const empty = document.getElementById('empty-tarefas-ontem');
-
-  const ontemStr = ontemLocal();
-
-  // Filtrar apenas tarefas de ontem
-  let filtered = allTasks.filter(t => {
-    if (!t.data_reset) return false;
-    return t.data_reset.split('T')[0] === ontemStr;
-  });
-
-  // Aplicar filtros adicionais
-  if (currentTaskFilter === 'pendentes') filtered = filtered.filter(t => !t.concluida);
-  else if (currentTaskFilter === 'concluidas') filtered = filtered.filter(t => t.concluida);
-  else if (currentTaskFilter === 'alta') filtered = filtered.filter(t => t.prioridade === 'alta');
-
-  // Ordenar por hora
-  filtered.sort((a, b) => {
-    const horaA = a.hora || '99:99';
-    const horaB = b.hora || '99:99';
-    return horaA.localeCompare(horaB);
-  });
-
-  if (filtered.length === 0) {
-    lista.innerHTML = '';
-    const tarefasOntem = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === ontemLocal());
-    empty.style.display = tarefasOntem.length === 0 ? 'block' : 'none';
-    if (tarefasOntem.length > 0) {
-      lista.innerHTML = `<div class="mini-item-empty">Nenhuma tarefa nesse filtro</div>`;
-    }
-  } else {
-    empty.style.display = 'none';
-    lista.innerHTML = filtered.map(task => {
-      const prioridade = task.prioridade || 'media';
-      const categoria = task.categoria || 'geral';
-      const catIcons = {
-        geral: '📌', trabalho: '💼', estudos: '📚', saude: '💪', pessoal: '🏠'
-      };
-      const horaHtml = task.hora ? `<span class="task-hora">⏰ ${task.hora}</span>` : '';
-      return `
-        <li class="task-item ${task.concluida ? 'completed' : ''}">
-          <input type="checkbox" class="task-check" ${task.concluida ? 'checked' : ''}
-                 onchange="marcarTarefa('${task.id}', this.checked)">
-          <div class="task-content">
-            <div class="task-text">${escapeHtml(task.titulo)}</div>
-            <div class="task-meta">
-              ${horaHtml}
-              <span class="task-badge badge-${prioridade}">${prioridade}</span>
-              <span class="task-cat">${catIcons[categoria] || '📌'} ${categoria}</span>
-            </div>
-          </div>
-          <button class="btn-delete" onclick="deletarTarefa('${task.id}')" title="Deletar">✕</button>
-        </li>
-      `;
-    }).join('');
-  }
+  renderTarefasDia(ontemLocal(), 'lista-tarefas-ontem', 'empty-tarefas-ontem');
 }
 
 function renderTarefas() {
-  const lista = document.getElementById('lista-tarefas');
-  const empty = document.getElementById('empty-tarefas');
-
-  // Filtrar apenas tarefas de hoje (usando data local para evitar bug de timezone)
-  const hoje = hojeLocal();
-  let filtered = allTasks.filter(t => {
-    if (!t.data_reset) return false;
-    return t.data_reset.split('T')[0] === hoje;
-  });
-
-  // Aplicar filtros adicionais
-  if (currentTaskFilter === 'pendentes') filtered = filtered.filter(t => !t.concluida);
-  else if (currentTaskFilter === 'concluidas') filtered = filtered.filter(t => t.concluida);
-  else if (currentTaskFilter === 'alta') filtered = filtered.filter(t => t.prioridade === 'alta');
-
-  // Ordenar por hora (tarefas com hora primeiro, depois sem hora)
-  filtered.sort((a, b) => {
-    const horaA = a.hora || '99:99';
-    const horaB = b.hora || '99:99';
-    return horaA.localeCompare(horaB);
-  });
-
-  if (filtered.length === 0) {
-    lista.innerHTML = '';
-    const tarefasHoje = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === hojeLocal());
-    empty.style.display = tarefasHoje.length === 0 ? 'block' : 'none';
-    if (tarefasHoje.length > 0) {
-      lista.innerHTML = `<div class="mini-item-empty">Nenhuma tarefa nesse filtro</div>`;
-    }
-  } else {
-    empty.style.display = 'none';
-    lista.innerHTML = filtered.map(task => {
-      const prioridade = task.prioridade || 'media';
-      const categoria = task.categoria || 'geral';
-      const catIcons = {
-        geral: '📌', trabalho: '💼', estudos: '📚', saude: '💪', pessoal: '🏠'
-      };
-      const horaHtml = task.hora ? `<span class="task-hora">⏰ ${task.hora}</span>` : '';
-      return `
-        <li class="task-item ${task.concluida ? 'completed' : ''}">
-          <input type="checkbox" class="task-check" ${task.concluida ? 'checked' : ''}
-                 onchange="marcarTarefa('${task.id}', this.checked)">
-          <div class="task-content">
-            <div class="task-text">${escapeHtml(task.titulo)}</div>
-            <div class="task-meta">
-              ${horaHtml}
-              <span class="task-badge badge-${prioridade}">${prioridade}</span>
-              <span class="task-cat">${catIcons[categoria] || '📌'} ${categoria}</span>
-            </div>
-          </div>
-          <button class="btn-delete" onclick="deletarTarefa('${task.id}')" title="Deletar">✕</button>
-        </li>
-      `;
-    }).join('');
-  }
+  renderTarefasDia(hojeLocal(), 'lista-tarefas', 'empty-tarefas');
 
   const tarefasHoje = allTasks.filter(t => t.data_reset && t.data_reset.split('T')[0] === hojeLocal());
-  document.getElementById('total').textContent = tarefasHoje.length;
-  document.getElementById('concluidas').textContent = tarefasHoje.filter(t => t.concluida).length;
+  const concluidas = tarefasHoje.filter(t => t.concluida).length;
+  const total = tarefasHoje.length;
+  const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+
+  const elTotal = document.getElementById('total');
+  const elConc = document.getElementById('concluidas');
+  if (elTotal) elTotal.textContent = total;
+  if (elConc) elConc.textContent = concluidas;
+
+  const bar = document.getElementById('tasks-hoje-bar');
+  const pctEl = document.getElementById('tasks-hoje-pct');
+  if (bar) bar.style.width = `${pct}%`;
+  if (pctEl) pctEl.textContent = `${pct}%`;
+
+  const metaHoje = document.getElementById('meta-hoje');
+  if (metaHoje) {
+    const pendentes = total - concluidas;
+    metaHoje.textContent = total
+      ? (pendentes > 0 ? `${pendentes} pendente${pendentes === 1 ? '' : 's'}` : 'Tudo concluído')
+      : '';
+  }
+
+  if (typeof atualizarTopbarJornada === 'function') atualizarTopbarJornada(concluidas, total);
 }
 
 async function adicionarTarefa() {
@@ -6473,7 +6435,11 @@ function atualizarDashboard() {
 
 function atualizarTopbarJornada(concluidas, total) {
   const fill = document.getElementById('topbar-journey-fill');
+  const valueEl = document.getElementById('topbar-journey-value');
+  const weekEl = document.getElementById('topbar-journey-week');
+  const journeyEl = document.getElementById('topbar-journey');
   if (!fill) return;
+
   let c = concluidas;
   let t = total;
   if (c == null || t == null) {
@@ -6482,8 +6448,46 @@ function atualizarTopbarJornada(concluidas, total) {
     t = tarefasHoje.length;
     c = tarefasHoje.filter(x => x.concluida).length;
   }
+
   const pct = t > 0 ? Math.round((c / t) * 100) : 0;
   fill.style.width = `${pct}%`;
+  if (valueEl) valueEl.textContent = `${c}/${t}`;
+  if (journeyEl) {
+    journeyEl.title = t
+      ? `Hoje: ${c} de ${t} tarefas (${pct}%)`
+      : 'Nenhuma tarefa para hoje';
+  }
+
+  if (!weekEl) return;
+  const labels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const hojeStr = hojeLocal();
+  let diasComMeta = 0;
+  let diasComTarefas = 0;
+
+  weekEl.innerHTML = diasSemanaLocal().map((diaStr, i) => {
+    const prog = progressoDiaTarefas(diaStr);
+    const isToday = diaStr === hojeStr;
+    let cls = 'topbar-day';
+    if (isToday) cls += ' topbar-day--today';
+    if (!prog) {
+      cls += ' topbar-day--empty';
+    } else {
+      diasComTarefas += 1;
+      if (prog.pct >= 100) {
+        cls += ' topbar-day--done';
+        diasComMeta += 1;
+      } else if (prog.pct > 0) cls += ' topbar-day--partial';
+      else cls += ' topbar-day--pending';
+    }
+    const tip = prog
+      ? `${labels[i]}: ${prog.done}/${prog.total} (${prog.pct}%)`
+      : `${labels[i]}: sem tarefas`;
+    return `<span class="${cls}" title="${tip}">${labels[i]}</span>`;
+  }).join('');
+
+  if (journeyEl && diasComTarefas) {
+    journeyEl.title += ` · Semana: ${diasComMeta}/${diasComTarefas} dias completos`;
+  }
 }
 
 // Preenche os 3 badges de delta dos KPIs (Kirvano-style)
@@ -7048,53 +7052,7 @@ function alternarAbasTarefas(aba) {
 }
 
 function renderTarefasAmanha() {
-  const amanhaStr = amanhaLocal();
-
-  const tarefas = allTasks
-    .filter(t => {
-      if (!t.data_reset) return false;
-      return t.data_reset.split('T')[0] === amanhaStr;
-    })
-    .sort((a, b) => {
-      const horaA = a.hora || '99:99';
-      const horaB = b.hora || '99:99';
-      return horaA.localeCompare(horaB);
-    });
-
-
-
-  const lista = document.getElementById('lista-tarefas-amanha');
-  const empty = document.getElementById('empty-tarefas-amanha');
-
-  if (tarefas.length === 0) {
-    lista.innerHTML = '';
-    empty.style.display = 'block';
-  } else {
-    empty.style.display = 'none';
-    lista.innerHTML = tarefas.map(task => {
-      const prioridade = task.prioridade || 'media';
-      const categoria = task.categoria || 'geral';
-      const catIcons = {
-        geral: '📌', trabalho: '💼', estudos: '📚', saude: '💪', pessoal: '🏠'
-      };
-      const horaHtml = task.hora ? `<span class="task-hora">⏰ ${task.hora}</span>` : '';
-      return `
-        <li class="task-item ${task.concluida ? 'completed' : ''}">
-          <input type="checkbox" class="task-check" ${task.concluida ? 'checked' : ''}
-                 onchange="marcarTarefa('${task.id}', this.checked)">
-          <div class="task-content">
-            <div class="task-text">${escapeHtml(task.titulo)}</div>
-            <div class="task-meta">
-              ${horaHtml}
-              <span class="task-badge badge-${prioridade}">${prioridade}</span>
-              <span class="task-cat">${catIcons[categoria] || '📌'} ${categoria}</span>
-            </div>
-          </div>
-          <button class="btn-delete" onclick="deletarTarefa('${task.id}')" title="Deletar">✕</button>
-        </li>
-      `;
-    }).join('');
-  }
+  renderTarefasDia(amanhaLocal(), 'lista-tarefas-amanha', 'empty-tarefas-amanha');
 }
 
 // =====================
