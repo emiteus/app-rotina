@@ -6020,6 +6020,33 @@ function notificarEventoProximo(evento) {
   });
 }
 
+// Recarrega todos os dados do usuário logado (chamar após sessão válida)
+function recarregarDadosUsuario() {
+  carregarTarefas();
+  carregarBancos().then(() => carregarTransacoes());
+  carregarAlarmes();
+  carregarStats();
+  carregarRankingDia();
+  carregarRecorrentes();
+  carregarEventos();
+  carregarDashboardExtras();
+  atualizarDashboard();
+}
+window.recarregarDadosUsuario = recarregarDadosUsuario;
+
+function agendarRecargaPosAuth() {
+  const tentar = () => {
+    if (!window.__sessaoOk && !window.__currentUser) return false;
+    recarregarDadosUsuario();
+    return true;
+  };
+  if (tentar()) return;
+  let n = 0;
+  const iv = setInterval(() => {
+    if (tentar() || ++n > 40) clearInterval(iv);
+  }, 250);
+}
+
 // =====================
 //  DASHBOARD
 // =====================
@@ -6683,13 +6710,9 @@ window.addEventListener('load', () => {
   atualizarHora();
   setInterval(atualizarHora, 1000);
 
-  carregarTarefas();
-  carregarBancos().then(() => carregarTransacoes());
-  carregarAlarmes();
-  carregarStats();
-  carregarRankingDia();
-  carregarRecorrentes();
-  carregarEventos();
+  initDashDateRange();
+  initDashToolbar();
+  agendarRecargaPosAuth();
 
   // Sync do Open Finance ao abrir o app (1x/dia via localStorage lock)
   // Pega transações novas da Nubank sem esperar o cron 6/14h30/20h
@@ -6707,11 +6730,9 @@ window.addEventListener('load', () => {
 
   conectarWebSocket();
 
-  // 4 cards Kirvano-style embaixo do chart
-  carregarDashboardExtras();
-
-  // Refresh a cada 30s
+  // Refresh a cada 30s (só se logado)
   setInterval(() => {
+    if (!window.__sessaoOk && !window.__currentUser) return;
     carregarTarefas();
     carregarTransacoes();
     carregarAlarmes();
@@ -6727,9 +6748,6 @@ window.addEventListener('load', () => {
   const dataInput = document.getElementById('data-tarefa');
   if (dataInput) dataInput.value = hojeLocal();
 
-  // v17: aplicar flatpickr em todos inputs de data/hora (tema Kirvano via CSS)
-  initDashDateRange();
-  initDashToolbar();
   if (typeof flatpickr === 'function') {
     document.querySelectorAll('input[type="date"]').forEach(inp => {
       flatpickr(inp, {
@@ -7310,31 +7328,19 @@ function sugerirMelhorHorario() {
 //  INICIALIZAÇÃO DO APP
 // =====================
 async function inicializarApp() {
-  // Carrega o estado persistente (banco) antes de qualquer leitura — com fallback local
   await carregarEstado();
 
-  // Pré-definir data de hoje nos inputs (usando data local)
   const inputData = document.getElementById('data-tarefa');
-  if (inputData) {
-    inputData.value = hojeLocal();
-  }
+  if (inputData) inputData.value = hojeLocal();
 
-  // Carregar dados do app
   carregarDadosJogador();
   carregarOrcamentos();
   atualizarData();
   atualizarHora();
   saudacao();
   conectarWebSocket();
-  carregarTarefas();
-  carregarBancos().then(() => carregarTransacoes());
-  carregarAlarmes();
-  carregarRecorrentes();
-  carregarEventos();
-  carregarStats();
-  carregarRankingDia();
-  atualizarDashboard();
   verificarModoNoturno();
+  agendarRecargaPosAuth();
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === '/') {
       e.preventDefault();
