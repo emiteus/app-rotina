@@ -222,7 +222,7 @@ body {
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-md) !important;
   padding: 20px 22px !important;
-  min-height: 120px !important;
+  min-height: 148px !important;
   box-shadow: none !important;
 }
 
@@ -819,7 +819,7 @@ input:focus, select:focus, textarea:focus {
 
 .dashboard-kpi-grid .card,
 .kpi-card {
-  min-height: 120px !important;
+  min-height: 148px !important;
 }
 
 #dashboard .dashboard-extra-grid {
@@ -864,8 +864,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 #dashboard .dashboard-chart-hero .chart-container {
-  height: 220px !important;
-  min-height: 200px !important;
+  height: 320px !important;
+  min-height: 280px !important;
 }
 
 .dash-header {
@@ -902,5 +902,14 @@ html body #dashboard .dashboard-mini-card .panel-header h3 {
   .dash-date-range {
     min-width: 0;
     width: 100%;
+  }
+
+  #dashboard .dashboard-chart-hero .chart-container {
+    height: 240px !important;
+    min-height: 220px !important;
+  }
+
+  html body #dashboard .dashboard-mini-card {
+    min-height: 160px !important;
   }
 }
