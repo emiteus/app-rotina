@@ -659,7 +659,6 @@ input:focus, select:focus, textarea:focus {
     padding: 0 14px !important;
     left: 0 !important;
   }
-  .topbar-journey { display: none; }
   .sidebar .logo { display: flex !important; }
 }
 
@@ -1982,5 +1981,324 @@ html body #push-btn-ativar {
   }
   .tasks-stat-bar-wrap {
     max-width: none;
+  }
+}
+
+/* append v126 — layout mobile responsivo */
+
+@media (max-width: 768px) {
+  html body {
+    padding-left: 0 !important;
+  }
+
+  html body .main {
+    padding: 12px 14px calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+    max-width: none !important;
+    width: 100% !important;
+    min-height: calc(100dvh - 52px - env(safe-area-inset-top, 0px));
+  }
+
+  .app-topbar {
+    padding: 0 12px 0 8px !important;
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+  }
+
+  .sidebar-toggle {
+    display: none !important;
+  }
+
+  /* Bottom nav */
+  html body aside.sidebar {
+    width: 100% !important;
+    height: auto !important;
+    padding: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border) !important;
+  }
+
+  html body .sidebar .logo,
+  html body .sidebar .sidebar-footer {
+    display: none !important;
+  }
+
+  html body .sidebar .nav {
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    gap: 0 !important;
+    padding: 4px 2px 6px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  html body .sidebar .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  html body .sidebar .nav-btn {
+    flex: 1 1 0 !important;
+    min-width: 44px !important;
+    max-width: 72px !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    padding: 6px 2px !important;
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 9px !important;
+    border-radius: 8px !important;
+  }
+
+  html body .sidebar .nav-btn span:not(.nav-icon) {
+    display: block !important;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.1;
+  }
+
+  html body .sidebar .nav-btn.active {
+    background: var(--accent-dim) !important;
+    box-shadow: inset 0 -2px 0 var(--accent) !important;
+  }
+
+  /* Dashboard KPI — 1 coluna (override repeat(3)) */
+  html body #dashboard .dashboard-kpi-grid,
+  html body .dashboard-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    margin-bottom: 10px !important;
+  }
+
+  html body #dashboard .dashboard-kpi-grid .card,
+  html body #dashboard .kpi-card {
+    min-height: auto !important;
+    padding: 16px 18px !important;
+  }
+
+  html body #dashboard .dashboard-kpi-grid .card-value,
+  html body #dashboard .kpi-card .card-value {
+    font-size: 26px !important;
+  }
+
+  html body #dashboard .kpi-pct-big {
+    font-size: 26px !important;
+  }
+
+  /* Label + delta sem sobreposição */
+  html body #dashboard .dashboard-kpi-grid .card-label,
+  html body #dashboard .kpi-card .card-label {
+    padding-right: 0 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px 8px !important;
+    line-height: 1.3 !important;
+  }
+
+  html body #dashboard .card-delta {
+    position: static !important;
+    margin-left: 0 !important;
+    flex-shrink: 0;
+  }
+
+  html body #dashboard .dashboard-extra-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  html body #dashboard .dashboard-mini-card {
+    min-height: auto !important;
+    padding: 16px 18px !important;
+  }
+
+  /* Header dashboard */
+  html body #dashboard .dash-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    margin-bottom: 14px !important;
+  }
+
+  html body #dashboard .dash-header h1 {
+    font-size: 22px !important;
+  }
+
+  html body #dashboard .dash-header-toolbar {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+    margin-left: 0 !important;
+  }
+
+  html body #dashboard .dash-date-range-wrap,
+  html body #dashboard .dash-search-wrap {
+    width: 100% !important;
+    flex: none !important;
+    min-width: 0 !important;
+  }
+
+  html body #dashboard .dash-search {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Gráfico */
+  html body #dashboard .dashboard-chart-hero {
+    padding: 16px !important;
+    margin: 10px 0 !important;
+  }
+
+  html body #dashboard .dash-chart-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  html body #dashboard .dash-chart-filters {
+    margin-left: 0 !important;
+    width: 100% !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+  }
+
+  html body #dashboard .dash-chart-range-wrap {
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+
+  html body #dashboard .dashboard-chart-hero .chart-container {
+    height: 220px !important;
+    min-height: 200px !important;
+  }
+
+  /* Páginas gerais */
+  html body .page-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+
+  html body .page-header h1,
+  html body h1 {
+    font-size: 22px !important;
+  }
+
+  html body .stats-grid,
+  html body .hist-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  html body .hist-main-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body .finance-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body .tasks-page-header {
+    align-items: stretch !important;
+  }
+
+  html body .tasks-header-stats {
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+
+  html body .tasks-stat-bar-wrap {
+    max-width: none !important;
+  }
+
+  html body .tasks-subtabs,
+  html body .fin-subtabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  html body .tasks-subtabs::-webkit-scrollbar,
+  html body .fin-subtabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  html body .panel {
+    padding: 16px !important;
+  }
+
+  html body .form-row.form-main {
+    flex-direction: column !important;
+  }
+
+  html body .form-row.form-main .btn-primary,
+  html body .form-row.form-main .btn-add-task {
+    width: 100% !important;
+  }
+
+  html body .form-row.form-secondary {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  html body #login-overlay > div {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  html body #toast-container {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 12px !important;
+    right: 12px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  html body .sidebar .nav-btn span:not(.nav-icon) {
+    display: none !important;
+  }
+
+  html body .sidebar .nav-btn {
+    min-width: 40px !important;
+    padding: 8px 4px !important;
+  }
+
+  html body .stats-grid,
+  html body .hist-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #dashboard .form-row.form-secondary {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body .topbar-brand {
+    font-size: 15px !important;
+  }
+
+  html body .topbar-journey {
+    max-width: 110px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  html body .main {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  html body #dashboard .dash-chart-pills .fin-subtab-btn {
+    padding: 6px 10px !important;
+    font-size: 11px !important;
   }
 }
