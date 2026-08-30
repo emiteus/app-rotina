@@ -222,7 +222,7 @@ body {
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-md) !important;
   padding: 20px 22px !important;
-  min-height: 128px !important;
+  min-height: 140px !important;
   box-shadow: none !important;
 }
 
@@ -812,25 +812,25 @@ input:focus, select:focus, textarea:focus {
 
 /* ----- KPI cards — 3 colunas iguais, compactos ----- */
 .dashboard-kpi-grid {
-  gap: 10px !important;
-  margin-bottom: 10px !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
   grid-template-columns: repeat(3, 1fr) !important;
 }
 
 .dashboard-kpi-grid .card,
 .kpi-card {
-  min-height: 128px !important;
+  min-height: 140px !important;
 }
 
 #dashboard .dashboard-extra-grid {
-  margin-top: 10px !important;
-  gap: 10px !important;
+  margin-top: 12px !important;
+  gap: 12px !important;
 }
 
 /* ----- Gráfico de tarefas (Kirvano) ----- */
 #dashboard .dashboard-chart-hero {
-  margin: 10px 0 !important;
-  padding: 16px 18px !important;
+  margin: 12px 0 !important;
+  padding: 18px 20px !important;
   background: var(--bg-card) !important;
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-md) !important;
@@ -929,8 +929,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 #dashboard .dashboard-chart-hero .chart-container {
-  height: 200px !important;
-  min-height: 180px !important;
+  height: 260px !important;
+  min-height: 240px !important;
 }
 
 .dash-header {
@@ -955,30 +955,30 @@ html body #dashboard .dashboard-mini-card .panel-header h3 {
 }
 
 html body #dashboard .dashboard-mini-card {
-  min-height: 132px !important;
+  min-height: 168px !important;
 }
 
 #dashboard #dash-ranking-card {
-  min-height: 128px !important;
+  min-height: 140px !important;
 }
 
 #dashboard #dash-ranking-card .ranking-list {
-  min-height: 48px;
+  min-height: 52px;
 }
 
 @media (min-width: 1100px) {
   #dashboard .dashboard-chart-hero .chart-container {
-    height: 210px !important;
-    min-height: 190px !important;
+    height: 280px !important;
+    min-height: 260px !important;
   }
 
   html body #dashboard .dashboard-mini-card {
-    min-height: 128px !important;
+    min-height: 180px !important;
   }
 
   html body #dashboard .dashboard-kpi-grid .card,
   html body #dashboard .kpi-card {
-    min-height: 132px !important;
+    min-height: 144px !important;
   }
 }
 
