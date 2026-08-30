@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=119">
-  <link rel="stylesheet" href="style-ranking.css?v=119">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=119">
+  <link rel="stylesheet" href="style.css?v=120">
+  <link rel="stylesheet" href="style-ranking.css?v=120">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=120">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,13 +37,13 @@
 <body>
   <script>
     (function () {
-      var V = '119';
+      var V = '120';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
           localStorage.setItem('app_build', V);
           if (location.search.indexOf('v=' + V) === -1) {
-            location.replace(location.pathname + '?v=' + V + location.hash);
+            location.replace(location.pathname + '?v=' + V + '&_=' + Date.now() + location.hash);
             return;
           }
         } else if (!prev) {
@@ -52,6 +52,11 @@
       } catch (e) { /* ok */ }
       try {
         if (window.electron || /Electron/i.test(navigator.userAgent)) {
+          if (window.caches && caches.keys) {
+            caches.keys().then(function (keys) {
+              keys.forEach(function (k) { caches.delete(k); });
+            }).catch(function () {});
+          }
           navigator.serviceWorker.getRegistrations().then(function (regs) {
             regs.forEach(function (r) { r.unregister(); });
           }).catch(function () {});
@@ -1089,9 +1094,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=119"></script>
-  <script src="js/assist.js?v=119"></script>
-  <script src="app.js?v=119"></script>
+  <script src="js/fin-receitas.js?v=120"></script>
+  <script src="js/assist.js?v=120"></script>
+  <script src="app.js?v=120"></script>
   <script>
     (function initSidebarToggle() {
       var btn = document.getElementById('sidebar-toggle');

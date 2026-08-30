@@ -12,7 +12,7 @@ const isDev = !app.isPackaged;
 
 const PROD_URL = 'https://app-rotina-production-f84e.up.railway.app/';
 /** Versão do frontend web — manter igual ao ?v= do index.html */
-const WEB_BUILD = '119';
+const WEB_BUILD = '120';
 
 function urlProducao() {
   return `${PROD_URL}?v=${WEB_BUILD}&electron=1&_=${Date.now()}`;
@@ -188,9 +188,20 @@ function createWindow(opts = {}) {
       }
     }
   });
-  mainWindow.webContents.loadURL(startUrl, {
-    extraHeaders: 'Cache-Control: no-cache, no-store\r\nPragma: no-cache\r\n'
-  });
+
+  // Limpa cache da PARTIÇÃO do usuário (persist:rotina-*).
+  // clearCache no defaultSession NÃO afeta essa sessão — por isso o .exe ficava na UI antiga.
+  const ses = mainWindow.webContents.session;
+  Promise.resolve()
+    .then(() => ses.clearCache())
+    .then(() => ses.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] }))
+    .catch((e) => log.warn('[cache] limpeza falhou', e?.message || e))
+    .finally(() => {
+      if (!mainWindow) return;
+      mainWindow.webContents.loadURL(startUrl, {
+        extraHeaders: 'Cache-Control: no-cache, no-store\r\nPragma: no-cache\r\n'
+      });
+    });
 
   // Windows: aplica AUMID+ícone nas propriedades da JANELA em cada momento crítico.
   // Uma chamada só nem sempre pega — Windows Explorer às vezes já cacheou.
@@ -242,8 +253,19 @@ Menu.setApplicationMenu(null);
 
 app.on('ready', async () => {
   registrarIpcAuth();
-  // Limpa cache HTTP do Chromium interno pra garantir que CSS/JS novos entrem.
-  // Sem isso, o Electron reusa disk cache mesmo quando o servidor manda arquivo novo.
+  // Limpa defaultSession E a partição persistente do usuário logado
+  const partitions = ['persist:rotina-default'];
+  try {
+    const login = electronAuth.getSavedLogin();
+    if (login) partitions.push(electronAuth.partitionForLogin(login));
+  } catch (e) { /* ok */ }
+  for (const p of partitions) {
+    try {
+      const ses = session.fromPartition(p);
+      await ses.clearCache();
+      await ses.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] });
+    } catch (e) { /* ok */ }
+  }
   try { await session.defaultSession.clearCache(); } catch (e) {}
   try {
     await session.defaultSession.clearStorageData({
