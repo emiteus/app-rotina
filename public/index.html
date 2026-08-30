@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=127">
-  <link rel="stylesheet" href="style-ranking.css?v=127">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=127">
+  <link rel="stylesheet" href="style.css?v=129">
+  <link rel="stylesheet" href="style-ranking.css?v=129">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=129">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
 <body>
   <script>
     (function () {
-      var V = '127';
+      var V = '129';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -935,6 +935,28 @@
 
       <div class="hist-insights" id="hist-insights" aria-label="Resumo rápido"></div>
 
+      <div class="panel hist-panel-ofensiva">
+        <div class="panel-header hist-panel-head hist-panel-head--stack">
+          <div class="hist-ofensiva-head">
+            <div>
+              <h3>Histórico de ofensiva</h3>
+              <p class="hist-panel-desc">Pontos acumulados (% do dia) — quem liderou no período</p>
+            </div>
+            <div class="hist-ofensiva-filters fin-subtabs fin-subtabs--pills dash-chart-pills" id="hist-ofensiva-filters" role="tablist" aria-label="Período da ofensiva">
+              <button type="button" class="fin-subtab-btn active" data-hist-ofensiva="7d" onclick="setHistOfensivaPeriodo('7d')">7 dias</button>
+              <button type="button" class="fin-subtab-btn" data-hist-ofensiva="30d" onclick="setHistOfensivaPeriodo('30d')">30 dias</button>
+              <button type="button" class="fin-subtab-btn" data-hist-ofensiva="90d" onclick="setHistOfensivaPeriodo('90d')">90 dias</button>
+              <button type="button" class="fin-subtab-btn" data-hist-ofensiva="180d" onclick="setHistOfensivaPeriodo('180d')">180 dias</button>
+            </div>
+          </div>
+          <p class="hist-ofensiva-resumo" id="hist-ofensiva-resumo"></p>
+        </div>
+        <div class="hist-ofensiva-chart-wrap">
+          <canvas id="hist-ofensiva-chart" height="220" aria-label="Gráfico de pontos da ofensiva"></canvas>
+        </div>
+        <div id="hist-ofensiva-list" class="ranking-list hist-ofensiva-list"></div>
+      </div>
+
       <div class="hist-main-grid">
         <div class="panel hist-panel-heatmap">
           <div class="panel-header hist-panel-head">
@@ -1118,9 +1140,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=127"></script>
-  <script src="js/assist.js?v=127"></script>
-  <script src="app.js?v=127"></script>
+  <script src="js/fin-receitas.js?v=129"></script>
+  <script src="js/assist.js?v=129"></script>
+  <script src="app.js?v=129"></script>
   <script>
     (function initSidebarToggle() {
       var btn = document.getElementById('sidebar-toggle');

@@ -5507,6 +5507,176 @@ async function carregarRankingDia() {
   }
 }
 
+let _histOfensivaPeriodo = '30d';
+let _histOfensivaChart = null;
+
+function setHistOfensivaPeriodo(periodo) {
+  _histOfensivaPeriodo = periodo || '30d';
+  document.querySelectorAll('[data-hist-ofensiva]').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-hist-ofensiva') === _histOfensivaPeriodo);
+  });
+  carregarRankingHistorico();
+}
+
+async function carregarRankingHistorico() {
+  const listEl = document.getElementById('hist-ofensiva-list');
+  const resumoEl = document.getElementById('hist-ofensiva-resumo');
+  const canvas = document.getElementById('hist-ofensiva-chart');
+  if (!listEl || !canvas) return;
+
+  listEl.innerHTML = '<div class="ranking-empty">Carregando…</div>';
+  if (resumoEl) resumoEl.textContent = '';
+
+  try {
+    const res = await fetch(`/api/ranking/historico?periodo=${encodeURIComponent(_histOfensivaPeriodo)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.erro || 'Erro ao carregar ofensiva');
+
+    renderRankingHistoricoChart(data);
+    renderRankingHistoricoList(data);
+
+    if (resumoEl) {
+      const p = data.periodo || {};
+      const deFmt = p.de ? new Date(`${p.de}T12:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }) : '';
+      const ateFmt = p.ate ? new Date(`${p.ate}T12:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+      const l = data.lider;
+      let extra = '';
+      if (l && l.diffPontos > 0 && l.nome) {
+        const euLider = (data.jogadores || [])[0]?.eu;
+        extra = euLider
+          ? ` · Você lidera com ${l.diffPontos} pts de vantagem`
+          : ` · ${l.nome} lidera (+${l.diffPontos} pts)`;
+      }
+      resumoEl.textContent = `${deFmt} — ${ateFmt} · ${p.dias || 0} dia(s) com dados${extra}`;
+    }
+  } catch (err) {
+    listEl.innerHTML = `<div class="ranking-empty">${escapeHtml(err.message || 'Erro ao carregar')}</div>`;
+    if (_histOfensivaChart) {
+      _histOfensivaChart.destroy();
+      _histOfensivaChart = null;
+    }
+  }
+}
+
+function renderRankingHistoricoChart(data) {
+  const canvas = document.getElementById('hist-ofensiva-chart');
+  if (!canvas) return;
+
+  const jogadores = (data.jogadores || []).filter((j) => j.pontos > 0 || j.dias > 0);
+  if (!jogadores.length) {
+    if (_histOfensivaChart) {
+      _histOfensivaChart.destroy();
+      _histOfensivaChart = null;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  const labels = jogadores.map((j) => j.nome);
+  const pontos = jogadores.map((j) => j.pontos);
+  const cores = jogadores.map((j) => j.cor || CHART_ACCENT);
+
+  if (_histOfensivaChart) {
+    _histOfensivaChart.data.labels = labels;
+    _histOfensivaChart.data.datasets[0].data = pontos;
+    _histOfensivaChart.data.datasets[0].backgroundColor = cores;
+    _histOfensivaChart.data.datasets[0].borderColor = cores.map((c) => c);
+    _histOfensivaChart.$jogadores = jogadores;
+    _histOfensivaChart.update('default');
+    return;
+  }
+
+  _histOfensivaChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Pontos',
+        data: pontos,
+        backgroundColor: cores,
+        borderColor: cores,
+        borderWidth: 1,
+        borderRadius: 8,
+        maxBarThickness: 56
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(18,18,20,0.96)',
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderWidth: 1,
+          titleFont: { family: 'Plus Jakarta Sans', size: 13, weight: '600' },
+          bodyFont: { family: 'Plus Jakarta Sans', size: 12 },
+          callbacks: {
+            label(ctx) {
+              const j = (_histOfensivaChart.$jogadores || [])[ctx.dataIndex];
+              if (!j) return `${ctx.parsed.y} pts`;
+              return [
+                `${j.pontos} pts acumulados`,
+                `${j.media_pct}% média · ${j.vitorias} vitória(s)`,
+                `${j.concluidas} tarefa(s) concluída(s)`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { color: '#a3a3a3', font: { family: 'Plus Jakarta Sans', size: 12 } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          ticks: {
+            color: '#737373',
+            font: { family: 'Plus Jakarta Sans', size: 11 },
+            callback: (v) => `${v} pts`
+          },
+          title: {
+            display: true,
+            text: 'Pontos (% do dia somados)',
+            color: '#737373',
+            font: { family: 'Plus Jakarta Sans', size: 11, weight: '500' }
+          }
+        }
+      }
+    }
+  });
+  _histOfensivaChart.$jogadores = jogadores;
+}
+
+function renderRankingHistoricoList(data) {
+  const listEl = document.getElementById('hist-ofensiva-list');
+  if (!listEl) return;
+
+  const jogadores = data.jogadores || [];
+  if (!jogadores.length) {
+    listEl.innerHTML = '<div class="ranking-empty">Ninguém pontuou neste período — conclua tarefas para entrar na ofensiva.</div>';
+    return;
+  }
+
+  const maxPontos = Math.max(...jogadores.map((j) => j.pontos), 1);
+  listEl.innerHTML = jogadores.map((j, i) => {
+    const pctBar = Math.round((j.pontos / maxPontos) * 100);
+    const cor = j.cor || CHART_ACCENT;
+    const trofeu = i === 0 && j.pontos > 0 ? ' 🏆' : '';
+    const eu = j.eu ? ' ranking-row-eu' : '';
+    return `<div class="ranking-row${eu}">
+      <div class="ranking-row-head">
+        <span class="ranking-nome" style="--rank-cor:${cor}">${escapeHtml(j.nome)}${trofeu}</span>
+        <span class="ranking-score"><span class="ranking-pct">${j.pontos} pts</span><span class="ranking-qty">${j.media_pct}% · ${j.vitorias} vit.</span></span>
+      </div>
+      <div class="ranking-bar"><div class="ranking-bar-fill" style="width:${pctBar}%; background:${cor}"></div></div>
+    </div>`;
+  }).join('');
+}
+
 let _chartHistoricoFull = [];
 
 function filterHistoricoPorPeriodo(historico, periodo) {
@@ -7277,6 +7447,7 @@ function filtrarAmanhaFilter(filtro) {
 
 function renderHistorico() {
   renderHistoricoFromApi().catch((err) => console.error('Erro histórico:', err));
+  carregarRankingHistorico().catch((err) => console.error('Erro ofensiva:', err));
 }
 
 function animateHistStat(el, target, suffix = '') {

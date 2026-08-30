@@ -1499,6 +1499,61 @@ html body #push-btn-ativar {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.hist-panel-ofensiva {
+  margin-bottom: 16px;
+}
+.hist-ofensiva-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.hist-ofensiva-filters {
+  margin: 0 !important;
+  flex-shrink: 0;
+}
+.hist-ofensiva-resumo {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  min-height: 1.2em;
+}
+.hist-ofensiva-chart-wrap {
+  position: relative;
+  height: 240px;
+  margin: 8px 0 14px;
+}
+#hist-ofensiva-chart {
+  width: 100% !important;
+  height: 100% !important;
+}
+.hist-ofensiva-list {
+  margin-top: 4px;
+}
+.hist-ofensiva-list .ranking-row {
+  margin-bottom: 10px;
+}
+.hist-ofensiva-list .ranking-row:last-child {
+  margin-bottom: 0;
+}
+@media (max-width: 768px) {
+  .hist-ofensiva-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hist-ofensiva-filters {
+    width: 100% !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+  }
+  .hist-ofensiva-chart-wrap {
+    height: 200px;
+  }
+}
+
 .hist-main-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);

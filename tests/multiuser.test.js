@@ -144,6 +144,14 @@ test('GET /api/ranking/dia retorna 2 jogadores', async () => {
   assert.equal(eu.id, userIdA);
 });
 
+test('GET /api/ranking/historico retorna jogadores e periodo', async () => {
+  const rank = await req('GET', '/api/ranking/historico?periodo=30d', null, cookiesA);
+  assert.equal(rank.status, 200);
+  assert.ok(Array.isArray(rank.json.jogadores));
+  assert.ok(rank.json.periodo && rank.json.periodo.de);
+  assert.ok(Array.isArray(rank.json.serie));
+});
+
 test('Login recusa credenciais inválidas', async () => {
   const r = await req('POST', '/api/auth/login', { login: LOGIN_A, senha: 'errada' });
   assert.equal(r.status, 401);
