@@ -12,7 +12,7 @@ const isDev = !app.isPackaged;
 
 const PROD_URL = 'https://app-rotina-production-f84e.up.railway.app/';
 /** Versão do frontend web — manter igual ao ?v= do index.html */
-const WEB_BUILD = '120';
+const WEB_BUILD = '121';
 
 function urlProducao() {
   return `${PROD_URL}?v=${WEB_BUILD}&electron=1&_=${Date.now()}`;

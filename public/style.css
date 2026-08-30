@@ -6196,6 +6196,9 @@ body.assist-open:has(.assist-panel.hist-open) {
   cursor: pointer;
   text-align: left;
   font-family: var(--font-ui);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .assist-hist-nova:hover {
   background: rgba(255, 255, 255, 0.07);

@@ -56,7 +56,7 @@ function assistLimparMsgs() {
 }
 
 function assistBoasVindas() {
-  assistAddBubble('bot', 'Pergunta qualquer coisa dos seus dados: tarefas, hÃ¡bitos, gastos, despesas, metas, agendaâ€¦ Ou pede pra registrar â€” tipo â€œboleto de 240 no dia 18â€.');
+  assistAddBubble('bot', 'Pergunta qualquer coisa dos seus dados: tarefas, hábitos, gastos, despesas, metas, agenda... Ou pede pra registrar - tipo "boleto de 240 no dia 18".');
   verificarStatusIA();
 }
 
@@ -103,31 +103,48 @@ function abrirAssistente() {
 }
 
 function fecharAssistente(opts) {
+  if (!_assistOpen && !document.getElementById('assist-panel')?.classList.contains('open')) {
+    return;
+  }
   _assistOpen = false;
   const panel = document.getElementById('assist-panel');
   const fab = document.getElementById('assist-fab');
   const backdrop = document.getElementById('assist-backdrop');
-  document.body.classList.remove('assist-open', 'assist-mobile-tab');
+  const mobile = isAssistMobile();
+  const manterAba = !!opts?.manterAba;
+
   if (panel) panel.classList.remove('open');
-  if (backdrop) {
-    backdrop.classList.remove('open');
-    const hideBackdrop = () => {
-      if (!_assistOpen) backdrop.hidden = true;
-      backdrop.removeEventListener('transitionend', hideBackdrop);
-    };
-    backdrop.addEventListener('transitionend', hideBackdrop);
-    setTimeout(hideBackdrop, 420);
-  }
-  if (fab) fab.classList.toggle('hidden', isAssistMobile());
+  if (backdrop) backdrop.classList.remove('open');
   if (_assistHistOpen) assistFecharHistorico();
 
-  // Mobile: × volta pro dashboard (a menos que outra aba esteja sendo aberta)
-  if (!opts?.manterAba && isAssistMobile()) {
-    const dash = document.querySelector('.nav-btn[data-tab="dashboard"]');
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    dash?.classList.add('active');
-    document.getElementById('dashboard')?.classList.add('active');
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    document.body.classList.remove('assist-open', 'assist-mobile-tab');
+    if (backdrop) backdrop.hidden = true;
+    if (fab) fab.classList.toggle('hidden', isAssistMobile());
+
+    if (!manterAba && mobile) {
+      const dash = document.querySelector('.nav-btn[data-tab="dashboard"]');
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      dash?.classList.add('active');
+      document.getElementById('dashboard')?.classList.add('active');
+    }
+  };
+
+  if (panel) {
+    const onEnd = (e) => {
+      if (e.target !== panel) return;
+      if (e.propertyName && e.propertyName !== 'transform' && e.propertyName !== 'opacity') return;
+      panel.removeEventListener('transitionend', onEnd);
+      finish();
+    };
+    panel.addEventListener('transitionend', onEnd);
+    setTimeout(finish, 480);
+  } else {
+    finish();
   }
 }
 
@@ -193,7 +210,7 @@ async function assistAbrirHistorico() {
 async function assistRenderHistorico() {
   const lista = document.getElementById('assist-historico-lista');
   if (!lista) return;
-  lista.innerHTML = '<div class="assist-hist-empty">Carregandoâ€¦</div>';
+  lista.innerHTML = '<div class="assist-hist-empty">Carregando...</div>';
   try {
     const res = await fetch('/api/ia/conversas');
     const data = await res.json();
@@ -205,14 +222,14 @@ async function assistRenderHistorico() {
     }
     lista.innerHTML = conversas.map(c => {
       const active = c.id === _assistConversaId ? ' active' : '';
-      const meta = `${assistFmtRelativo(c.atualizado_em)}${c.msgs ? ` Â· ${c.msgs} msg` : ''}`;
+      const meta = `${assistFmtRelativo(c.atualizado_em)}${c.msgs ? `  ·  ${c.msgs} msg` : ''}`;
       const titulo = escapeHtml(c.titulo || 'Conversa');
       return `<div class="assist-hist-item${active}" data-id="${escapeHtml(c.id)}">
         <button type="button" class="assist-hist-item-body" onclick="assistCarregarConversa('${escapeHtml(c.id)}')">
           <span class="assist-hist-item-title">${titulo}</span>
           <span class="assist-hist-item-meta">${escapeHtml(meta)}</span>
         </button>
-        <button type="button" class="assist-hist-del" title="Apagar" aria-label="Apagar" onclick="assistApagarConversa('${escapeHtml(c.id)}', event)">Ã—</button>
+        <button type="button" class="assist-hist-del" title="Apagar" aria-label="Apagar" onclick="assistApagarConversa('${escapeHtml(c.id)}', event)">×</button>
       </div>`;
     }).join('');
   } catch (e) {
@@ -224,7 +241,7 @@ async function assistCarregarConversa(id, opts) {
   if (!id) return;
   const res = await fetch(`/api/ia/conversas/${encodeURIComponent(id)}`);
   const data = await res.json();
-  if (!res.ok) throw new Error(data.erro || 'Conversa nÃ£o encontrada');
+  if (!res.ok) throw new Error(data.erro || 'Conversa não encontrada');
 
   _assistConversaId = id;
   assistSalvarConversaLocal(id);
@@ -280,7 +297,7 @@ async function verificarStatusIA() {
 function assistSanitizeTexto(text) {
   let t = String(text || '').trim();
   if (!t) return 'Ok.';
-  // Se a API vazou JSON cru, extrai sÃ³ a mensagem
+  // Se a API vazou JSON cru, extrai só a mensagem
   if (/^\s*\{/.test(t) && /"resposta"\s*:/.test(t)) {
     const m = t.match(/"resposta"\s*:\s*"((?:\\.|[^"\\])*)"/);
     if (m) {
@@ -331,7 +348,7 @@ async function enviarAssistente(e) {
   input.value = '';
   _assistBusy = true;
   if (btn) btn.disabled = true;
-  const thinking = assistAddBubble('bot thinking', 'Pensandoâ€¦');
+  const thinking = assistAddBubble('bot thinking', 'Pensando...');
 
   try {
     const res = await fetch('/api/ia/chat', {
@@ -352,7 +369,7 @@ async function enviarAssistente(e) {
       assistSalvarConversaLocal(data.conversa_id);
       const titEl = document.getElementById('assist-titulo');
       if (titEl && (titEl.textContent === 'Assistente' || !_assistHist.length)) {
-        const t = msg.length > 40 ? msg.slice(0, 37) + 'â€¦' : msg;
+        const t = msg.length > 40 ? msg.slice(0, 37) + '...' : msg;
         assistSetTitulo(t, 'Conversa salva');
       }
     }
@@ -371,29 +388,29 @@ async function enviarAssistente(e) {
         else if (a.tipo === 'criar_tarefa') txt = 'Tarefa criada';
         else if (a.tipo === 'criar_meta') txt = 'Meta criada';
         else if (a.tipo === 'marcar_habito') {
-          const nome = a.titulo || 'HÃ¡bito';
-          txt = a.ja ? `${nome} jÃ¡ estava marcado hoje` : `${nome} marcado`;
+          const nome = a.titulo || 'Hábito';
+          txt = a.ja ? `${nome} já estava marcado hoje` : `${nome} marcado`;
         } else if (a.tipo === 'criar_categoria') {
           txt = a.criada
             ? `Categoria criada: ${a.label || a.categoria}`
-            : `Categoria jÃ¡ existia: ${a.label || a.categoria}`;
+            : `Categoria já existia: ${a.label || a.categoria}`;
         } else if (a.tipo === 'recategorizar') {
           const lab = a.label || a.categoria || 'categoria';
-          txt = `${a.qtd || 0} tx â†’ ${lab}`;
+          txt = `${a.qtd || 0} tx -> ${lab}`;
         } else if (a.tipo === 'renomear_categoria') {
           txt = `Renomeada: ${a.label || a.categoria}`;
         } else if (a.tipo === 'fundir_categorias') {
-          txt = `Unificadas â†’ ${a.label || a.categoria} (${a.qtd || 0} tx)`;
+          txt = `Unificadas -> ${a.label || a.categoria} (${a.qtd || 0} tx)`;
         } else if (a.tipo === 'confirmar_despesa') {
-          txt = a.ja ? `JÃ¡ paga: ${a.titulo}` : `Paga: ${a.titulo}`;
+          txt = a.ja ? `Já paga: ${a.titulo}` : `Paga: ${a.titulo}`;
         } else if (a.tipo === 'confirmar_receita') {
-          txt = a.ja ? `JÃ¡ recebida: ${a.titulo}` : `Recebida: ${a.titulo}`;
+          txt = a.ja ? `Já recebida: ${a.titulo}` : `Recebida: ${a.titulo}`;
         } else if (a.tipo === 'criar_receita') {
           txt = `Receita: ${a.titulo} (+R$ ${Number(a.valor).toFixed(2)})`;
         } else if (a.tipo === 'depositar_meta') {
           txt = `+R$ ${Number(a.valor).toFixed(2)} em ${a.meta}`;
         } else if (a.tipo === 'concluir_tarefa') {
-          txt = a.ja ? `JÃ¡ concluÃ­da: ${a.titulo}` : `ConcluÃ­da: ${a.titulo}`;
+          txt = a.ja ? `Já concluída: ${a.titulo}` : `Concluída: ${a.titulo}`;
         } else if (a.tipo === 'criar_evento') {
           txt = `Evento: ${a.titulo} (${a.data})`;
         } else if (a.tipo === 'criar_alarme') {
@@ -403,7 +420,7 @@ async function enviarAssistente(e) {
         } else if (a.tipo === 'deletar_transacao') {
           txt = `Apagadas ${a.qtd || 0} tx`;
         } else if (a.tipo === 'corrigir_data_tx') {
-          txt = `Data â†’ ${a.data} (${a.qtd || 0} tx)`;
+          txt = `Data -> ${a.data} (${a.qtd || 0} tx)`;
         } else if (a.tipo === 'marcar_das') {
           txt = a.pago ? `DAS ${a.ym} pago` : `DAS ${a.ym} reaberto`;
         }
@@ -447,11 +464,11 @@ async function enviarAssistente(e) {
     }
     const falhas = (data.acoes || []).filter(a => a && a.ok === false);
     falhas.forEach(a => {
-      if (a.tipo) assistAddBubble('acao', `NÃ£o deu: ${a.erro || a.tipo}`);
+      if (a.tipo) assistAddBubble('acao', `Não deu: ${a.erro || a.tipo}`);
     });
   } catch (err) {
     if (thinking) thinking.remove();
-    assistAddBubble('bot erro', err.message || 'NÃ£o consegui responder agora.');
+    assistAddBubble('bot erro', err.message || 'Não consegui responder agora.');
   } finally {
     _assistBusy = false;
     if (btn) btn.disabled = false;
@@ -473,13 +490,13 @@ async function checkinHabitoUI(titulo, opts) {
     if (!res.ok) throw new Error(data.erro || 'Falha no check-in');
     const marcado = data.titulo || nome;
     if (fromAssist) {
-      if (data.ja) assistAddBubble('acao', `${marcado} jÃ¡ estava marcado hoje`);
+      if (data.ja) assistAddBubble('acao', `${marcado} já estava marcado hoje`);
       else assistAddBubble('acao', `${marcado} marcado`);
     }
     if (typeof carregarTarefas === 'function') carregarTarefas();
     if (typeof carregarDashboardExtras === 'function') carregarDashboardExtras();
     if (typeof carregarStats === 'function') carregarStats();
-    if (typeof toast === 'function') toast(data.ja ? `${marcado}: jÃ¡ marcado hoje` : `${marcado} marcado`, 'success');
+    if (typeof toast === 'function') toast(data.ja ? `${marcado}: já marcado hoje` : `${marcado} marcado`, 'success');
   } catch (e) {
     if (fromAssist) assistAddBubble('bot erro', e.message);
     else if (typeof toast === 'function') toast(e.message, 'error');
