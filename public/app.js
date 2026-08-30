@@ -5518,11 +5518,18 @@ function filterHistoricoPorPeriodo(historico, periodo) {
   });
 }
 
+const CHART_ACCENT = '#2DD4BF';
+
+function chartIsPointActive(ctx) {
+  const active = ctx.chart.getActiveElements?.() || [];
+  return active.some(e => e.datasetIndex === ctx.datasetIndex && e.index === ctx.dataIndex);
+}
+
 const chartCrosshairPlugin = {
   id: 'chartCrosshair',
   afterDraw(chart) {
-    const active = chart.tooltip?.getActiveElements?.() || [];
-    if (!active.length) return;
+    const active = chart.getActiveElements?.() || [];
+    if (!active.length || !(chart.tooltip?.opacity > 0)) return;
     const { x } = active[0].element;
     const { top, bottom } = chart.chartArea;
     const ctx = chart.ctx;
@@ -5541,8 +5548,8 @@ const chartCrosshairPlugin = {
 const chartHoverGlowPlugin = {
   id: 'chartHoverGlow',
   afterDatasetsDraw(chart) {
-    const active = chart.tooltip?.getActiveElements?.() || [];
-    if (!active.length) return;
+    const active = chart.getActiveElements?.() || [];
+    if (!active.length || !(chart.tooltip?.opacity > 0)) return;
     const { x, y } = active[0].element;
     const ctx = chart.ctx;
     ctx.save();
@@ -5577,14 +5584,24 @@ function getChartOptions(historico) {
       x: { duration: 650, easing: 'easeOutQuart' },
       y: { duration: 650, easing: 'easeOutQuart' },
       colors: { duration: 400 },
-      numbers: { duration: 650, easing: 'easeOutQuart' }
+      numbers: { duration: 650, easing: 'easeOutQuart' },
+      radius: { duration: 0 }
     },
     transitions: {
       active: {
         animation: {
-          duration: 650,
+          duration: 400,
           easing: 'easeOutQuart'
         }
+      }
+    },
+    elements: {
+      point: {
+        radius: 0,
+        hoverRadius: 0,
+        hitRadius: 14,
+        borderWidth: 0,
+        hoverBorderWidth: 0
       }
     },
     interaction: { intersect: false, mode: 'index', axis: 'x' },
@@ -5655,13 +5672,12 @@ function renderChartBars(historicoFull) {
     return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   });
   const concluidas = historico.map(h => parseInt(h.concluidas, 10) || 0);
-  const accent = '#2DD4BF';
 
   if (performanceChart) {
     performanceChart.data.labels = labels;
     performanceChart.data.datasets[0].data = concluidas;
     performanceChart.$historico = historico;
-    performanceChart.update('active');
+    performanceChart.update('default');
     return;
   }
 
@@ -5673,18 +5689,18 @@ function renderChartBars(historicoFull) {
       datasets: [{
         label: 'Concluídas',
         data: concluidas,
-        borderColor: accent,
+        borderColor: CHART_ACCENT,
         backgroundColor: buildChartGradient(ctx),
         borderWidth: 2.5,
         fill: true,
         tension: 0.35,
-        pointRadius: 0,
-        pointHoverRadius: 7,
+        pointRadius: (c) => (chartIsPointActive(c) ? 7 : 0),
+        pointHoverRadius: 0,
         pointHitRadius: 14,
-        pointBackgroundColor: accent,
-        pointBorderColor: '#ffffff',
-        pointBorderWidth: 3,
-        pointHoverBorderWidth: 3
+        pointBackgroundColor: (c) => (chartIsPointActive(c) ? CHART_ACCENT : 'transparent'),
+        pointBorderColor: (c) => (chartIsPointActive(c) ? '#ffffff' : 'transparent'),
+        pointBorderWidth: (c) => (chartIsPointActive(c) ? 3 : 0),
+        pointHoverBorderWidth: 0
       }]
     },
     options: getChartOptions(historico),
