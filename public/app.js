@@ -15,6 +15,9 @@ let currentFinFilter = 'todas';
 let performanceChart = null;
 let currentChartType = 'line';
 let dashPeriodo = { inicio: null, fim: null };
+let chartPeriodo = { inicio: null, fim: null };
+let _chartFp = null;
+let _chartPresetDias = 30;
 let dashValoresVisiveis = true;
 let notificacaoPermitida = false;
 let modoNoturnoAtivo = false;
@@ -5451,7 +5454,7 @@ function renderStats(data) {
     }
   }
 
-  renderChartBars(filterHistoricoPorPeriodo(_chartHistoricoFull));
+  renderChartBars(filterHistoricoPorPeriodo(_chartHistoricoFull, getChartPeriodo()));
   renderHorizontalBars('chart-categorias', data.categorias || {}, 'cat');
   renderHorizontalBars('chart-prioridades', data.prioridades || {}, 'pri');
 }
@@ -5502,8 +5505,9 @@ async function carregarRankingDia() {
 let _chartHistorico = [];
 let _chartHistoricoFull = [];
 
-function filterHistoricoPorPeriodo(historico) {
-  const { inicio, fim } = getDashPeriodo();
+function filterHistoricoPorPeriodo(historico, periodo) {
+  const p = periodo || getDashPeriodo();
+  const { inicio, fim } = p;
   return (historico || []).filter((h) => {
     const d = String(h.data || '').slice(0, 10);
     return d >= inicio && d <= fim;
@@ -6088,11 +6092,68 @@ function initDashDateRange() {
         fim: selectedDates[1].toLocaleDateString('en-CA')
       };
       atualizarDashboard();
-      if (_chartHistoricoFull.length) {
-        renderChartBars(filterHistoricoPorPeriodo(_chartHistoricoFull));
-      } else if (typeof carregarStats === 'function') {
-        carregarStats();
-      }
+    }
+  });
+}
+
+function chartPeriodoPorDias(dias) {
+  const fim = new Date();
+  const inicio = new Date();
+  inicio.setDate(inicio.getDate() - (Math.max(1, dias) - 1));
+  return {
+    inicio: inicio.toLocaleDateString('en-CA'),
+    fim: fim.toLocaleDateString('en-CA')
+  };
+}
+
+function getChartPeriodo() {
+  if (!chartPeriodo.inicio || !chartPeriodo.fim) {
+    chartPeriodo = chartPeriodoPorDias(_chartPresetDias);
+  }
+  return chartPeriodo;
+}
+
+function atualizarChartPorPeriodo() {
+  if (_chartHistoricoFull.length) {
+    renderChartBars(filterHistoricoPorPeriodo(_chartHistoricoFull, getChartPeriodo()));
+  }
+}
+
+function setChartPreset(dias) {
+  _chartPresetDias = dias;
+  chartPeriodo = chartPeriodoPorDias(dias);
+  document.querySelectorAll('.dash-chart-filter[data-chart-days]').forEach((btn) => {
+    btn.classList.toggle('active', Number(btn.dataset.chartDays) === dias);
+  });
+  if (_chartFp) _chartFp.setDate([chartPeriodo.inicio, chartPeriodo.fim], false);
+  atualizarChartPorPeriodo();
+}
+
+function initChartFilters() {
+  chartPeriodo = chartPeriodoPorDias(_chartPresetDias);
+  document.querySelectorAll('.dash-chart-filter[data-chart-days]').forEach((btn) => {
+    btn.addEventListener('click', () => setChartPreset(Number(btn.dataset.chartDays)));
+  });
+
+  const inp = document.getElementById('dash-chart-range');
+  if (!inp || typeof flatpickr !== 'function') return;
+  const pt = flatpickr.l10ns.pt || {};
+  _chartFp = flatpickr(inp, {
+    locale: { ...pt, rangeSeparator: ' - ' },
+    mode: 'range',
+    dateFormat: 'Y-m-d',
+    defaultDate: [chartPeriodo.inicio, chartPeriodo.fim],
+    altInput: true,
+    altFormat: 'd/m/Y',
+    disableMobile: true,
+    onChange(selectedDates) {
+      if (selectedDates.length !== 2) return;
+      chartPeriodo = {
+        inicio: selectedDates[0].toLocaleDateString('en-CA'),
+        fim: selectedDates[1].toLocaleDateString('en-CA')
+      };
+      document.querySelectorAll('.dash-chart-filter[data-chart-days]').forEach((b) => b.classList.remove('active'));
+      atualizarChartPorPeriodo();
     }
   });
 }
@@ -6711,6 +6772,7 @@ window.addEventListener('load', () => {
   setInterval(atualizarHora, 1000);
 
   initDashDateRange();
+  initChartFilters();
   initDashToolbar();
   agendarRecargaPosAuth();
 

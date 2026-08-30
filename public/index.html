@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=108">
-  <link rel="stylesheet" href="style-ranking.css?v=108">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=108">
+  <link rel="stylesheet" href="style.css?v=109">
+  <link rel="stylesheet" href="style-ranking.css?v=109">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=109">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '108';
+      var V = '109';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -200,12 +200,22 @@
       <!-- Gráfico de tarefas -->
       <div class="panel dashboard-chart-hero">
         <div class="panel-header dash-chart-header">
-          <div>
+          <div class="dash-chart-head-left">
             <div class="card-label dash-chart-label">Tarefas concluídas</div>
             <div class="card-value dash-chart-value">
               <span id="stats-concluidas">0</span>
               <span class="dash-chart-sub">· <span id="stats-taxa">0</span>% conclusão</span>
             </div>
+          </div>
+          <div class="dash-chart-filters">
+            <div class="dash-chart-pills fin-subtabs--pills">
+              <button type="button" class="fin-subtab-btn dash-chart-filter" data-chart-days="7">7 dias</button>
+              <button type="button" class="fin-subtab-btn dash-chart-filter active" data-chart-days="30">30 dias</button>
+            </div>
+            <label class="dash-chart-range-wrap" title="Período personalizado">
+              <svg class="dash-toolbar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <input type="text" id="dash-chart-range" class="dash-chart-range" readonly placeholder="Período">
+            </label>
           </div>
         </div>
         <div class="chart-container">
@@ -1066,9 +1076,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=108"></script>
-  <script src="js/assist.js?v=108"></script>
-  <script src="app.js?v=108"></script>
+  <script src="js/fin-receitas.js?v=109"></script>
+  <script src="js/assist.js?v=109"></script>
+  <script src="app.js?v=109"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1389,7 +1399,7 @@
               return;
             }
             esconderLogin();
-            location.href = '/?v=108';
+            location.href = '/?v=109';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu  tenta de novo');
