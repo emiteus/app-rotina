@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=122">
-  <link rel="stylesheet" href="style-ranking.css?v=122">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=122">
+  <link rel="stylesheet" href="style.css?v=123">
+  <link rel="stylesheet" href="style-ranking.css?v=123">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=123">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -890,65 +890,61 @@
 
     <!-- Página de Histórico -->
     <section id="historico-page" class="tab-content">
-      <div class="page-header">
+      <div class="page-header hist-page-header">
         <div>
-          <h1 class="page-title">Histórico & Análise</h1>
-          <p class="page-subtitle">Veja seu progresso ao longo do tempo</p>
+          <h1 class="page-title">Histórico</h1>
+          <p class="page-subtitle">Seu progresso e padrões ao longo do tempo</p>
         </div>
       </div>
 
-      <!-- Estatísticas Gerais -->
-      <div class="stats-grid" style="margin-bottom: 30px;">
-        <div class="stat-box">
-          <div class="stat-box-icon">x</div>
+      <div class="hist-kpi-grid stats-grid">
+        <div class="stat-box hist-kpi">
           <div class="stat-box-num" id="hist-total-tarefas">0</div>
-          <div class="stat-box-label">Tarefas Totais</div>
+          <div class="stat-box-label">Tarefas totais</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box hist-kpi">
           <div class="stat-box-num" id="hist-taxa-conclusao">0%</div>
-          <div class="stat-box-label">Taxa de Conclusão</div>
+          <div class="stat-box-label">Taxa de conclusão</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box hist-kpi">
           <div class="stat-box-num" id="hist-melhor-dia">0</div>
-          <div class="stat-box-label">Melhor Dia</div>
+          <div class="stat-box-label">Melhor dia</div>
         </div>
-        <div class="stat-box">
+        <div class="stat-box hist-kpi">
           <div class="stat-box-num" id="hist-media-diaria">0</div>
-          <div class="stat-box-label">Média Diária</div>
+          <div class="stat-box-label">Média diária</div>
         </div>
       </div>
 
-      <!-- Heatmap -->
-      <div class="panel">
-        <div class="panel-header">
-          <h3>Heatmap de Atividade (últimos 12 meses)</h3>
+      <div class="hist-insights" id="hist-insights" aria-label="Resumo rápido"></div>
+
+      <div class="hist-main-grid">
+        <div class="panel hist-panel-heatmap">
+          <div class="panel-header hist-panel-head">
+            <div>
+              <h3>Atividade</h3>
+              <span class="hist-panel-sub">Últimos 12 meses</span>
+            </div>
+          </div>
+          <div id="heatmap-container" class="hist-heatmap-wrap"></div>
         </div>
-        <div id="heatmap-container" class="heatmap-container"></div>
+
+        <div class="panel hist-panel-recent">
+          <div class="panel-header hist-panel-head">
+            <h3>Concluídas recentemente</h3>
+          </div>
+          <div id="historico-concluidas" class="mini-list hist-recent-list"></div>
+        </div>
       </div>
 
-      <!-- Tendências -->
-      <div class="panel" style="margin-top: 20px;">
-        <div class="panel-header">
-          <h3>Tendências</h3>
+      <div class="panel hist-panel-consistencia">
+        <div class="panel-header hist-panel-head hist-panel-head--stack">
+          <div>
+            <h3>Consistência de horário</h3>
+            <p id="consistencia-resumo" class="hist-panel-desc"></p>
+          </div>
         </div>
-        <div id="tendencias-container" class="tendencias-list"></div>
-      </div>
-
-      <!-- Consistência de horário -->
-      <div class="panel" style="margin-top: 20px;">
-        <div class="panel-header">
-          <h3>Consistência de horário</h3>
-        </div>
-        <p id="consistencia-resumo" style="font-size:13px; color:var(--text-muted); margin:0 0 12px;"></p>
-        <div id="consistencia-container" class="tendencias-list"></div>
-      </div>
-
-      <!-- Tarefas Concluídas Recentemente -->
-      <div class="panel" style="margin-top: 20px;">
-        <div class="panel-header">
-          <h3>S& Concluídas Recentemente</h3>
-        </div>
-        <div id="historico-concluidas" class="mini-list"></div>
+        <div id="consistencia-container" class="hist-consistencia-list"></div>
       </div>
     </section>
 
@@ -1105,9 +1101,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=122"></script>
-  <script src="js/assist.js?v=122"></script>
-  <script src="app.js?v=122"></script>
+  <script src="js/fin-receitas.js?v=123"></script>
+  <script src="js/assist.js?v=123"></script>
+  <script src="app.js?v=123"></script>
   <script>
     (function initSidebarToggle() {
       var btn = document.getElementById('sidebar-toggle');

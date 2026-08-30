@@ -14,6 +14,8 @@ let currentTaskFilter = 'todas';
 let currentFinFilter = 'todas';
 let performanceChart = null;
 let currentChartType = 'line';
+let _tabAtual = 'dashboard';
+let _chartHistorico = [];
 let dashPeriodo = { inicio: null, fim: null };
 let chartPeriodo = { inicio: null, fim: null };
 let _chartFp = null;
@@ -1131,12 +1133,32 @@ function verificarAnaliseDiaria() {
 //  SUB-ABAS DO FINANCEIRO
 // =====================
 function trocarSubAbaFin(id) {
-  document.querySelectorAll('.fin-subtab').forEach(el => { el.style.display = 'none'; });
+  const atual = document.querySelector('.fin-subtab.fin-subtab--active');
   const alvo = document.getElementById(id);
-  if (alvo) alvo.style.display = 'block';
+  if (atual === alvo) return;
+
+  document.querySelectorAll('.fin-subtab').forEach(el => {
+    el.style.display = 'none';
+    el.classList.remove('fin-subtab--active', 'fin-subtab-enter', 'fin-subtab-enter-active');
+  });
+
+  if (alvo) {
+    alvo.style.display = 'block';
+    alvo.classList.add('fin-subtab--active', 'fin-subtab-enter');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => alvo.classList.add('fin-subtab-enter-active'));
+    });
+    setTimeout(() => alvo.classList.remove('fin-subtab-enter', 'fin-subtab-enter-active'), 340);
+  }
+
   document.querySelectorAll('.fin-subtab-btn').forEach(btn => {
     const ativo = btn.getAttribute('data-fin-tab') === id;
     btn.classList.toggle('active', ativo);
+    if (ativo) {
+      btn.classList.remove('fin-subtab-btn-pulse');
+      void btn.offsetWidth;
+      btn.classList.add('fin-subtab-btn-pulse');
+    }
   });
   if (id === 'fin-despesas') carregarDespesasMes();
   if (id === 'fin-metas') carregarMetas();
@@ -4020,33 +4042,10 @@ function saudacao() {
 // =====================
 //  TABS NAVIGATION
 // =====================
-function trocarAba(tab) {
-  if (tab === 'assistente') {
-    if (typeof isAssistMobile === 'function' && isAssistMobile()) {
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector('.nav-btn[data-tab="assistente"]')?.classList.add('active');
-      document.getElementById('assistente')?.classList.add('active');
-      if (typeof abrirAssistente === 'function') abrirAssistente();
-      return;
-    }
-    // Desktop: Chat no nav só abre/fecha o dock
-    if (typeof toggleAssistente === 'function') toggleAssistente();
-    return;
-  }
-
-  // Saindo do chat no mobile
-  if (typeof isAssistMobile === 'function' && isAssistMobile() && typeof _assistOpen !== 'undefined' && _assistOpen) {
-    if (typeof fecharAssistente === 'function') fecharAssistente({ manterAba: true });
-  }
-
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.querySelector(`.nav-btn[data-tab="${tab}"]`)?.classList.add('active');
-  document.getElementById(tab)?.classList.add('active');
+function onTabActivated(tab) {
   if (tab === 'historico-page') {
     carregarStats();
-  carregarRankingDia();
+    carregarRankingDia();
     if (typeof renderHistorico === 'function') renderHistorico();
   }
   if (tab === 'financeiro') {
@@ -4055,6 +4054,49 @@ function trocarAba(tab) {
       if (typeof carregarTransacoes === 'function') carregarTransacoes();
     });
   }
+}
+
+function trocarAba(tab) {
+  if (tab === 'assistente') {
+    if (typeof isAssistMobile === 'function' && isAssistMobile()) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => {
+        c.classList.remove('active', 'tab-enter', 'tab-enter-active');
+      });
+      document.querySelector('.nav-btn[data-tab="assistente"]')?.classList.add('active');
+      document.getElementById('assistente')?.classList.add('active');
+      if (typeof abrirAssistente === 'function') abrirAssistente();
+      _tabAtual = 'assistente';
+      return;
+    }
+    if (typeof toggleAssistente === 'function') toggleAssistente();
+    return;
+  }
+
+  if (typeof isAssistMobile === 'function' && isAssistMobile() && typeof _assistOpen !== 'undefined' && _assistOpen) {
+    if (typeof fecharAssistente === 'function') fecharAssistente({ manterAba: true });
+  }
+
+  if (tab === _tabAtual) return;
+
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.nav-btn[data-tab="${tab}"]`)?.classList.add('active');
+
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.remove('active', 'tab-enter', 'tab-enter-active');
+  });
+
+  const nextEl = document.getElementById(tab);
+  if (nextEl) {
+    nextEl.classList.add('active', 'tab-enter');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => nextEl.classList.add('tab-enter-active'));
+    });
+    setTimeout(() => nextEl.classList.remove('tab-enter', 'tab-enter-active'), 360);
+  }
+
+  _tabAtual = tab;
+  onTabActivated(tab);
 }
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -5503,7 +5545,6 @@ async function carregarRankingDia() {
   }
 }
 
-let _chartHistorico = [];
 let _chartHistoricoFull = [];
 
 function filterHistoricoPorPeriodo(historico, periodo) {
@@ -5513,6 +5554,132 @@ function filterHistoricoPorPeriodo(historico, periodo) {
     const d = String(h.data || '').slice(0, 10);
     return d >= inicio && d <= fim;
   });
+}
+
+const chartCrosshairPlugin = {
+  id: 'chartCrosshair',
+  afterDraw(chart) {
+    const active = chart.tooltip?.getActiveElements?.() || [];
+    if (!active.length) return;
+    const { x } = active[0].element;
+    const { top, bottom } = chart.chartArea;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x, top);
+    ctx.lineTo(x, bottom);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(45, 212, 191, 0.4)';
+    ctx.setLineDash([4, 4]);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+const chartHoverGlowPlugin = {
+  id: 'chartHoverGlow',
+  afterDatasetsDraw(chart) {
+    const active = chart.tooltip?.getActiveElements?.() || [];
+    if (!active.length) return;
+    const { x, y } = active[0].element;
+    const ctx = chart.ctx;
+    ctx.save();
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 18);
+    g.addColorStop(0, 'rgba(45, 212, 191, 0.35)');
+    g.addColorStop(1, 'rgba(45, 212, 191, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+};
+
+function buildChartGradient(ctx) {
+  const gradient = ctx.createLinearGradient(0, 0, 0, 280);
+  gradient.addColorStop(0, 'rgba(45, 212, 191, 0.22)');
+  gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
+  return gradient;
+}
+
+function getChartOptions(historico) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: { padding: { top: 8, right: 4, bottom: 0, left: 4 } },
+    animation: {
+      duration: 650,
+      easing: 'easeOutQuart'
+    },
+    animations: {
+      x: { duration: 650, easing: 'easeOutQuart' },
+      y: { duration: 650, easing: 'easeOutQuart' },
+      colors: { duration: 400 },
+      numbers: { duration: 650, easing: 'easeOutQuart' }
+    },
+    transitions: {
+      active: {
+        animation: {
+          duration: 650,
+          easing: 'easeOutQuart'
+        }
+      }
+    },
+    interaction: { intersect: false, mode: 'index', axis: 'x' },
+    onHover: (_evt, elements, chart) => {
+      const canvas = chart.canvas;
+      canvas.style.cursor = elements.length ? 'crosshair' : 'default';
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1C1C1C',
+        borderColor: 'rgba(45, 212, 191, 0.35)',
+        borderWidth: 1,
+        titleColor: '#A1A1A1',
+        titleFont: { size: 12, weight: '600' },
+        bodyColor: '#FFFFFF',
+        bodyFont: { size: 13, weight: '600' },
+        padding: 12,
+        displayColors: false,
+        animation: { duration: 150 },
+        callbacks: {
+          label: (ctx) => {
+            const hist = ctx.chart.$historico || historico;
+            const h = hist[ctx.dataIndex];
+            const c = h?.concluidas || 0;
+            const t = h?.total || 0;
+            return t ? `${c}/${t} tarefas` : `${c} tarefa${c === 1 ? '' : 's'}`;
+          }
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: { display: false },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.06)',
+          drawBorder: false,
+          lineWidth: 1,
+          drawTicks: false
+        },
+        border: { display: false }
+      },
+      x: {
+        ticks: {
+          color: '#737373',
+          font: { size: 11, weight: '400', family: "'Plus Jakarta Sans', sans-serif" },
+          maxRotation: 0,
+          padding: 6,
+          autoSkip: true,
+          maxTicksLimit: 10
+        },
+        grid: { display: false, drawBorder: false },
+        border: { display: false }
+      }
+    }
+  };
 }
 
 function renderChartBars(historicoFull) {
@@ -5527,13 +5694,16 @@ function renderChartBars(historicoFull) {
   });
   const concluidas = historico.map(h => parseInt(h.concluidas, 10) || 0);
   const accent = '#2DD4BF';
-  if (performanceChart) performanceChart.destroy();
+
+  if (performanceChart) {
+    performanceChart.data.labels = labels;
+    performanceChart.data.datasets[0].data = concluidas;
+    performanceChart.$historico = historico;
+    performanceChart.update('active');
+    return;
+  }
 
   const ctx = canvas.getContext('2d');
-  const gradient = ctx.createLinearGradient(0, 0, 0, 280);
-  gradient.addColorStop(0, 'rgba(45, 212, 191, 0.22)');
-  gradient.addColorStop(1, 'rgba(45, 212, 191, 0)');
-
   performanceChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -5542,71 +5712,23 @@ function renderChartBars(historicoFull) {
         label: 'Concluídas',
         data: concluidas,
         borderColor: accent,
-        backgroundColor: gradient,
-        borderWidth: 2,
+        backgroundColor: buildChartGradient(ctx),
+        borderWidth: 2.5,
         fill: true,
         tension: 0.35,
         pointRadius: 0,
-        pointHoverRadius: 5,
+        pointHoverRadius: 7,
+        pointHitRadius: 14,
         pointBackgroundColor: accent,
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 2
+        pointBorderWidth: 3,
+        pointHoverBorderWidth: 3
       }]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { top: 8, right: 4, bottom: 0, left: 4 } },
-      interaction: { intersect: false, mode: 'index' },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#1C1C1C',
-          borderColor: 'rgba(255,255,255,0.08)',
-          borderWidth: 1,
-          titleColor: '#A1A1A1',
-          titleFont: { size: 12, weight: '600' },
-          bodyColor: '#FFFFFF',
-          bodyFont: { size: 13, weight: '600' },
-          padding: 10,
-          displayColors: false,
-          callbacks: {
-            label: (ctx) => {
-              const h = historico[ctx.dataIndex];
-              const c = h?.concluidas || 0;
-              const t = h?.total || 0;
-              return t ? `${c}/${t} tarefas` : `${c} tarefa${c === 1 ? '' : 's'}`;
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { display: false },
-          grid: {
-            color: 'rgba(255, 255, 255, 0.06)',
-            drawBorder: false,
-            lineWidth: 1,
-            drawTicks: false
-          },
-          border: { display: false }
-        },
-        x: {
-          ticks: {
-            color: '#737373',
-            font: { size: 11, weight: '400', family: "'Plus Jakarta Sans', sans-serif" },
-            maxRotation: 0,
-            padding: 6,
-            autoSkip: true,
-            maxTicksLimit: 10
-          },
-          grid: { display: false, drawBorder: false },
-          border: { display: false }
-        }
-      }
-    }
+    options: getChartOptions(historico),
+    plugins: [chartCrosshairPlugin, chartHoverGlowPlugin]
   });
+  performanceChart.$historico = historico;
 }
 
 function alternarTipoGrafico(tipo) {
@@ -6174,6 +6296,13 @@ function getChartPeriodo() {
 }
 
 function atualizarChartPorPeriodo() {
+  const wrap = document.querySelector('#dashboard .chart-container');
+  if (wrap) {
+    wrap.classList.remove('chart-updating');
+    void wrap.offsetWidth;
+    wrap.classList.add('chart-updating');
+    setTimeout(() => wrap.classList.remove('chart-updating'), 680);
+  }
   if (_chartHistoricoFull.length) {
     renderChartBars(filterHistoricoPorPeriodo(_chartHistoricoFull, getChartPeriodo()));
   }
@@ -6183,7 +6312,13 @@ function setChartPreset(dias) {
   _chartPresetDias = dias;
   chartPeriodo = chartPeriodoPorDias(dias);
   document.querySelectorAll('.dash-chart-filter[data-chart-days]').forEach((btn) => {
-    btn.classList.toggle('active', Number(btn.dataset.chartDays) === dias);
+    const isActive = Number(btn.dataset.chartDays) === dias;
+    btn.classList.toggle('active', isActive);
+    if (isActive) {
+      btn.classList.remove('chart-filter-pulse');
+      void btn.offsetWidth;
+      btn.classList.add('chart-filter-pulse');
+    }
   });
   if (_chartFp) _chartFp.setDate([chartPeriodo.inicio, chartPeriodo.fim], false);
   atualizarChartPorPeriodo();
@@ -6205,6 +6340,12 @@ function initChartFilters() {
         fim: fim.toLocaleDateString('en-CA')
       };
       document.querySelectorAll('.dash-chart-filter[data-chart-days]').forEach((b) => b.classList.remove('active'));
+      const rangeWrap = inp.closest('.dash-chart-range-wrap');
+      if (rangeWrap) {
+        rangeWrap.classList.remove('chart-filter-pulse');
+        void rangeWrap.offsetWidth;
+        rangeWrap.classList.add('chart-filter-pulse');
+      }
       atualizarChartPorPeriodo();
     },
     onClear() {
@@ -7164,6 +7305,26 @@ function renderHistorico() {
   renderHistoricoFromApi().catch((err) => console.error('Erro histórico:', err));
 }
 
+function animateHistStat(el, target, suffix = '') {
+  if (!el) return;
+  const raw = String(el.textContent || '').replace(/[^\d.-]/g, '');
+  const start = parseInt(raw, 10) || 0;
+  if (start === target && !suffix) {
+    el.textContent = target + suffix;
+    return;
+  }
+  const dur = 450;
+  const t0 = performance.now();
+  const tick = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (target - start) * eased) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+    else el.textContent = target + suffix;
+  };
+  requestAnimationFrame(tick);
+}
+
 async function renderHistoricoFromApi() {
   let porDia = {};
   let totalHistorico = 0;
@@ -7200,20 +7361,19 @@ async function renderHistoricoFromApi() {
   const diasComDados = Object.keys(porDia).length;
   const taxaConc = totalHistorico > 0 ? Math.round((concluidasHistorico / totalHistorico) * 100) : 0;
 
-  document.getElementById('hist-total-tarefas').textContent = totalHistorico;
-  document.getElementById('hist-taxa-conclusao').textContent = taxaConc + '%';
-
   let melhorDia = 0;
   Object.values(porDia).forEach(d => {
     if (d.concluidas > melhorDia) melhorDia = d.concluidas;
   });
-  document.getElementById('hist-melhor-dia').textContent = melhorDia;
-
   const mediaDiaria = diasComDados > 0 ? Math.round(concluidasHistorico / diasComDados) : 0;
-  document.getElementById('hist-media-diaria').textContent = mediaDiaria;
+
+  animateHistStat(document.getElementById('hist-total-tarefas'), totalHistorico);
+  animateHistStat(document.getElementById('hist-taxa-conclusao'), taxaConc, '%');
+  animateHistStat(document.getElementById('hist-melhor-dia'), melhorDia);
+  animateHistStat(document.getElementById('hist-media-diaria'), mediaDiaria);
 
   renderHeatmap(porDia);
-  renderTendencias(porDia, { totalHistorico, diasComDados });
+  renderHistInsights(porDia, { diasComDados });
 
   renderConsistenciaHorario();
 
@@ -7231,15 +7391,15 @@ async function renderHistoricoFromApi() {
   if (concluiDasRecentemente.length === 0) {
     container.innerHTML = '<div class="mini-item-empty">Nenhuma tarefa concluída ainda</div>';
   } else {
-    container.innerHTML = concluiDasRecentemente.map(t => {
+    container.innerHTML = concluiDasRecentemente.map((t, i) => {
       const data = new Date(t.concluida_em || t.updated_at || t.data_reset);
       const dataStr = t.concluida_em
         ? data.toLocaleString('pt-BR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
         : data.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
       return `
-        <div class="mini-item" style="opacity: 0.8;">
-          <span>✅ ${escapeHtml(t.titulo)}</span>
-          <span style="color: var(--text-muted); font-size: 12px;">${dataStr}</span>
+        <div class="mini-item hist-recent-item" style="animation-delay:${i * 40}ms">
+          <span class="hist-recent-title">${escapeHtml(t.titulo)}</span>
+          <span class="hist-recent-date">${dataStr}</span>
         </div>
       `;
     }).join('');
@@ -7256,7 +7416,7 @@ async function renderConsistenciaHorario() {
     resumoEl.textContent = data.resumo || '';
     const lista = data.por_tarefa || [];
     if (!lista.length) {
-      container.innerHTML = '<div class="tendencia-item">Conclua algumas tarefas — o horário passa a ser salvo agora.</div>';
+      container.innerHTML = '<div class="hist-consistencia-item hist-consistencia-item--empty">Conclua algumas tarefas — o horário passa a ser salvo agora.</div>';
       return;
     }
     const labelNivel = { alta: 'alta', media: 'média', baixa: 'baixa', insuficiente: '—' };
@@ -7266,94 +7426,150 @@ async function renderConsistenciaHorario() {
       baixa: 'var(--danger, #e05a4e)',
       insuficiente: 'var(--text-muted)'
     };
-    container.innerHTML = lista.map(t => {
+    container.innerHTML = lista.map((t, i) => {
       const nivel = labelNivel[t.consistencia] || t.consistencia;
       const desvio = t.desvio_minutos != null ? `±${t.desvio_minutos} min` : '';
-      return `<div class="tendencia-item" style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-        <span>${escapeHtml(t.titulo)} <span style="color:var(--text-muted); font-size:12px;">(${t.vezes}x · média ${t.horario_medio || '—'})</span></span>
-        <span style="color:${corNivel[t.consistencia] || 'var(--text-muted)'}; font-size:12px; font-weight:600;">consistência ${nivel}${desvio ? ' · ' + desvio : ''}</span>
+      return `<div class="hist-consistencia-item" style="animation-delay:${i * 50}ms">
+        <span class="hist-consistencia-name">${escapeHtml(t.titulo)} <span class="hist-consistencia-meta">(${t.vezes}x · média ${t.horario_medio || '—'})</span></span>
+        <span class="hist-consistencia-badge hist-consistencia-badge--${t.consistencia || 'insuficiente'}" style="color:${corNivel[t.consistencia] || 'var(--text-muted)'}">consistência ${nivel}${desvio ? ' · ' + desvio : ''}</span>
       </div>`;
     }).join('');
   } catch (e) {
     resumoEl.textContent = '';
-    container.innerHTML = `<div class="tendencia-item" style="color:var(--danger);">Não deu pra carregar: ${escapeHtml(e.message)}</div>`;
+    container.innerHTML = `<div class="hist-consistencia-item hist-consistencia-item--error">Não deu pra carregar: ${escapeHtml(e.message)}</div>`;
   }
+}
+
+function heatmapCellColor(info) {
+  const TEAL = '45, 212, 191';
+  if (!info) return 'rgba(255,255,255,0.04)';
+  const taxa = info.total > 0 ? Math.round((info.concluidas / info.total) * 100) : 0;
+  if (taxa >= 90) return `rgba(${TEAL}, 0.95)`;
+  if (taxa >= 70) return `rgba(${TEAL}, 0.7)`;
+  if (taxa >= 50) return `rgba(${TEAL}, 0.45)`;
+  if (taxa > 0) return `rgba(${TEAL}, 0.22)`;
+  return 'rgba(255,255,255,0.06)';
 }
 
 function renderHeatmap(porDia) {
   const container = document.getElementById('heatmap-container');
+  if (!container) return;
+
   const hoje = new Date();
-  const um_ano_atras = new Date(hoje.getFullYear() - 1, hoje.getMonth(), hoje.getDate());
+  hoje.setHours(12, 0, 0, 0);
+  const inicio = new Date(hoje);
+  inicio.setFullYear(inicio.getFullYear() - 1);
+  inicio.setDate(inicio.getDate() - inicio.getDay());
 
-  let html = '<div class="heatmap">';
-
-  // Gerar células para cada dia
-  for (let d = new Date(um_ano_atras); d <= hoje; d.setDate(d.getDate() + 1)) {
-    const diaStr = d.toISOString().split('T')[0];
-    const info = porDia[diaStr];
-    const taxa = info ? Math.round((info.concluidas / info.total) * 100) : 0;
-
-    // Escala monocromática verde-turquesa (só uma cor com opacidade variável)
-    let cor = 'rgba(15,23,42,0.03)'; // sem dados
-    if (taxa >= 90) cor = 'rgba(59,130,246,0.95)';
-    else if (taxa >= 70) cor = 'rgba(59,130,246,0.7)';
-    else if (taxa >= 50) cor = 'rgba(59,130,246,0.45)';
-    else if (taxa > 0) cor = 'rgba(59,130,246,0.22)';
-    else if (info) cor = 'rgba(15,23,42,0.06)'; // dia sem conclusão
-
-    const dataFormatada = new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-
-    html += `
-      <div class="heatmap-cell" style="background: ${cor};" title="${dataFormatada}: ${taxa > 0 ? taxa + '%' : 'Sem tarefas'}">
-      </div>
-    `;
+  const weeks = [];
+  const cur = new Date(inicio);
+  while (cur <= hoje) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cur);
+      d.setDate(cur.getDate() + i);
+      if (d > hoje) {
+        week.push(null);
+      } else {
+        const diaStr = d.toLocaleDateString('en-CA');
+        week.push({ d, diaStr, info: porDia[diaStr] });
+      }
+    }
+    weeks.push(week);
+    cur.setDate(cur.getDate() + 7);
   }
 
-  html += '</div>';
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const dayLabels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  let lastMonth = -1;
+  let monthHtml = '';
+  weeks.forEach((week, wi) => {
+    const firstDay = week.find(c => c);
+    if (!firstDay) return;
+    const m = firstDay.d.getMonth();
+    if (m !== lastMonth) {
+      monthHtml += `<span class="heatmap-month" style="grid-column:${wi + 2}">${months[m]}</span>`;
+      lastMonth = m;
+    }
+  });
 
-  // Legenda
-  html += `
-    <div class="heatmap-legend" style="margin-top: 16px; display: flex; gap: 12px; font-size: 12px; justify-content: center; flex-wrap: wrap;">
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(15,23,42,0.03); border-radius: 2px; margin-right: 4px;"></span>Sem dados</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.22); border-radius: 2px; margin-right: 4px;"></span>0-49%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.45); border-radius: 2px; margin-right: 4px;"></span>50-69%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.7); border-radius: 2px; margin-right: 4px;"></span>70-89%</span>
-      <span><span style="display: inline-block; width: 12px; height: 12px; background: rgba(59,130,246,0.95); border-radius: 2px; margin-right: 4px;"></span>90%+</span>
+  let gridHtml = '<div class="heatmap-body"><div class="heatmap-days">';
+  dayLabels.forEach((lbl, i) => {
+    if (i % 2 === 0) gridHtml += `<span class="heatmap-day-label">${lbl}</span>`;
+    else gridHtml += '<span class="heatmap-day-label"></span>';
+  });
+  gridHtml += '</div><div class="heatmap-grid">';
+
+  weeks.forEach(week => {
+    gridHtml += '<div class="heatmap-week">';
+    week.forEach(cell => {
+      if (!cell) {
+        gridHtml += '<div class="heatmap-cell heatmap-cell--empty"></div>';
+        return;
+      }
+      const { d, diaStr, info } = cell;
+      const taxa = info && info.total > 0 ? Math.round((info.concluidas / info.total) * 100) : 0;
+      const label = d.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+      const title = info
+        ? `${label}: ${info.concluidas}/${info.total} (${taxa}%)`
+        : `${label}: sem tarefas`;
+      gridHtml += `<div class="heatmap-cell" style="background:${heatmapCellColor(info)}" title="${escapeHtml(title)}" data-date="${diaStr}"></div>`;
+    });
+    gridHtml += '</div>';
+  });
+  gridHtml += '</div></div>';
+
+  const legendHtml = `
+    <div class="heatmap-legend">
+      <span><i class="heatmap-swatch" style="background:rgba(255,255,255,0.04)"></i>Sem dados</span>
+      <span><i class="heatmap-swatch" style="background:rgba(45,212,191,0.22)"></i>0–49%</span>
+      <span><i class="heatmap-swatch" style="background:rgba(45,212,191,0.45)"></i>50–69%</span>
+      <span><i class="heatmap-swatch" style="background:rgba(45,212,191,0.7)"></i>70–89%</span>
+      <span><i class="heatmap-swatch" style="background:rgba(45,212,191,0.95)"></i>90%+</span>
     </div>
   `;
 
-  container.innerHTML = html;
+  container.innerHTML = `
+    <div class="heatmap-shell">
+      <div class="heatmap-months">${monthHtml}</div>
+      ${gridHtml}
+    </div>
+    ${legendHtml}
+  `;
+
+  requestAnimationFrame(() => {
+    container.querySelectorAll('.heatmap-cell:not(.heatmap-cell--empty)').forEach((el, i) => {
+      el.style.animationDelay = `${Math.min(i * 3, 500)}ms`;
+      el.classList.add('heatmap-cell--animate');
+    });
+  });
 }
 
-function renderTendencias(porDia, meta = {}) {
-  const container = document.getElementById('tendencias-container');
-  const dias = Object.entries(porDia).sort((a, b) => new Date(b[0]) - new Date(a[0])).slice(0, 7);
+function renderHistInsights(porDia, meta = {}) {
+  const container = document.getElementById('hist-insights');
+  if (!container) return;
 
-  const tendencias = [];
+  const dias = Object.entries(porDia).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
+  const taxas = dias.map(([, d]) => (d.total > 0 ? (d.concluidas / d.total) * 100 : 0));
+  const taxaMedia7 = taxas.length ? Math.round(taxas.reduce((a, b) => a + b, 0) / taxas.length) : 0;
 
-  // Analisar padrões
-  const taxas = dias.map(([_, d]) => (d.total > 0 ? (d.concluidas / d.total) * 100 : 0));
-  const taxaMedia = taxas.length > 0 ? taxas.reduce((a, b) => a + b, 0) / taxas.length : 0;
-
-  tendencias.push(`Taxa média: ${Math.round(taxaMedia)}%`);
-
+  let tendencia = null;
   if (dias.length >= 2) {
-    const ultimaDias = dias.slice(0, 2);
-    const progressao = ultimaDias[0][1].concluidas > ultimaDias[1][1].concluidas ? 'subindo' : 'caindo';
-    const seta = progressao === 'subindo' ? '↗' : '↘';
-    tendencias.push({ label: 'Tendência', value: progressao, arrow: seta });
+    tendencia = dias[0][1].concluidas >= dias[1][1].concluidas ? 'subindo' : 'caindo';
   }
 
-  tendencias.push(`Total no período: ${meta.totalHistorico ?? Object.values(porDia).reduce((s, d) => s + d.total, 0)}`);
-  tendencias.push(`Dias com atividade: ${meta.diasComDados ?? Object.keys(porDia).length}`);
-  tendencias.push(`Maior dia: ${Object.values(porDia).reduce((max, d) => Math.max(max, d.concluidas), 0)} tarefas`);
+  const chips = [
+    { label: 'Últimos 7 dias', value: `${taxaMedia7}% média` },
+    { label: 'Dias ativos', value: String(meta.diasComDados ?? Object.keys(porDia).length) },
+    tendencia ? { label: 'Tendência', value: tendencia, trend: tendencia } : null
+  ].filter(Boolean);
 
-  container.innerHTML = tendencias.map(t => {
-    if (typeof t === 'string') return `<div class="tendencia-item">${t}</div>`;
-    const seta = t.arrow || '';
-    const cor = t.value === 'subindo' ? 'var(--accent)' : 'var(--danger)';
-    return `<div class="tendencia-item">${t.label}: ${t.value} <span style="color:${cor}; margin-left:6px;">${seta}</span></div>`;
-  }).join('');
+  container.innerHTML = chips.map((c, i) => `
+    <div class="hist-insight-chip${c.trend ? ` hist-insight-chip--${c.trend}` : ''}" style="animation-delay:${i * 60}ms">
+      <span class="hist-insight-label">${c.label}</span>
+      <span class="hist-insight-value">${c.value}${c.trend === 'subindo' ? ' ↗' : c.trend === 'caindo' ? ' ↘' : ''}</span>
+    </div>
+  `).join('');
 }
 
 // =====================
