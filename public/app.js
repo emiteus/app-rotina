@@ -6026,10 +6026,12 @@ function atualizarDashboard() {
   const concluidas = tarefasHoje.filter(t => t.concluida).length;
   const elTotal = document.getElementById('dash-tarefas-total');
   const elConc = document.getElementById('dash-tarefas-concluidas');
+  const elPct = document.getElementById('dash-tarefas-pct');
   const elBar = document.getElementById('dash-tarefas-bar');
   if (elTotal) elTotal.textContent = total;
   if (elConc) elConc.textContent = concluidas;
-  const pct = total > 0 ? (concluidas / total) * 100 : 0;
+  const pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+  if (elPct) elPct.textContent = `${pct}%`;
   if (elBar) elBar.style.width = `${pct}%`;
 
   // Financeiro — entradas/saídas dos últimos 30 dias (não o histórico inteiro)

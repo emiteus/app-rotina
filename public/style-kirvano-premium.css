@@ -1,0 +1,384 @@
+/* ============================================================
+   Kirvano Premium Layer — tokens + componentes
+   Referência: kirvano.com + docs dashboard (saldo, KPIs, cards)
+   ============================================================ */
+
+:root {
+  --bg: #0C0C0E;
+  --bg-primary: #0C0C0E;
+  --bg-secondary: #101012;
+  --bg-tertiary: #18181B;
+  --bg-card: #141416;
+  --bg-card-hover: #1A1A1E;
+  --card-bg: #141416;
+  --surface: #141416;
+  --surface-elevated: #1C1C20;
+
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.1);
+
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-muted: #71717A;
+
+  /* Verde Kirvano — CTAs, sucesso, progresso */
+  --accent: #22C55E;
+  --accent-hover: #16A34A;
+  --accent-dim: rgba(34, 197, 94, 0.12);
+  --accent-glow: rgba(34, 197, 94, 0.25);
+  --accent-on: #052E16;
+
+  --success: #4ADE80;
+  --danger: #F87171;
+  --warning: #FBBF24;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 8px 32px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 0 0 1px rgba(34, 197, 94, 0.15), 0 12px 40px rgba(0, 0, 0, 0.4);
+
+  --font-ui: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Fundo com profundidade sutil */
+body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 197, 94, 0.06), transparent),
+    var(--bg-primary) !important;
+}
+
+/* ----- Sidebar ----- */
+.sidebar {
+  background: rgba(12, 12, 14, 0.95) !important;
+  border-right: 1px solid var(--border) !important;
+  backdrop-filter: blur(12px);
+}
+
+.logo-icon {
+  background: var(--accent) !important;
+  color: var(--accent) !important;
+  -webkit-text-fill-color: initial !important;
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.logo-text {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.nav-btn {
+  border-radius: 12px !important;
+  color: var(--text-muted) !important;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--text-primary) !important;
+}
+
+.nav-btn.active {
+  background: var(--accent-dim) !important;
+  color: var(--accent) !important;
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2) !important;
+}
+
+@media (min-width: 769px) {
+  .nav-btn.active {
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2) !important;
+  }
+}
+
+/* ----- Main / header ----- */
+.main {
+  padding: 28px 36px 48px !important;
+}
+
+.dash-header {
+  margin-bottom: 28px !important;
+}
+
+.dash-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0 0 6px 0;
+}
+
+#dashboard .page-header h1,
+.dash-header h1 {
+  font-size: 30px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  margin: 0 !important;
+}
+
+#dashboard .page-subtitle {
+  margin-top: 6px;
+  color: var(--text-muted) !important;
+}
+
+.dash-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.user-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.btn-logout-top {
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  border-color: var(--border) !important;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btn-logout-top:hover {
+  border-color: var(--border-strong) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ----- KPI cards (estilo Kirvano) ----- */
+.dashboard-kpi-grid {
+  gap: 14px !important;
+  margin-bottom: 18px !important;
+}
+
+.dashboard-kpi-grid .card,
+.kpi-card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 22px 24px !important;
+  min-height: 130px !important;
+  box-shadow: var(--shadow-card) !important;
+  transition: box-shadow 0.22s ease, border-color 0.22s ease, transform 0.22s ease !important;
+}
+
+.dashboard-kpi-grid .card:hover,
+.kpi-card:hover {
+  border-color: rgba(34, 197, 94, 0.12) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+  transform: translateY(-1px);
+}
+
+.kpi-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.kpi-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.kpi-icon-money {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--accent);
+}
+
+.kpi-icon-tasks {
+  background: rgba(59, 130, 246, 0.12);
+  color: #60A5FA;
+}
+
+.kpi-icon-rank {
+  background: rgba(251, 191, 36, 0.12);
+  color: #FBBF24;
+}
+
+.dashboard-kpi-grid .card-label {
+  font-size: 13px !important;
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+  padding-right: 0 !important;
+  flex: 1;
+  line-height: 1.35;
+}
+
+.dashboard-kpi-grid .card-value {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: var(--text-primary) !important;
+  line-height: 1.1 !important;
+}
+
+.kpi-pct-big {
+  font-size: 32px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: var(--accent) !important;
+}
+
+.kpi-pct-sub {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--text-muted) !important;
+  margin-left: 4px;
+}
+
+.card-delta {
+  position: static !important;
+  display: inline-flex !important;
+  margin-left: 8px;
+  vertical-align: middle;
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+  border-radius: 8px !important;
+}
+
+.card-delta.card-delta-pos {
+  background: rgba(34, 197, 94, 0.14) !important;
+  color: var(--accent) !important;
+}
+
+.card-delta.card-delta-neg {
+  background: rgba(248, 113, 113, 0.14) !important;
+  color: var(--danger) !important;
+}
+
+.dashboard-kpi-grid .card-mini {
+  font-size: 12px !important;
+  margin-top: 4px !important;
+}
+
+.dashboard-kpi-grid .card-mini .mini-up {
+  color: var(--accent) !important;
+}
+
+.dashboard-kpi-grid .card-bar {
+  height: 4px !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-radius: 999px !important;
+  margin-top: 12px !important;
+}
+
+.dashboard-kpi-grid .card-bar-fill {
+  background: linear-gradient(90deg, var(--accent), #4ADE80) !important;
+  border-radius: 999px !important;
+}
+
+/* ----- Painéis secundários ----- */
+.dashboard-extra-grid {
+  gap: 14px !important;
+}
+
+.dashboard-mini-card,
+.panel {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-card) !important;
+  padding: 20px 22px !important;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.dashboard-mini-card:hover {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+  transform: translateY(-1px);
+}
+
+.dashboard-mini-card .panel-header h3,
+.panel-header h3 {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+}
+
+.mini-panel-body .mini-empty {
+  color: var(--text-muted) !important;
+  font-size: 13px;
+}
+
+/* ----- Ranking ----- */
+.ranking-bar {
+  background: rgba(255, 255, 255, 0.06) !important;
+  height: 5px !important;
+}
+
+.ranking-bar-fill {
+  background: linear-gradient(90deg, var(--accent), #4ADE80) !important;
+}
+
+.ranking-pct {
+  color: var(--accent) !important;
+}
+
+.ranking-lider {
+  color: var(--text-muted) !important;
+  font-size: 12px !important;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 12px !important;
+}
+
+/* ----- Botões globais ----- */
+.btn-primary {
+  background: var(--accent) !important;
+  color: var(--accent-on) !important;
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 12px rgba(34, 197, 94, 0.25) !important;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover) !important;
+  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3) !important;
+}
+
+/* ----- Inputs ----- */
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(34, 197, 94, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12) !important;
+}
+
+/* ----- Scrollbar ----- */
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+@media (max-width: 768px) {
+  .main { padding: 20px 16px 100px !important; }
+  .dash-header { flex-direction: column !important; align-items: flex-start !important; gap: 16px !important; }
+  .dashboard-kpi-grid .card-value { font-size: 24px !important; }
+}

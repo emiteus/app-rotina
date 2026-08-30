@@ -13,8 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=97">
-  <link rel="stylesheet" href="style-ranking.css?v=97">
+  <link rel="stylesheet" href="style.css?v=98">
+  <link rel="stylesheet" href="style-ranking.css?v=98">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=98">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +28,7 @@
 <body>
   <script>
     (function () {
-      var V = '97';
+      var V = '98';
       try {
         var prev = localStorage.getItem('app_build');
         if (prev && prev !== V) {
@@ -115,40 +116,59 @@
 
     <!-- TAB: Dashboard (redesign minimalista) -->
     <section id="dashboard" class="tab-content active">
-      <div class="page-header" style="justify-content:space-between; align-items:center; display:flex;">
-        <div>
+      <div class="page-header dash-header" style="justify-content:space-between; align-items:center; display:flex;">
+        <div class="dash-header-text">
+          <p class="dash-eyebrow">Dashboard</p>
           <h1><span id="saudacao"></span></h1>
           <p class="page-subtitle">Seu resumo do dia</p>
         </div>
-        <div style="display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end;">
-          <span id="header-user-name" class="header-user-name" title="Usuário logado"></span>
+        <div class="dash-header-actions">
+          <div class="user-pill" title="Usuário logado">
+            <span class="user-pill-dot"></span>
+            <span id="header-user-name" class="header-user-name"></span>
+          </div>
           <button type="button" id="btn-logout-top" class="btn-logout-top">Sair</button>
         </div>
       </div>
 
-      <!-- 3 KPI cards, tipo Kirvano -->
+      <!-- 3 KPI cards, estilo Kirvano -->
       <div class="cards-grid dashboard-kpi-grid">
-        <div class="card">
-          <div class="card-label">Saldo total <span class="card-delta" id="dash-saldo-delta"></span></div>
+        <div class="card kpi-card">
+          <div class="kpi-card-top">
+            <span class="kpi-icon kpi-icon-money" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/></svg>
+            </span>
+            <div class="card-label">Saldo total <span class="card-delta" id="dash-saldo-delta"></span></div>
+          </div>
           <div class="card-value" id="dash-saldo">R$ 0,00</div>
-          <div class="card-mini" style="margin-top:12px;">
+          <div class="card-mini" style="margin-top:8px;">
             <span class="mini-up">+ <span id="dash-entradas">0,00</span></span>
             <span class="mini-down">− <span id="dash-saidas">0,00</span></span>
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-label">Tarefas hoje <span class="card-delta" id="dash-tarefas-delta"></span></div>
-          <div class="card-value">
-            <span id="dash-tarefas-concluidas">0</span>/<span id="dash-tarefas-total">0</span>
+        <div class="card kpi-card">
+          <div class="kpi-card-top">
+            <span class="kpi-icon kpi-icon-tasks" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </span>
+            <div class="card-label">Tarefas hoje <span class="card-delta" id="dash-tarefas-delta"></span></div>
           </div>
-          <div class="card-bar" style="margin-top:16px;">
+          <div class="card-value">
+            <span id="dash-tarefas-pct" class="kpi-pct-big">0%</span><span class="kpi-pct-sub"><span id="dash-tarefas-concluidas">0</span>/<span id="dash-tarefas-total">0</span></span>
+          </div>
+          <div class="card-bar">
             <div class="card-bar-fill" id="dash-tarefas-bar" style="width: 0%"></div>
           </div>
         </div>
 
-        <div class="card" id="dash-ranking-card">
-          <div class="card-label">Ofensiva do dia</div>
+        <div class="card kpi-card" id="dash-ranking-card">
+          <div class="kpi-card-top">
+            <span class="kpi-icon kpi-icon-rank" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+            </span>
+            <div class="card-label">Ofensiva do dia</div>
+          </div>
           <div id="dash-ranking-list" class="ranking-list">
             <div class="ranking-empty">Carregando…</div>
           </div>
@@ -1009,9 +1029,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=97"></script>
-  <script src="js/assist.js?v=97"></script>
-  <script src="app.js?v=97"></script>
+  <script src="js/fin-receitas.js?v=98"></script>
+  <script src="js/assist.js?v=98"></script>
+  <script src="app.js?v=98"></script>
   <script>
     // ==================== Auth guard (login modal automático) ====================
     (function () {
@@ -1321,7 +1341,7 @@
               return;
             }
             esconderLogin();
-            location.href = '/?v=97';
+            location.href = '/?v=98';
             return;
           }
           erroEl.textContent = d.erro || (r.status === 429 ? 'Muitas tentativas. Espera um pouco.' : 'Não deu  tenta de novo');
@@ -1411,7 +1431,7 @@
           if (typeof toast === 'function') toast('Permissão negada', 'error');
           return;
         }
-        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=97');
+        if (!__pushRegistration) __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=98');
         const reg = __pushRegistration;
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -1472,7 +1492,7 @@
     (async function () {
       try {
         if (!('serviceWorker' in navigator)) return _atualizarUiPush();
-        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=97').catch(() => null);
+        __pushRegistration = await navigator.serviceWorker.register('/sw.js?v=98').catch(() => null);
         const r = await fetch('/api/push/config');
         if (r.ok) __pushConfig = await r.json();
         _atualizarUiPush();
