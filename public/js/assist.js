@@ -113,15 +113,17 @@ function fecharAssistente(opts) {
   const mobile = isAssistMobile();
   const manterAba = !!opts?.manterAba;
 
+  // Painel e dashboard animam juntos (padding-right + translateX)
   if (panel) panel.classList.remove('open');
   if (backdrop) backdrop.classList.remove('open');
+  document.body.classList.remove('assist-open');
   if (_assistHistOpen) assistFecharHistorico();
 
   let finished = false;
   const finish = () => {
     if (finished) return;
     finished = true;
-    document.body.classList.remove('assist-open', 'assist-mobile-tab');
+    document.body.classList.remove('assist-mobile-tab');
     if (backdrop) backdrop.hidden = true;
     if (fab) fab.classList.toggle('hidden', isAssistMobile());
 

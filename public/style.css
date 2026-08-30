@@ -6043,9 +6043,16 @@ body.modo-selecao .btn-delete { display: none !important; } /* esconde X individ
 .assist-panel.hist-open {
   width: calc(var(--assist-dock-w) + var(--assist-hist-w));
 }
+
+/* Transition fica no body (não só em .assist-open), senão o padding some seco no fechar */
+@media (min-width: 769px) {
+  html body {
+    transition: padding-right 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+                padding-left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
 body.assist-open {
   padding-right: var(--assist-dock-w);
-  transition: padding-right 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 body.assist-open:has(.assist-panel.hist-open) {
   padding-right: calc(var(--assist-dock-w) + var(--assist-hist-w));
@@ -6053,7 +6060,7 @@ body.assist-open:has(.assist-panel.hist-open) {
 @media (prefers-reduced-motion: reduce) {
   .assist-panel,
   .assist-backdrop,
-  body.assist-open { transition: none !important; }
+  html body { transition: none !important; }
 }
 
 .assist-main {
