@@ -137,7 +137,7 @@ function progressoDiaTarefas(dataStr) {
   const tasks = (allTasks || []).filter(t => t.data_reset && String(t.data_reset).split('T')[0] === dataStr);
   if (!tasks.length) return null;
   const done = tasks.filter(t => t.concluida).length;
-  return { total: tasks.length, done, pct: Math.round((done / tasks.length) * 100) };
+  return { total: tasks.length, done, pct: Math.min(100, Math.round((done / tasks.length) * 100)) };
 }
 
 // Frases motivacionais
@@ -4199,6 +4199,7 @@ async function carregarTarefas() {
     renderHistorico();
     atualizarDashboard();
     atualizarBadgesTarefas(); // Atualizar badges das seções
+    carregarRankingDia();
   } catch (err) {
     console.error('Erro tarefas:', err);
   }
@@ -5493,26 +5494,34 @@ function renderStats(data) {
   renderHorizontalBars('chart-prioridades', data.prioridades || {}, 'pri');
 }
 
+let _rankingDiaEu = null;
+
 async function carregarRankingDia() {
   const listEl = document.getElementById('dash-ranking-list');
   const liderEl = document.getElementById('dash-ranking-lider');
-  if (!listEl) return;
   try {
     const res = await fetch('/api/ranking/dia');
     if (!res.ok) throw new Error('ranking');
     const data = await res.json();
     const jogadores = data.jogadores || [];
+    const eu = jogadores.find((j) => j.eu) || null;
+    _rankingDiaEu = eu;
+    if (typeof atualizarTopbarJornada === 'function') {
+      atualizarTopbarJornada(eu ? eu.concluidas : 0, eu ? eu.total : 0, { ranking: true });
+    }
+    if (!listEl) return;
     if (!jogadores.length) {
-      listEl.innerHTML = '<div class="ranking-empty">Ninguém na ofensiva ainda</div>';
+      if (listEl) listEl.innerHTML = '<div class="ranking-empty">Ninguém na ofensiva ainda</div>';
       if (liderEl) liderEl.textContent = '';
       return;
     }
-    listEl.innerHTML = jogadores.map((j, i) => {
+    if (listEl) {
+      listEl.innerHTML = jogadores.map((j, i) => {
       const pct = j.total > 0 ? j.pct : 0;
       const cor = j.cor || '#f97316';
       const trofeu = i === 0 && j.concluidas > 0 ? ' 🏆' : '';
-      const eu = j.eu ? ' ranking-row-eu' : '';
-      return `<div class="ranking-row${eu}">
+      const euCls = j.eu ? ' ranking-row-eu' : '';
+      return `<div class="ranking-row${euCls}">
         <div class="ranking-row-head">
           <span class="ranking-nome" style="--rank-cor:${cor}">${escapeHtml(j.nome)}${trofeu}</span>
           <span class="ranking-score"><span class="ranking-pct">${pct}%</span><span class="ranking-qty">${j.concluidas}/${j.total}</span></span>
@@ -5520,6 +5529,7 @@ async function carregarRankingDia() {
         <div class="ranking-bar"><div class="ranking-bar-fill" style="width:${pct}%; background:${cor}"></div></div>
       </div>`;
     }).join('');
+    }
     if (liderEl) {
       const l = data.lider;
       const euLider = jogadores[0]?.eu;
@@ -5531,7 +5541,7 @@ async function carregarRankingDia() {
       } else liderEl.textContent = '';
     }
   } catch (err) {
-    listEl.innerHTML = '<div class="ranking-empty">Erro ao carregar ranking</div>';
+    if (listEl) listEl.innerHTML = '<div class="ranking-empty">Erro ao carregar ranking</div>';
     if (liderEl) liderEl.textContent = '';
   }
 }
@@ -5576,7 +5586,9 @@ async function carregarRankingHistorico() {
           ? ` · Você lidera com ${l.diffPontos} pts de vantagem`
           : ` · ${l.nome} lidera (+${l.diffPontos} pts)`;
       }
-      resumoEl.textContent = `${deFmt} — ${ateFmt} · ${p.dias || 0} dia(s) com dados${extra}`;
+      const hojePts = _rankingDiaEu ? (_rankingDiaEu.pct || 0) : null;
+      const hojeTxt = hojePts != null ? `Hoje: ${hojePts} pts · ` : '';
+      resumoEl.textContent = `${hojeTxt}${deFmt} — ${ateFmt} · ${p.dias || 0} dia(s) no período${extra}`;
     }
   } catch (err) {
     listEl.innerHTML = `<div class="ranking-empty">${escapeHtml(err.message || 'Erro ao carregar')}</div>`;
@@ -5699,7 +5711,7 @@ function renderRankingHistoricoList(data) {
     return `<div class="ranking-row${eu}">
       <div class="ranking-row-head">
         <span class="ranking-nome" style="--rank-cor:${cor}">${escapeHtml(j.nome)}${trofeu}</span>
-        <span class="ranking-score"><span class="ranking-pct">${j.pontos} pts</span><span class="ranking-qty">${j.media_pct}% · ${j.vitorias} vit.</span></span>
+        <span class="ranking-score"><span class="ranking-pct">${j.pontos} pts</span><span class="ranking-qty">${j.media_pct}% méd · ${j.vitorias} vit.</span></span>
       </div>
       <div class="ranking-bar"><div class="ranking-bar-fill" style="width:${pctBar}%; background:${cor}"></div></div>
     </div>`;
@@ -6659,28 +6671,38 @@ function atualizarDashboard() {
 
 }
 
-function atualizarTopbarJornada(concluidas, total) {
+function atualizarTopbarJornada(concluidas, total, opts) {
   const fill = document.getElementById('topbar-journey-fill');
   const valueEl = document.getElementById('topbar-journey-value');
   const weekEl = document.getElementById('topbar-journey-week');
   const journeyEl = document.getElementById('topbar-journey');
   if (!fill) return;
 
+  const usarRanking = opts && opts.ranking;
   let c = concluidas;
   let t = total;
-  if (c == null || t == null) {
+  if (usarRanking && _rankingDiaEu) {
+    c = _rankingDiaEu.concluidas;
+    t = _rankingDiaEu.total;
+  } else if (c == null || t == null) {
     const hoje = hojeLocal();
     const tarefasHoje = (allTasks || []).filter(x => x.data_reset && String(x.data_reset).split('T')[0] === hoje);
     t = tarefasHoje.length;
     c = tarefasHoje.filter(x => x.concluida).length;
+  } else if (_rankingDiaEu && _rankingDiaEu.total > 0 && t === 0) {
+    c = _rankingDiaEu.concluidas;
+    t = _rankingDiaEu.total;
   }
 
-  const pct = t > 0 ? Math.round((c / t) * 100) : 0;
+  const pct = usarRanking && _rankingDiaEu
+    ? Math.min(100, _rankingDiaEu.pct || 0)
+    : (t > 0 ? Math.min(100, Math.round((c / t) * 100)) : 0);
+  const pontos = pct;
   fill.style.width = `${pct}%`;
-  if (valueEl) valueEl.textContent = `${c}/${t}`;
+  if (valueEl) valueEl.textContent = `${pontos} pts`;
   if (journeyEl) {
     journeyEl.title = t
-      ? `Hoje: ${c} de ${t} tarefas (${pct}%)`
+      ? `Hoje: ${pontos} pts · ${c}/${t} tarefas (${pct}%)`
       : 'Nenhuma tarefa para hoje';
   }
 
@@ -7487,7 +7509,9 @@ function filtrarAmanhaFilter(filtro) {
 
 function renderHistorico() {
   renderHistoricoFromApi().catch((err) => console.error('Erro histórico:', err));
-  carregarRankingHistorico().catch((err) => console.error('Erro ofensiva:', err));
+  carregarRankingDia()
+    .then(() => carregarRankingHistorico())
+    .catch((err) => console.error('Erro ofensiva:', err));
 }
 
 function animateHistStat(el, target, suffix = '') {

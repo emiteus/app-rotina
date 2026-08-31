@@ -394,12 +394,13 @@ input:focus, select:focus, textarea:focus {
 }
 
 .topbar-journey {
-  flex: 1;
+  flex: 0 1 auto;
   max-width: 280px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-left: 12px;
+  margin-left: auto;
+  margin-right: 0;
 }
 
 .topbar-journey-label {
@@ -408,11 +409,22 @@ input:focus, select:focus, textarea:focus {
   letter-spacing: 0.02em;
 }
 
+.topbar-journey-head-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
 .topbar-journey-track {
+  width: 72px;
   height: 4px;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 999px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .topbar-journey-fill {
@@ -1803,10 +1815,11 @@ html body #push-btn-ativar {
 .topbar-journey {
   max-width: 360px;
   gap: 5px;
+  margin-left: auto;
 }
 .topbar-journey-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
@@ -2462,6 +2475,10 @@ html body #push-btn-ativar {
 
   html body .topbar-journey {
     max-width: 110px !important;
+  }
+
+  html body .topbar-journey-track {
+    width: 40px !important;
   }
 }
 
