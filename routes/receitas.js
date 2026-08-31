@@ -65,6 +65,11 @@ async function seedMesSeVazio(ym, userId) {
   const count = await get(`SELECT COUNT(*)::int AS n FROM receitas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   if (count && count.n > 0) return { seeded: false, count: count.n };
 
+  const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+  if (!(await isPlanoOwnerUserId(userId))) {
+    return { seeded: false, count: 0, skip: 'nao_owner' };
+  }
+
   for (const item of plano.rendaFixa || []) {
     await inserirReceitaFixa(ym, item, null, userId);
   }
@@ -72,6 +77,11 @@ async function seedMesSeVazio(ym, userId) {
 }
 
 async function syncPlanoMes(ym, userId) {
+  const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+  if (!(await isPlanoOwnerUserId(userId))) {
+    return { criadas: 0, atualizadas: 0, skip: 'nao_owner' };
+  }
+
   const rows = await all(`SELECT * FROM receitas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   let criadas = 0;
   let atualizadas = 0;
@@ -182,14 +192,16 @@ router.get('/', async (req, res) => {
         await run(`UPDATE receitas_mes SET status = 'atrasado' WHERE id = $1 AND user_id = $2 AND status = 'pendente'`, [item.id, uid]);
       }
     }
+    const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+    const ehOwner = await isPlanoOwnerUserId(uid);
     res.json({
       ym,
       seed,
       sync,
       receitas,
       resumo: resumo(receitas),
-      tipos_variavel: plano.rendaVariavelTipos || [],
-      renda_fixa: plano.rendaFixa || []
+      tipos_variavel: ehOwner ? (plano.rendaVariavelTipos || []) : [],
+      renda_fixa: ehOwner ? (plano.rendaFixa || []) : []
     });
   } catch (err) {
     res.status(500).json({ erro: err.message });

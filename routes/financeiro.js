@@ -21,9 +21,9 @@ const SQL_EXCLUI_FATURA = `
 `;
 
 // Função pra emitir eventos WebSocket
-function emitFinanceiroUpdate(tipo, dados) {
-  if (wsServer) {
-    wsServer.broadcast({
+function emitFinanceiroUpdate(tipo, dados, userId) {
+  if (wsServer && userId) {
+    wsServer.broadcastToUser(String(userId), {
       tipo: 'financeiro-' + tipo,
       dados
     });
@@ -293,7 +293,7 @@ router.post('/', async (req, res) => {
     );
 
     const transacao = await get(`SELECT * FROM financeiro WHERE id = $1 AND user_id = $2`, [id, uid]);
-    emitFinanceiroUpdate('adicionada', transacao);
+    emitFinanceiroUpdate('adicionada', transacao, uid);
     res.status(201).json(transacao);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -314,7 +314,7 @@ router.patch('/:id/categoria', async (req, res) => {
       [cat, req.params.id, uid]
     );
     if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
-    emitFinanceiroUpdate('atualizada', { id: req.params.id, categoria: cat });
+    emitFinanceiroUpdate('atualizada', { id: req.params.id, categoria: cat }, uid);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -342,7 +342,7 @@ router.patch('/:id/terceiro', async (req, res) => {
     vals.push(req.params.id, uid);
     const r = await run(`UPDATE financeiro SET ${sets.join(', ')} WHERE id = $${p} AND user_id = $${p + 1}`, vals);
     if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
-    emitFinanceiroUpdate('atualizada', { id: req.params.id });
+    emitFinanceiroUpdate('atualizada', { id: req.params.id }, uid);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -356,7 +356,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const r = await run(`DELETE FROM financeiro WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!r.rowCount) return res.status(404).json({ erro: 'transação não encontrada' });
-    emitFinanceiroUpdate('deletada', { id: req.params.id });
+    emitFinanceiroUpdate('deletada', { id: req.params.id }, uid);
     res.json({ msg: 'Transacao deletada' });
   } catch (err) {
     res.status(500).json({ erro: err.message });

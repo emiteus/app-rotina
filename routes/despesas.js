@@ -50,6 +50,11 @@ async function seedMesSeVazio(ym, userId) {
   const count = await get(`SELECT COUNT(*)::int AS n FROM despesas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   if (count && count.n > 0) return { seeded: false, count: count.n };
 
+  const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+  if (!(await isPlanoOwnerUserId(userId))) {
+    return { seeded: false, count: 0, skip: 'nao_owner' };
+  }
+
   const itens = plano.itensDoMes(ym);
   const pagos = new Set((plano.pagosPorMes[ym] || []).map(chaveTitulo));
   for (const item of itens) {
@@ -60,6 +65,11 @@ async function seedMesSeVazio(ym, userId) {
 }
 
 async function syncPlanoMes(ym, userId) {
+  const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+  if (!(await isPlanoOwnerUserId(userId))) {
+    return { criadas: 0, atualizadas: 0, ignoradas: 0, skip: 'nao_owner' };
+  }
+
   const rows = await all(`SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   let criadas = 0;
   let atualizadas = 0;

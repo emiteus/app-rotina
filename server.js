@@ -256,40 +256,42 @@ sched('10 0 * * *', runCron('historico-ontem', () => persistirHistoricoCron(addD
 async function syncOpenFinanceDiario() {
   try {
     if (!openfinanceRouter.temCredenciais || !openfinanceRouter.temCredenciais()) return;
-    // Pede update no banco (1x/h max) + importa txs + saldos realtime
-    const r = await openfinanceRouter.syncAll(null, { refresh: true });
-    if (r && r.erro) { console.error('[OpenFinance] Erro no sync automático:', r.erro); return; }
-    if (!r || r.semItems) return;
-    try { await openfinanceRouter.refreshSaldosAll(); } catch (e) { /* ok */ }
-    console.log(`[OpenFinance] Sync automático: ${r.importadas} nova(s) transação(ões)`);
-    if (r.importadas > 0) {
-      const { all } = require('./lib/db');
-      const hoje = hojeStr();
-      const apostas = await all(
-        `SELECT COALESCE(SUM(valor),0) AS total, COUNT(*)::int AS qtd
-         FROM financeiro WHERE data = $1 AND categoria = 'apostas' AND tipo = 'saida'`,
-        [hoje]
-      );
-      const linha = apostas && apostas[0];
-      if (linha && linha.qtd > 0) {
-        const brl = Number(linha.total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        await enviarPush('Apostas de hoje', `Você registrou ${linha.qtd} aposta(s) — R$ ${brl}`, '/#financeiro');
-      } else {
-        await enviarPush('Sync do dia', `${r.importadas} nova(s) transação(ões) sincronizadas`, '/#financeiro');
+    const { all } = require('./lib/db');
+    const users = await all(`SELECT id FROM usuarios WHERE ativo = true`);
+    let totalImportadas = 0;
+    for (const u of users) {
+      const r = await openfinanceRouter.syncAll(null, { refresh: true }, u.id);
+      if (r && r.erro) {
+        console.error('[OpenFinance] Erro no sync automático:', u.id.slice(0, 8), r.erro);
+        continue;
       }
+      if (!r || r.semItems) continue;
+      try { await openfinanceRouter.refreshSaldosAll({}, u.id); } catch (e) { /* ok */ }
+      totalImportadas += Number(r.importadas) || 0;
+    }
+    if (totalImportadas > 0) {
+      console.log(`[OpenFinance] Sync automático: ${totalImportadas} nova(s) transação(ões)`);
     }
   } catch (e) {
     console.error('[OpenFinance] Erro no sync automático:', e.message);
   }
 }
 
-// Só saldos (rápido) — a cada 2h durante o dia
 async function refreshSaldosPeriodico() {
   try {
     if (!openfinanceRouter.temCredenciais || !openfinanceRouter.temCredenciais()) return;
-    const r = await openfinanceRouter.refreshSaldosAll();
-    if (r && r.erro) { console.error('[OpenFinance] refresh saldos:', r.erro); return; }
-    if (r && !r.semContas) console.log(`[OpenFinance] Saldos atualizados: ${r.ok} ok, ${r.falhas} falha(s)`);
+    const { all } = require('./lib/db');
+    const users = await all(`SELECT id FROM usuarios WHERE ativo = true`);
+    let okTotal = 0;
+    for (const u of users) {
+      const r = await openfinanceRouter.refreshSaldosAll({}, u.id);
+      if (r && r.erro) {
+        console.error('[OpenFinance] refresh saldos:', u.id.slice(0, 8), r.erro);
+        continue;
+      }
+      if (r && !r.semContas) okTotal += Number(r.ok) || 0;
+    }
+    if (okTotal > 0) console.log(`[OpenFinance] Saldos atualizados: ${okTotal} ok`);
   } catch (e) {
     console.error('[OpenFinance] refresh saldos:', e.message);
   }

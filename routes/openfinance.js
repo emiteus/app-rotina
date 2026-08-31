@@ -11,8 +11,10 @@ const router = express.Router();
 const PLUGGY_BASE = 'https://api.pluggy.ai';
 
 let wsServer;
-function emitUpdate(tipo, dados) {
-  if (wsServer) wsServer.broadcast({ tipo: 'financeiro-' + tipo, dados });
+function emitUpdate(tipo, dados, userId) {
+  if (!wsServer) return;
+  const msg = { tipo: 'financeiro-' + tipo, dados };
+  if (userId) wsServer.broadcastToUser(String(userId), msg);
 }
 
 // ---- Credenciais ----
@@ -492,7 +494,7 @@ router.post('/import-item', async (req, res) => {
       [itemId, nome, pessoa, apelido, uid]
     );
     const r = await syncItem(apiKey, itemId);
-    if (r.importadas > 0) emitUpdate('sync', { importadas: r.importadas });
+    if (r.importadas > 0) emitUpdate('sync', { importadas: r.importadas }, uid);
     res.json({ ok: true, connectorNome: nome, pessoa, apelido, importadas: r.importadas, ignoradas: r.ignoradas });
   } catch (err) {
     if (err.code === 'PLUGGY_NAO_CONFIGURADO') {
@@ -666,7 +668,7 @@ async function refreshSaldosAll(opts = {}, userId = null) {
     }
   }
 
-  if (ok > 0) emitUpdate('saldos', { ok, falhas, demoMeuPluggy });
+  if (ok > 0) emitUpdate('saldos', { ok, falhas, demoMeuPluggy }, userId);
   return { ok, falhas, detalhes, demoMeuPluggy, forcarUpdate: !!opts.forcarUpdate };
 }
 
@@ -862,9 +864,9 @@ async function syncAll(itemId, opts = {}, userId = null) {
     ignoradas += r.ignoradas;
     if (r.refresh) refreshes.push({ item_id: it.item_id, ...r.refresh });
   }
-  if (importadas > 0) emitUpdate('sync', { importadas });
+  if (importadas > 0) emitUpdate('sync', { importadas }, userId);
   // Sempre emite saldos após sync
-  emitUpdate('saldos', { ok: true });
+  emitUpdate('saldos', { ok: true }, userId);
   return { importadas, ignoradas, refreshes };
 }
 
@@ -986,8 +988,11 @@ async function handlePluggyWebhook(req, res) {
       // Fire-and-forget pra responder 200 rápido
       setImmediate(async () => {
         try {
-          await syncAll(itemId, { refresh: false });
-          await refreshSaldosAll();
+          const itemRow = await get(`SELECT user_id FROM openfinance_items WHERE item_id = $1`, [itemId]);
+          const uid = itemRow?.user_id;
+          if (!uid) return;
+          await syncAll(itemId, { refresh: false }, uid);
+          await refreshSaldosAll({}, uid);
         } catch (e) {
           console.error('[pluggy-webhook] sync falhou:', e.message);
         }

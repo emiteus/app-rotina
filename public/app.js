@@ -31,6 +31,7 @@ let usarFrasesMotivacionais = true;
 // =====================
 let _estado = {};
 let _estadoCarregado = false;
+let _ultimoUserIdCarregado = null;
 const LS = window.localStorage; // acesso cru (não sofre a substituição em massa)
 
 async function carregarEstado() {
@@ -38,20 +39,31 @@ async function carregarEstado() {
     const r = await fetch('/api/estado').then(x => x.json());
     _estado = r.estado || {};
     _estadoCarregado = true;
-    // Migração: leva pro banco o que ainda só existe no armazenamento local
-    for (let i = 0; i < LS.length; i++) {
-      const k = LS.key(i);
-      if (k && !(k in _estado)) {
-        const v = LS.getItem(k);
-        _estado[k] = v;
-        fetch(`/api/estado/${encodeURIComponent(k)}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v })
-        }).catch(() => {});
-      }
-    }
   } catch (e) {
     _estadoCarregado = false; // sem banco: cai no armazenamento local
   }
+}
+
+function resetarEstadoFrontendUsuario() {
+  allTransactions = [];
+  allTasks = [];
+  allAlarms = [];
+  _ofSaldos = null;
+  _ofStatus = { configurado: false, items: [] };
+  _estado = {};
+  _estadoCarregado = false;
+  try { sessionStorage.clear(); } catch (e) { /* ok */ }
+  try {
+    const keep = new Set(['app_build', 'rotina_last_login']);
+    for (let i = LS.length - 1; i >= 0; i--) {
+      const k = LS.key(i);
+      if (k && !keep.has(k)) LS.removeItem(k);
+    }
+  } catch (e) { /* ok */ }
+}
+
+function isPlanoOwnerUser() {
+  return String(window.__currentUser?.login || '').toLowerCase() === 'teus';
 }
 
 // Substituem localStorage.getItem/setItem: leem do banco (cache) com fallback local
@@ -1063,6 +1075,11 @@ function renderAnaliseFinanceira() {
     .map(id => document.getElementById(id))
     .filter(Boolean);
   if (paineis.length === 0) return;
+  if (!isPlanoOwnerUser()) {
+    paineis.forEach(p => { p.innerHTML = ''; p.style.display = 'none'; });
+    return;
+  }
+  paineis.forEach(p => { p.style.display = ''; });
   const a = analisarFinancas();
 
   const corPote = a.restanteSemana < 0 ? '#f81d13' : (a.restanteSemana <= a.tetoSemana * 0.2 ? '#f5a623' : '#31a24c');
@@ -1136,6 +1153,7 @@ function renderAnaliseFinanceira() {
 }
 
 function verificarAnaliseDiaria() {
+  if (!isPlanoOwnerUser()) return;
   renderAnaliseFinanceira();
   // Toast 1x por dia com a sugestão mais urgente
   const hoje = hojeLocal();
@@ -3099,6 +3117,12 @@ function ajustarParcelaEmprestimo(chave, total, delta) {
 function renderOrganizacaoFinanceira() {
   const painel = document.getElementById('painel-organizacao');
   if (!painel) return;
+  if (!isPlanoOwnerUser()) {
+    painel.innerHTML = '';
+    painel.style.display = 'none';
+    return;
+  }
+  painel.style.display = '';
 
   const contas = getContasFixas();
   const pagos = getBoletosPagos();
@@ -3417,11 +3441,16 @@ function renderIR() {
 let _ofStatus = { configurado: false, items: [] };
 let _ofSaldos = null;
 let _bancosDrawerAberto = false;
-const OF_SALDO_CACHE_KEY = 'of_em_conta_cache_v1';
+const OF_SALDO_CACHE_PREFIX = 'of_em_conta_cache_v1_';
+
+function cacheKeySaldoEmConta() {
+  const u = window.__currentUser?.id || 'anon';
+  return OF_SALDO_CACHE_PREFIX + u;
+}
 
 function lerCacheSaldoEmConta() {
   try {
-    const raw = sessionStorage.getItem(OF_SALDO_CACHE_KEY);
+    const raw = sessionStorage.getItem(cacheKeySaldoEmConta());
     if (!raw) return null;
     const j = JSON.parse(raw);
     if (j && Number.isFinite(Number(j.emConta))) return j;
@@ -3431,7 +3460,7 @@ function lerCacheSaldoEmConta() {
 
 function salvarCacheSaldoEmConta(emConta) {
   try {
-    sessionStorage.setItem(OF_SALDO_CACHE_KEY, JSON.stringify({
+    sessionStorage.setItem(cacheKeySaldoEmConta(), JSON.stringify({
       emConta: Number(emConta),
       em: Date.now()
     }));
@@ -6297,6 +6326,16 @@ function notificarEventoProximo(evento) {
 
 // Recarrega todos os dados do usuário logado (chamar após sessão válida)
 function recarregarDadosUsuario() {
+  const uid = window.__currentUser?.id;
+  if (uid && uid !== _ultimoUserIdCarregado) {
+    resetarEstadoFrontendUsuario();
+    _ultimoUserIdCarregado = uid;
+    carregarEstado().catch(() => {});
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      wsSessionId = Math.random().toString(36).substring(7);
+      ws.send(JSON.stringify({ tipo: 'auth', sessionId: wsSessionId, dados: { userId: uid } }));
+    }
+  }
   carregarTarefas();
   carregarBancos().then(() => carregarTransacoes());
   carregarAlarmes();
@@ -6308,6 +6347,7 @@ function recarregarDadosUsuario() {
   atualizarDashboard();
 }
 window.recarregarDadosUsuario = recarregarDadosUsuario;
+window.resetarEstadoFrontendUsuario = resetarEstadoFrontendUsuario;
 
 function agendarRecargaPosAuth() {
   const tentar = () => {

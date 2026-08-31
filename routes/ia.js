@@ -782,6 +782,8 @@ async function snapshotAssistente(opts = {}) {
 
   const comprometido = brlNum(plano.comprometidoMensal());
   const rendaPiso = brlNum(plano.rendaPiso);
+  const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+  const ehPlanoOwner = await isPlanoOwnerUserId(userId);
 
   return {
     agora: {
@@ -898,10 +900,14 @@ async function snapshotAssistente(opts = {}) {
         status: r.status,
         recebido_em: r.recebido_em ? String(r.recebido_em).slice(0, 10) : null
       })),
-      renda_fixa: (plano.rendaFixa || []).map(r => ({ chave: r.chave, nome: r.nome, valor: r.valor, dia: r.dia })),
-      tipos_variavel: (plano.rendaVariavelTipos || []).map(t => ({ chave: t.chave, label: t.label }))
+      renda_fixa: ehPlanoOwner
+        ? (plano.rendaFixa || []).map(r => ({ chave: r.chave, nome: r.nome, valor: r.valor, dia: r.dia }))
+        : [],
+      tipos_variavel: ehPlanoOwner
+        ? (plano.rendaVariavelTipos || []).map(t => ({ chave: t.chave, label: t.label }))
+        : []
     },
-    plano_financeiro: {
+    plano_financeiro: ehPlanoOwner ? {
       renda_piso: rendaPiso,
       renda_fontes: (plano.rendaFixa || []).map(r => ({ nome: r.nome, valor: r.valor, dia: r.dia })),
       comprometido_mensal: comprometido,
@@ -913,7 +919,7 @@ async function snapshotAssistente(opts = {}) {
         pagas: e.pagas,
         total: e.total
       }))
-    },
+    } : null,
     metas: (metas || []).map(m => ({
       id: m.id,
       nome: m.nome,
@@ -1205,7 +1211,7 @@ async function executarAcoes(acoes, userId) {
           }
           if (contem.length && openfinanceRouter.temCredenciais && openfinanceRouter.temCredenciais()) {
             try {
-              syncInfo = await openfinanceRouter.syncAll(null, { refresh: false });
+              syncInfo = await openfinanceRouter.syncAll(null, { refresh: false }, userId);
               txs = await buscarTxsComFallback(acao);
             } catch (syncErr) {
             }
