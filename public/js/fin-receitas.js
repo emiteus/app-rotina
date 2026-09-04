@@ -7,7 +7,7 @@ let _receitasData = null;
 const LABELS_RECEITA_CHAVE = {
   laranjeira: 'Laranjeira',
   tylty: 'Lucas Tylty',
-  cortes: 'CompetiÃ§Ã£o de cortes',
+  cortes: 'Competição de cortes',
   infoproduto: 'Infoproduto',
   pj: 'PJ / MEI',
   outro: 'Outra receita'
@@ -47,8 +47,9 @@ async function criarReceitaManual() {
   const valor = parseFloat(document.getElementById('receita-valor')?.value);
   const recebidoEm = document.getElementById('receita-data')?.value || new Date().toISOString().slice(0, 10);
   const notas = document.getElementById('receita-notas')?.value?.trim();
+  const jaRecebi = document.getElementById('receita-ja-recebi')?.checked !== false;
   if (!Number.isFinite(valor) || valor <= 0) {
-    toast('Informe o valor recebido', 'error');
+    toast('Informe o valor', 'error');
     return;
   }
   try {
@@ -60,7 +61,8 @@ async function criarReceitaManual() {
         chave,
         titulo: titulo || labelReceitaChave(chave),
         valor,
-        recebido_em: recebidoEm,
+        status: jaRecebi ? 'recebido' : 'pendente',
+        recebido_em: jaRecebi ? recebidoEm : null,
         notas: notas || null,
         origem: 'manual'
       })
@@ -72,7 +74,7 @@ async function criarReceitaManual() {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
-    toast('Receita registrada', 'success');
+    toast(jaRecebi ? 'Receita registrada' : 'A receber registrado', 'success');
     await carregarGanhos();
   } catch (e) {
     toast(e.message, 'error');
@@ -137,7 +139,7 @@ function renderReceitas() {
       <div class="despesas-kpi ok"><span class="label">Recebido</span><span class="valor">${formatBRL(totalRecebido)}</span></div>
       <div class="despesas-kpi"><span class="label">Piso fixo</span><span class="valor">${formatBRL(r.piso || 0)}</span></div>
       <div class="despesas-kpi pendente"><span class="label">Pendente</span><span class="valor">${formatBRL(r.pendente || 0)}</span></div>
-      <div class="despesas-kpi"><span class="label">VariÃ¡vel</span><span class="valor">${formatBRL(r.variavel || 0)}</span></div>
+      <div class="despesas-kpi atrasado"><span class="label">Atrasado</span><span class="valor">${formatBRL(r.atrasado || 0)}</span></div>
     `;
   }
 
@@ -148,6 +150,9 @@ function renderReceitas() {
     return (a.dia_previsto ?? 99) - (b.dia_previsto ?? 99);
   });
   const variaveis = (data.receitas || []).filter((x) => x.tipo === 'variavel').sort((a, b) => {
+    const sa = ORDEM_STATUS_RECEITA[a.status] ?? 9;
+    const sb = ORDEM_STATUS_RECEITA[b.status] ?? 9;
+    if (sa !== sb) return sa - sb;
     const da = a.recebido_em || '';
     const db = b.recebido_em || '';
     return db.localeCompare(da);
@@ -156,7 +161,7 @@ function renderReceitas() {
   const cardReceita = (item) => {
     const dia = item.dia_previsto ? `previsto dia ${item.dia_previsto}` : 'sem data prevista';
     const recebidoInfo = item.recebido_em
-      ? ` Â· recebido ${new Date(`${String(item.recebido_em).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR')}`
+      ? ` · recebido ${new Date(`${String(item.recebido_em).slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR')}`
       : '';
     const valorShow = item.status === 'recebido'
       ? Number(item.valor_recebido ?? item.valor_esperado)
@@ -168,8 +173,8 @@ function renderReceitas() {
       acoes = `<button type="button" class="btn-primary" style="padding:6px 10px; font-size:12px;" onclick="confirmarReceita('${item.id}')">Recebi</button>`;
     }
     const sub = item.tipo === 'variavel'
-      ? `${escapeHtml(labelReceitaChave(item.chave))}${recebidoInfo}${item.notas ? ` Â· ${escapeHtml(item.notas)}` : ''}`
-      : `${dia}${recebidoInfo}`;
+      ? `${escapeHtml(labelReceitaChave(item.chave))}${recebidoInfo}${item.notas ? ` · ${escapeHtml(item.notas)}` : ''}`
+      : `${dia}${recebidoInfo}${item.notas ? ` · ${escapeHtml(item.notas)}` : ''}`;
     return `
       <div class="receita-item" id="receita-${item.id}">
         <div class="info">

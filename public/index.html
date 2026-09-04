@@ -13,9 +13,9 @@
   <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
   <meta name="apple-mobile-web-app-title" content="Rotina">
 
-  <link rel="stylesheet" href="style.css?v=133">
-  <link rel="stylesheet" href="style-ranking.css?v=133">
-  <link rel="stylesheet" href="style-kirvano-premium.css?v=133">
+  <link rel="stylesheet" href="style.css?v=134">
+  <link rel="stylesheet" href="style-ranking.css?v=134">
+  <link rel="stylesheet" href="style-kirvano-premium.css?v=134">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -553,8 +553,12 @@
             </select>
             <input type="text" id="receita-titulo" placeholder="Título (opcional se escolher tipo acima)"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-ui);" />
-            <input type="number" id="receita-valor" placeholder="Valor recebido" step="0.01"
+            <input type="number" id="receita-valor" placeholder="Valor" step="0.01"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); cursor:pointer;">
+              <input type="checkbox" id="receita-ja-recebi" checked style="accent-color:var(--accent);" />
+              Já recebi (desmarque pra registrar como a receber)
+            </label>
             <input type="date" id="receita-data"
               style="background:var(--bg-primary); border:1px solid var(--border); color:var(--text-primary); border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--font-mono);" />
             <input type="text" id="receita-notas" placeholder="Notas (opcional)"
@@ -1142,9 +1146,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
-  <script src="js/fin-receitas.js?v=133"></script>
-  <script src="js/assist.js?v=133"></script>
-  <script src="app.js?v=133"></script>
+  <script src="js/fin-receitas.js?v=134"></script>
+  <script src="js/assist.js?v=134"></script>
+  <script src="app.js?v=134"></script>
   <script>
     (function initSidebarToggle() {
       var btn = document.getElementById('sidebar-toggle');

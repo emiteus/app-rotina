@@ -102,8 +102,11 @@ async function syncPlanoMes(ym, userId) {
       vals.push(item.nome);
     }
     if (Math.round(Number(existente.valor_esperado || 0) * 100) !== Math.round(Number(item.valor) * 100)) {
-      campos.push(`valor_esperado = $${i++}`);
-      vals.push(item.valor);
+      // Não sobrescreve saldo ajustado manualmente (ex.: atraso parcial)
+      if (existente.status !== 'atrasado' && existente.status !== 'recebido') {
+        campos.push(`valor_esperado = $${i++}`);
+        vals.push(item.valor);
+      }
     }
     if (dia != null && Number(existente.dia_previsto || 0) !== Number(dia)) {
       campos.push(`dia_previsto = $${i++}`);
@@ -162,6 +165,8 @@ function resumo(lista) {
       const v = Number(item.valor_recebido ?? item.valor_esperado) || 0;
       r.variavel += v;
       if (item.status === 'recebido') r.recebido += v;
+      else if (item.status === 'atrasado') r.atrasado += v;
+      else r.pendente += v;
     }
   }
   for (const k of Object.keys(r)) {
@@ -221,7 +226,6 @@ router.post('/', async (req, res) => {
     if (!Number.isFinite(valor) || valor <= 0) {
       return res.status(400).json({ erro: 'valor obrigatorio' });
     }
-    const recebidoEm = (req.body.recebido_em && String(req.body.recebido_em).slice(0, 10)) || hojeStr();
     const origem = req.body.origem || 'manual';
     const notas = req.body.notas ? String(req.body.notas).trim() : null;
     const id = uuid();
@@ -230,18 +234,34 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ erro: 'renda fixa vem do plano; use confirmar recebimento' });
     }
 
+    // pendente/atrasado = a receber; recebido = já caiu
+    let status = String(req.body.status || '').toLowerCase();
+    if (!['pendente', 'atrasado', 'recebido'].includes(status)) {
+      status = req.body.recebido_em || req.body.ja_recebido ? 'recebido' : 'pendente';
+    }
+    if (ym < ymAtual() && status === 'pendente') status = 'atrasado';
+
+    const recebidoEm =
+      status === 'recebido'
+        ? ((req.body.recebido_em && String(req.body.recebido_em).slice(0, 10)) || hojeStr())
+        : null;
+    const diaPrevisto = req.body.dia_previsto != null
+      ? Number(req.body.dia_previsto)
+      : (recebidoEm ? Number(String(recebidoEm).slice(8, 10)) : null);
+
     await run(
       `INSERT INTO receitas_mes
         (id, ym, titulo, valor_esperado, valor_recebido, dia_previsto, tipo, chave, status, recebido_em, notas, origem, user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,'variavel',$7,'recebido',$8,$9,$10,$11)`,
+       VALUES ($1,$2,$3,$4,$5,$6,'variavel',$7,$8,$9,$10,$11,$12)`,
       [
         id,
         ym,
         titulo,
         valor,
-        valor,
-        recebidoEm ? Number(String(recebidoEm).slice(8, 10)) : null,
+        status === 'recebido' ? valor : null,
+        Number.isFinite(diaPrevisto) ? diaPrevisto : null,
         chave || 'outro',
+        status,
         recebidoEm,
         notas,
         origem,
