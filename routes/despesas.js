@@ -180,7 +180,7 @@ function scoreTexto(titulo, descricao, aliases = []) {
 function valorCasa(esperado, real, { frouxo = false } = {}) {
   const e = Math.abs(Number(esperado));
   const r = Math.abs(Number(real));
-  const tol = frouxo ? Math.max(8, e * 0.15) : Math.max(2, e * 0.02);
+  const tol = frouxo ? Math.max(25, e * 0.2) : Math.max(2, e * 0.02);
   return Math.abs(e - r) <= tol;
 }
 
@@ -216,6 +216,12 @@ function ymAnterior(ym) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function ymSeguinte(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function diaDoPago(pagoEm) {
   if (!pagoEm) return null;
   if (typeof pagoEm === 'string') {
@@ -243,8 +249,18 @@ async function preencherVencimentoPeloPagamento(ym, userId) {
 
 function aliasesDaDespesa(titulo) {
   const itens = [...plano.despesas, ...Object.values(plano.extrasPorMes || {}).flat()];
-  const hit = itens.find((i) => chaveTitulo(i.titulo) === chaveTitulo(titulo));
-  return hit?.aliases || [];
+  const chave = chaveTitulo(titulo);
+  const hits = itens.filter((i) => chaveTitulo(i.titulo) === chave);
+  const set = new Set();
+  for (const h of hits) {
+    for (const a of h.aliases || []) set.add(a);
+  }
+  // Agosto: Cartão da mãe veio como CREDSYSTEM
+  if (chave === chaveTitulo('Cartão da mãe')) {
+    set.add('CREDSYSTEM');
+    set.add('Credsystem Instituicao de Pagamento');
+  }
+  return [...set];
 }
 
 function enriquecerStatus(row, ym) {
@@ -355,6 +371,7 @@ async function reconciliarMes(uid, ymIn) {
   );
 
   const ymPrev = ymAnterior(ym);
+  const ymNext = ymSeguinte(ym);
   const txs = await all(
     `SELECT f.id, f.descricao, f.valor,
             TO_CHAR(f.data::date, 'YYYY-MM-DD') AS data,
@@ -363,9 +380,9 @@ async function reconciliarMes(uid, ymIn) {
      LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
      WHERE f.user_id = $1
        AND f.tipo = 'saida'
-       AND TO_CHAR(f.data::date, 'YYYY-MM') IN ($2, $3)
+       AND TO_CHAR(f.data::date, 'YYYY-MM') IN ($2, $3, $4)
        AND f.id NOT IN (SELECT tx_id FROM despesas_mes WHERE tx_id IS NOT NULL AND user_id = $1)`,
-    [uid, ym, ymPrev]
+    [uid, ym, ymPrev, ymNext]
   );
 
   const usados = new Set();
@@ -376,6 +393,7 @@ async function reconciliarMes(uid, ymIn) {
     const aliases = aliasesDaDespesa(desp.titulo);
     const cat = desp.categoria || '';
     const ehAssinatura = cat === 'assinaturas' || cat === 'projetos' || !desp.dia_vencimento;
+    const ehContaFixa = cat === 'contas_fixas' || cat === 'faturas' || cat === 'saude';
     let melhor = null;
     let melhorScore = 0;
 
@@ -387,24 +405,43 @@ async function reconciliarMes(uid, ymIn) {
       // Sem overlap de texto: não casa (evita Netflix↔Cursor só por valor parecido)
       if (texto < 0.35) continue;
 
-      const frouxo = ehCartao || ehAssinatura;
+      // Contas fixas / faturas: toleram atraso (juros) e pagamento antecipado no mês
+      const frouxo = ehCartao || ehAssinatura || ehContaFixa;
       const ehDas = chaveTitulo(desp.titulo) === 'das';
       const textoReceita =
         /receita\s*federal|pgdas|das\s*mei|documento\s*de\s*arrecad/i.test(String(tx.descricao || ''));
+      const deltaPct =
+        Math.abs(Number(tx.valor) - Number(desp.valor_esperado)) / Math.max(Number(desp.valor_esperado), 1);
+
+      // Texto fraco + só valor parecido = match perigoso (ex.: fatura↔empréstimo)
+      const textoMin = ehContaFixa ? 0.5 : 0.35;
+      if (texto < textoMin) continue;
+
       const valorOk =
         valorCasa(desp.valor_esperado, tx.valor, { frouxo }) ||
-        (texto >= 0.7 && ehCartao && Math.abs(Number(tx.valor)) >= 5 &&
-          Math.abs(Number(tx.valor) - Number(desp.valor_esperado)) / Math.max(Number(desp.valor_esperado), 1) <= 1.2) ||
+        (texto >= 0.75 && deltaPct <= 0.25) ||
+        (texto >= 0.7 && ehCartao && Math.abs(Number(tx.valor)) >= 5 && deltaPct <= 1.2) ||
         (ehDas && textoReceita && Number(tx.valor) >= 50 && Number(tx.valor) <= 300);
 
       if (!valorOk) continue;
 
       const txYm = (dataISO(tx.data) || '').slice(0, 7);
+      const txDia = Number((dataISO(tx.data) || '').slice(8, 10));
+      const diaVenc = Number(desp.dia_vencimento) || 0;
       let dataOk = false;
       if (ehCartao || ehAssinatura || (ehDas && textoReceita)) {
         dataOk = txYm === ym || txYm === ymPrev;
+      } else if (ehContaFixa) {
+        if (txYm === ym) {
+          dataOk = true;
+        } else if (txYm === ymNext && diaVenc >= 20 && txDia <= 15) {
+          // Parcela do fim do mês paga com atraso no mês seguinte
+          dataOk = true;
+        } else {
+          dataOk = false;
+        }
       } else {
-        dataOk = dataDentroJanela(tx.data, ym, desp.dia_vencimento, 5);
+        dataOk = dataDentroJanela(tx.data, ym, desp.dia_vencimento, 10);
       }
       if (!dataOk) continue;
 
@@ -422,11 +459,22 @@ async function reconciliarMes(uid, ymIn) {
     if (melhor && melhorScore >= 0.45) {
       usados.add(melhor.id);
       const pagoEm = dataISO(melhor.data) || hojeStr();
+      // Atualiza valor esperado se o pago diferiu (juros/atraso / desconto)
+      const valorPago = Math.abs(Number(melhor.valor));
+      const esperado = Math.abs(Number(desp.valor_esperado));
+      const atualizaValor =
+        Number.isFinite(valorPago) &&
+        valorPago > 0 &&
+        Math.abs(valorPago - esperado) / Math.max(esperado, 1) >= 0.01 &&
+        Math.abs(valorPago - esperado) / Math.max(esperado, 1) <= 0.3;
       await run(
         `UPDATE despesas_mes SET status = 'pago', pago_em = $1, confirmado_por = 'banco', tx_id = $2,
            dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
+           ${atualizaValor ? ', valor_esperado = $5' : ''}
          WHERE id = $3 AND user_id = $4`,
-        [pagoEm, melhor.id, desp.id, uid]
+        atualizaValor
+          ? [pagoEm, melhor.id, desp.id, uid, valorPago]
+          : [pagoEm, melhor.id, desp.id, uid]
       );
       matched++;
       detalhes.push({
