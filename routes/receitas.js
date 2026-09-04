@@ -79,12 +79,28 @@ async function seedMesSeVazio(ym, userId) {
 async function syncPlanoMes(ym, userId) {
   const { isPlanoOwnerUserId } = require('../lib/plano-owner');
   if (!(await isPlanoOwnerUserId(userId))) {
-    return { criadas: 0, atualizadas: 0, skip: 'nao_owner' };
+    return { criadas: 0, atualizadas: 0, ignoradas: 0, skip: 'nao_owner' };
   }
 
   const rows = await all(`SELECT * FROM receitas_mes WHERE ym = $1 AND user_id = $2`, [ym, userId]);
   let criadas = 0;
   let atualizadas = 0;
+  let ignoradas = 0;
+
+  for (const cancel of plano.rendaCanceladas || []) {
+    const hit = rows.find(
+      (r) => r.chave === cancel.chave || chaveTitulo(r.titulo) === chaveTitulo(cancel.nome)
+    );
+    if (hit && hit.status !== 'recebido' && hit.status !== 'ignorado') {
+      await run(
+        `UPDATE receitas_mes SET status = 'ignorado', notas = COALESCE(NULLIF(notas,''), $1)
+         WHERE id = $2 AND user_id = $3`,
+        ['Não trabalho mais', hit.id, userId]
+      );
+      hit.status = 'ignorado';
+      ignoradas++;
+    }
+  }
 
   for (const item of plano.rendaFixa || []) {
     const existente = rows.find((r) => r.chave === item.chave || chaveTitulo(r.titulo) === chaveTitulo(item.nome));
@@ -93,6 +109,7 @@ async function syncPlanoMes(ym, userId) {
       criadas++;
       continue;
     }
+    if (existente.status === 'ignorado') continue;
     const dia = item.dia != null ? Number(item.dia) : null;
     const campos = [];
     const vals = [];
@@ -123,7 +140,7 @@ async function syncPlanoMes(ym, userId) {
     }
   }
 
-  return { criadas, atualizadas };
+  return { criadas, atualizadas, ignoradas };
 }
 
 function enriquecerStatus(row, ym) {
@@ -153,6 +170,7 @@ function resumo(lista) {
     qtd: 0
   };
   for (const item of lista) {
+    if (item.status === 'ignorado') continue;
     r.qtd++;
     if (item.tipo === 'fixa') {
       const esperado = Number(item.valor_esperado) || 0;

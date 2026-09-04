@@ -6,7 +6,7 @@ let _receitasData = null;
 
 const LABELS_RECEITA_CHAVE = {
   laranjeira: 'Laranjeira',
-  tylty: 'Lucas Tylty',
+  tylty: 'Lucas Tylty (encerrado)',
   cortes: 'Competição de cortes',
   infoproduto: 'Infoproduto',
   pj: 'PJ / MEI',
@@ -143,13 +143,13 @@ function renderReceitas() {
     `;
   }
 
-  const fixas = (data.receitas || []).filter((x) => x.tipo === 'fixa').sort((a, b) => {
+  const fixas = (data.receitas || []).filter((x) => x.tipo === 'fixa' && x.status !== 'ignorado').sort((a, b) => {
     const sa = ORDEM_STATUS_RECEITA[a.status] ?? 9;
     const sb = ORDEM_STATUS_RECEITA[b.status] ?? 9;
     if (sa !== sb) return sa - sb;
     return (a.dia_previsto ?? 99) - (b.dia_previsto ?? 99);
   });
-  const variaveis = (data.receitas || []).filter((x) => x.tipo === 'variavel').sort((a, b) => {
+  const variaveis = (data.receitas || []).filter((x) => x.tipo === 'variavel' && x.status !== 'ignorado').sort((a, b) => {
     const sa = ORDEM_STATUS_RECEITA[a.status] ?? 9;
     const sb = ORDEM_STATUS_RECEITA[b.status] ?? 9;
     if (sa !== sb) return sa - sb;
