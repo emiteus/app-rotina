@@ -880,12 +880,22 @@ router.post('/sync', async (req, res) => {
     // Após sync, puxa saldo realtime de novo
     let saldos = null;
     try { saldos = await refreshSaldosAll({}, uid); } catch (e) { /* best-effort */ }
+    // Casa despesas do mês com o extrato importado
+    let reconcile = null;
+    try {
+      const { reconciliarMes } = require('./despesas');
+      const { ymAtual } = require('../lib/datas');
+      reconcile = await reconciliarMes(uid, ymAtual());
+    } catch (e) { /* best-effort */ }
     res.json({
       ok: true,
       importadas: r.importadas,
       ignoradas: r.ignoradas,
       refreshes: r.refreshes || [],
-      saldos
+      saldos,
+      reconcile: reconcile
+        ? { matched: reconcile.matched, ym: reconcile.ym, detalhes: reconcile.detalhes }
+        : null
     });
   } catch (err) {
     if (err.code === 'PLUGGY_NAO_CONFIGURADO') {

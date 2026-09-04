@@ -184,14 +184,30 @@ function valorCasa(esperado, real, { frouxo = false } = {}) {
   return Math.abs(e - r) <= tol;
 }
 
+/** Normaliza DATE do pg (Date) ou string pra YYYY-MM-DD (UTC date parts). */
+function dataISO(d) {
+  if (!d) return null;
+  if (typeof d === 'string') {
+    const m = d.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const parsed = new Date(d);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toISOString().slice(0, 10);
+  }
+  if (d instanceof Date && !Number.isNaN(d.getTime())) {
+    return d.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 function dataDentroJanela(dataStr, ym, diaVenc, janela = 3) {
-  if (!dataStr) return false;
-  const d = new Date(dataStr);
-  if (Number.isNaN(d.getTime())) return false;
-  const txYm = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const iso = dataISO(dataStr);
+  if (!iso) return false;
+  const txYm = iso.slice(0, 7);
   if (txYm !== ym) return false;
   if (!diaVenc) return true;
-  return Math.abs(d.getDate() - Number(diaVenc)) <= janela;
+  const dia = Number(iso.slice(8, 10));
+  return Math.abs(dia - Number(diaVenc)) <= janela;
 }
 
 function ymAnterior(ym) {
@@ -326,115 +342,118 @@ router.post('/', async (req, res) => {
   }
 });
 
+/** Casa despesas pendentes com extrato do mês (e mês anterior pra fatura). Exportável. */
+async function reconciliarMes(uid, ymIn) {
+  const ym = ymValido(ymIn) ? ymIn : ymAtual();
+  await seedMesSeVazio(ym, uid);
+  await syncPlanoMes(ym, uid);
+  await preencherVencimentoPeloPagamento(ym, uid);
+
+  const pendentes = await all(
+    `SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2 AND status IN ('pendente','atrasado')`,
+    [ym, uid]
+  );
+
+  const ymPrev = ymAnterior(ym);
+  const txs = await all(
+    `SELECT f.id, f.descricao, f.valor,
+            TO_CHAR(f.data::date, 'YYYY-MM-DD') AS data,
+            f.fonte, a.tipo AS conta_tipo
+     FROM financeiro f
+     LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
+     WHERE f.user_id = $1
+       AND f.tipo = 'saida'
+       AND TO_CHAR(f.data::date, 'YYYY-MM') IN ($2, $3)
+       AND f.id NOT IN (SELECT tx_id FROM despesas_mes WHERE tx_id IS NOT NULL AND user_id = $1)`,
+    [uid, ym, ymPrev]
+  );
+
+  const usados = new Set();
+  let matched = 0;
+  const detalhes = [];
+
+  for (const desp of pendentes) {
+    const aliases = aliasesDaDespesa(desp.titulo);
+    const cat = desp.categoria || '';
+    const ehAssinatura = cat === 'assinaturas' || cat === 'projetos' || !desp.dia_vencimento;
+    let melhor = null;
+    let melhorScore = 0;
+
+    for (const tx of txs) {
+      if (usados.has(tx.id)) continue;
+      const ehCartao = tx.conta_tipo === 'CREDIT';
+      const texto = scoreTexto(desp.titulo, tx.descricao, aliases);
+
+      // Sem overlap de texto: não casa (evita Netflix↔Cursor só por valor parecido)
+      if (texto < 0.35) continue;
+
+      const frouxo = ehCartao || ehAssinatura;
+      const ehDas = chaveTitulo(desp.titulo) === 'das';
+      const textoReceita =
+        /receita\s*federal|pgdas|das\s*mei|documento\s*de\s*arrecad/i.test(String(tx.descricao || ''));
+      const valorOk =
+        valorCasa(desp.valor_esperado, tx.valor, { frouxo }) ||
+        (texto >= 0.7 && ehCartao && Math.abs(Number(tx.valor)) >= 5 &&
+          Math.abs(Number(tx.valor) - Number(desp.valor_esperado)) / Math.max(Number(desp.valor_esperado), 1) <= 1.2) ||
+        (ehDas && textoReceita && Number(tx.valor) >= 50 && Number(tx.valor) <= 300);
+
+      if (!valorOk) continue;
+
+      const txYm = (dataISO(tx.data) || '').slice(0, 7);
+      let dataOk = false;
+      if (ehCartao || ehAssinatura || (ehDas && textoReceita)) {
+        dataOk = txYm === ym || txYm === ymPrev;
+      } else {
+        dataOk = dataDentroJanela(tx.data, ym, desp.dia_vencimento, 5);
+      }
+      if (!dataOk) continue;
+
+      const scoreFinal =
+        texto +
+        (ehCartao ? 0.1 : 0) +
+        (valorCasa(desp.valor_esperado, tx.valor) ? 0.15 : 0) +
+        (ehDas && textoReceita ? 0.4 : 0);
+      if (scoreFinal > melhorScore) {
+        melhorScore = scoreFinal;
+        melhor = tx;
+      }
+    }
+
+    if (melhor && melhorScore >= 0.45) {
+      usados.add(melhor.id);
+      const pagoEm = dataISO(melhor.data) || hojeStr();
+      await run(
+        `UPDATE despesas_mes SET status = 'pago', pago_em = $1, confirmado_por = 'banco', tx_id = $2,
+           dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
+         WHERE id = $3 AND user_id = $4`,
+        [pagoEm, melhor.id, desp.id, uid]
+      );
+      matched++;
+      detalhes.push({
+        despesa: desp.titulo,
+        tx: melhor.descricao,
+        valor: Number(melhor.valor),
+        via: melhor.conta_tipo === 'CREDIT' ? 'cartao' : 'conta'
+      });
+    }
+  }
+
+  const rows = await all(
+    `SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2 ORDER BY dia_vencimento NULLS LAST, titulo`,
+    [ym, uid]
+  );
+  const despesas = rows.map((r) => enriquecerStatus(r, ym));
+  return { ym, matched, detalhes, despesas, resumo: resumo(despesas) };
+}
+
 // POST /api/despesas/reconciliar — antes de /:id
 router.post('/reconciliar', async (req, res) => {
   const uid = requireUserId(req, res);
   if (!uid) return;
   try {
     const ym = ymValido(req.query.ym || req.body?.ym) ? (req.query.ym || req.body.ym) : ymAtual();
-    await seedMesSeVazio(ym, uid);
-    await syncPlanoMes(ym, uid);
-    await preencherVencimentoPeloPagamento(ym, uid);
-
-    const pendentes = await all(
-      `SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2 AND status IN ('pendente','atrasado')`,
-      [ym, uid]
-    );
-
-    // Extrato do mês + mês anterior (ciclo de fatura de cartão)
-    const ymPrev = ymAnterior(ym);
-    const txs = await all(
-      `SELECT f.id, f.descricao, f.valor, f.data, f.fonte, a.tipo AS conta_tipo
-       FROM financeiro f
-       LEFT JOIN openfinance_accounts a ON a.account_id = f.account_id
-       WHERE f.user_id = $1
-         AND f.tipo = 'saida'
-         AND TO_CHAR(f.data::date, 'YYYY-MM') IN ($2, $3)
-         AND f.id NOT IN (SELECT tx_id FROM despesas_mes WHERE tx_id IS NOT NULL AND user_id = $1)`,
-      [uid, ym, ymPrev]
-    );
-
-    const usados = new Set();
-    let matched = 0;
-    const detalhes = [];
-
-    for (const desp of pendentes) {
-      const aliases = aliasesDaDespesa(desp.titulo);
-      const cat = desp.categoria || '';
-      const ehAssinatura = cat === 'assinaturas' || cat === 'projetos' || !desp.dia_vencimento;
-      let melhor = null;
-      let melhorScore = 0;
-
-      for (const tx of txs) {
-        if (usados.has(tx.id)) continue;
-        const ehCartao = tx.conta_tipo === 'CREDIT';
-        const texto = scoreTexto(desp.titulo, tx.descricao, aliases);
-
-        // Sem overlap de texto: não casa (evita Netflix↔Cursor só por valor parecido)
-        if (texto < 0.35) continue;
-
-        const frouxo = ehCartao || ehAssinatura;
-        const ehDas = chaveTitulo(desp.titulo) === 'das';
-        const textoReceita =
-          /receita\s*federal|pgdas|das\s*mei|documento\s*de\s*arrecad/i.test(String(tx.descricao || ''));
-        // DAS MEI: valor muda (INSS/mês) e às vezes vem atrasado — casa pelo beneficiário
-        const valorOk =
-          valorCasa(desp.valor_esperado, tx.valor, { frouxo }) ||
-          (texto >= 0.7 && ehCartao && Math.abs(Number(tx.valor)) >= 5 &&
-            Math.abs(Number(tx.valor) - Number(desp.valor_esperado)) / Math.max(Number(desp.valor_esperado), 1) <= 1.2) ||
-          (ehDas && textoReceita && Number(tx.valor) >= 50 && Number(tx.valor) <= 300);
-
-        if (!valorOk) continue;
-
-        const txYm = String(tx.data).slice(0, 7);
-        let dataOk = false;
-        if (ehCartao || ehAssinatura || (ehDas && textoReceita)) {
-          // Fatura / DAS: qualquer dia do mês atual ou anterior
-          dataOk = txYm === ym || txYm === ymPrev;
-        } else {
-          dataOk = dataDentroJanela(tx.data, ym, desp.dia_vencimento, 5);
-        }
-        if (!dataOk) continue;
-
-        const scoreFinal =
-          texto +
-          (ehCartao ? 0.1 : 0) +
-          (valorCasa(desp.valor_esperado, tx.valor) ? 0.15 : 0) +
-          (ehDas && textoReceita ? 0.4 : 0);
-        if (scoreFinal > melhorScore) {
-          melhorScore = scoreFinal;
-          melhor = tx;
-        }
-      }
-
-      if (melhor && melhorScore >= 0.45) {
-        usados.add(melhor.id);
-        const pagoEm =
-          typeof melhor.data === 'string'
-            ? melhor.data.slice(0, 10)
-            : new Date(melhor.data).toISOString().slice(0, 10);
-        await run(
-          `UPDATE despesas_mes SET status = 'pago', pago_em = $1, confirmado_por = 'banco', tx_id = $2,
-             dia_vencimento = COALESCE(dia_vencimento, EXTRACT(DAY FROM $1::date)::int)
-           WHERE id = $3 AND user_id = $4`,
-          [pagoEm, melhor.id, desp.id, uid]
-        );
-        matched++;
-        detalhes.push({
-          despesa: desp.titulo,
-          tx: melhor.descricao,
-          valor: Number(melhor.valor),
-          via: melhor.conta_tipo === 'CREDIT' ? 'cartao' : 'conta'
-        });
-      }
-    }
-
-    const rows = await all(
-      `SELECT * FROM despesas_mes WHERE ym = $1 AND user_id = $2 ORDER BY dia_vencimento NULLS LAST, titulo`,
-      [ym, uid]
-    );
-    const despesas = rows.map((r) => enriquecerStatus(r, ym));
-    res.json({ ym, matched, detalhes, despesas, resumo: resumo(despesas) });
+    const out = await reconciliarMes(uid, ym);
+    res.json(out);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -566,3 +585,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.reconciliarMes = reconciliarMes;

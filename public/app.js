@@ -3876,15 +3876,18 @@ async function sincronizarBancos(itemId) {
       toast('Algum banco pediu login/MFA — atualiza a conexão no meu.pluggy.ai', 'info');
     }
     const saldosOk = data.saldos && data.saldos.ok;
-    toast(
-      `${data.importadas} novas txs` + (saldosOk != null ? ` · ${saldosOk} saldo(s) ok` : ''),
-      'success'
-    );
+    const matched = data.reconcile && data.reconcile.matched;
+    let msg = `${data.importadas} novas txs`;
+    if (saldosOk != null) msg += ` · ${saldosOk} saldo(s) ok`;
+    if (matched > 0) msg += ` · ${matched} despesa(s) confirmada(s)`;
+    else if (data.reconcile) msg += ' · despesas: nenhum match novo';
+    toast(msg, matched > 0 ? 'success' : 'info');
     _ultimoRefreshSaldos = 0;
     await carregarBancos();
     if (typeof carregarFinanceiro === 'function') carregarFinanceiro();
     if (typeof carregarTransacoes === 'function') carregarTransacoes();
-    await reconciliarDespesas({ silencioso: true });
+    if (typeof carregarDespesasMes === 'function') await carregarDespesasMes();
+    else await reconciliarDespesas({ silencioso: true });
   } catch (e) {
     toast('Erro ao sincronizar: ' + e.message, 'error');
   }

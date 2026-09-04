@@ -212,10 +212,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'recategorizar', 'criar_categoria', 'renomear_categoria', 'fundir_categorias',
     'confirmar_despesa', 'confirmar_receita', 'criar_receita', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
     'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
-    'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito'
+    'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito',
+    'reconciliar_despesas', 'sincronizar_bancos'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
-  const claim = /criei|movi|categorizei|recategoriz|organizei|prontinho|renomeei|renomear|unifiquei|fundi|confirm|paguei|depositei|conclu[ií]|agendei|alarme|ajustei|já (está|esta|ficou|paguei)|alterei|atualizei|deletei|apag|corrig/i.test(String(resposta || ''));
+  // Só intercepta se a resposta CLAIMAR mutação (verbo no passado), não análise ("já está pendente").
+  const claim = /\b(criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|corrigi|marquei|sincronizei|reconciliei)\b/i
+    .test(String(resposta || ''));
 
   if (finOk.length) {
     const partes = [];
@@ -267,8 +270,23 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Meta **${a.nome}** criada.`);
       } else if (a.tipo === 'marcar_habito') {
         partes.push(a.ja ? `**${a.titulo}** já estava marcado.` : `**${a.titulo}** marcado.`);
+      } else if (a.tipo === 'reconciliar_despesas') {
+        const nomes = (a.detalhes || []).slice(0, 5).map(d => d.despesa).join(', ');
+        partes.push(
+          a.matched
+            ? `Reconciliei **${a.matched}** despesa(s) com o banco${nomes ? `: ${nomes}` : ''}.`
+            : `Rodei a reconciliação — nenhum match novo no extrato.`
+        );
+      } else if (a.tipo === 'sincronizar_bancos') {
+        partes.push(
+          `Sincronizei os bancos (**${a.importadas || 0}** txs novas)` +
+          (a.matched ? ` e confirmei **${a.matched}** despesa(s).` : '.')
+        );
       }
     }
+    // Se a análise veio completa, anexa o resumo das ações em vez de substituir
+    const base = String(resposta || '').trim();
+    if (base && base.length > 40 && !claim) return `${base}\n\n${partes.join(' ')}`;
     return partes.join(' ');
   }
 
@@ -277,11 +295,16 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     if (f && f.erro) return f.erro;
   }
 
+  // Só sobrescreve se CLAIMOU mutação e nada rodou — análises passam intactas
   if (claim) {
     const err = fails.map(f => f.erro).filter(Boolean)[0];
     if (err) {
       return `Tentei alterar, mas não consegui: ${err}.`;
     }
+    // Pedido de análise/pergunta: mantém a resposta original
+    const pareceAnalise = /\b(analis|encontrei|verific|olhei|no extrato|no banco|despesas?|gastos?|saldo)\b/i
+      .test(String(resposta || ''));
+    if (pareceAnalise) return resposta;
     return 'Ainda **não alterei** nada — a ação não chegou a rodar. Pode repetir o pedido?';
   }
 
@@ -1772,6 +1795,33 @@ async function executarAcoes(acoes, userId) {
           );
         }
         feitos.push({ tipo, ok: true, ym: ymDas, pago, valor: Number.isFinite(valor) ? valor : null });
+      } else if (tipo === 'reconciliar_despesas') {
+        const { reconciliarMes } = require('./despesas');
+        const ymRec = String(acao.ym || ym).slice(0, 7);
+        const out = await reconciliarMes(userId, ymRec);
+        feitos.push({
+          tipo,
+          ok: true,
+          ym: out.ym,
+          matched: out.matched || 0,
+          detalhes: (out.detalhes || []).slice(0, 12)
+        });
+      } else if (tipo === 'sincronizar_bancos') {
+        const openfinanceRouter = require('./openfinance');
+        const { reconciliarMes } = require('./despesas');
+        const sync = await openfinanceRouter.syncAll(null, { refresh: true }, userId);
+        if (sync && sync.semItems) {
+          feitos.push({ tipo, ok: false, erro: 'Nenhum banco conectado' });
+          continue;
+        }
+        const out = await reconciliarMes(userId, ym);
+        feitos.push({
+          tipo,
+          ok: true,
+          importadas: (sync && sync.importadas) || 0,
+          matched: out.matched || 0,
+          detalhes: (out.detalhes || []).slice(0, 12)
+        });
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
       }
@@ -1894,6 +1944,19 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       de: fontes,
       categoria_label: list[0].categoria_label || list[0].label
     });
+  }
+
+  // "reconciliar com banco" / "sincroniza e casa despesas"
+  if (!acoes.some(a => a.tipo === 'reconciliar_despesas' || a.tipo === 'sincronizar_bancos')) {
+    const pedeSync = /\b(sincroniz|atualiz[ae]\s+(os\s+)?bancos?|pux[ae]\s+(o\s+)?extrato)\b/i.test(msg);
+    const pedeRec = /\b(reconcili|casa\s+(com\s+)?(o\s+)?(banco|extrato)|bate\s+(com\s+)?(o\s+)?extrato|marca\s+como\s+pag[ao]s?\s+(pelo|via)\s+banco)\b/i.test(msg)
+      || /\bconectei\s+(os\s+)?bancos?\b.{0,80}\b(analis|reconcili|despesas?)\b/i.test(msg)
+      || /\banalisa.{0,60}(despesas?|gastos?).{0,60}(banco|extrato|reconcili)/i.test(msg);
+    if (pedeSync || (pedeRec && /\bbancos?\b/i.test(msg) && /\b(conect|sincroniz)/i.test(msg))) {
+      acoes.push({ tipo: 'sincronizar_bancos' });
+    } else if (pedeRec) {
+      acoes.push({ tipo: 'reconciliar_despesas' });
+    }
   }
 
   // "recebi Laranjeira" / "caiu o Tylty"
@@ -2270,13 +2333,15 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - lançar entrada/saída manual → criar_transacao
 - apagar tx / corrigir data de tx → deletar_transacao / corrigir_data_tx
 - DAS pago → marcar_das
+- sincronizar bancos / puxar extrato → sincronizar_bancos
+- reconciliar despesas com extrato / "casa com o banco" → reconciliar_despesas (ou sincronizar_bancos se ainda não sincronizou)
 - criar/renomear/unificar/recategorizar categorias → ações de categoria
 - "transfere/move categoria X pra Y" → recategorizar com filtros.categoria=X
 - Preferir ids do contexto (despesas_mes.itens[].id, receitas_mes.itens[].id, metas[].id, tarefas.*.id, ultimas_transacoes[].id)
 - Se faltar dado essencial, pergunte e NÃO emita ação
 
 Responda APENAS um JSON válido completo:
-{"resposta":"texto em markdown simples (máx 160 palavras). Use **negrito** em números-chave.","acoes":[]}
+{"resposta":"texto em markdown simples (máx 120 palavras). Use **negrito** em números-chave.","acoes":[]}
 
 Tipos de ação:
 - {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|outros"}
@@ -2294,6 +2359,8 @@ Tipos de ação:
 - {"tipo":"deletar_transacao","ids":["uuid"]} ou com "filtros"
 - {"tipo":"corrigir_data_tx","data":"YYYY-MM-DD","ids":["uuid"]} ou com "filtros"
 - {"tipo":"marcar_das","ym":"2026-08","pago":true,"valor":null}
+- {"tipo":"reconciliar_despesas","ym":"2026-09"}
+- {"tipo":"sincronizar_bancos"}
 - {"tipo":"criar_categoria","categoria_label":"Apostas - Amigos"}
 - {"tipo":"renomear_categoria","de":"alimentacao","categoria_label":"Mercado"}
 - {"tipo":"fundir_categorias","de":["pai","mae"],"categoria_label":"Pai e Mãe"}
@@ -2302,11 +2369,13 @@ Tipos de ação:
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru. Confirme o que foi feito.
 - NUNCA diga que fez se não emitir a ação em "acoes".
+- Análise sem alterar dados: responda normalmente com acoes:[].
 - "unifica/funde" → fundir_categorias (não renomear as duas pro mesmo label).
 - "transfere/move gastos da categoria X pra Y" → recategorizar (filtros.categoria=X).
 - Explicar lançamento do extrato (ex.: "NATURA foi pagamento da tia Adriana") → recategorizar com filtros.contem.
 - "já paguei / confirmo pagamento" → confirmar_despesa.
 - "recebi / caiu (Laranjeira, Tylty…)" → confirmar_receita. NÃO use criar_transacao entrada pra isso.
+- "conectei os bancos / analisa despesas / reconcilia" → sincronizar_bancos ou reconciliar_despesas.
 - receita variável (corte, infoproduto) → criar_receita.
 - Use ids do contexto quando existir.
 - acoes pode ser [].
@@ -2322,9 +2391,9 @@ Regras:
         system: systemPrompt,
         user: mensagem,
         historico,
-        maxTokens: 1400,
+        maxTokens: 2200,
         jsonMode: true,
-        timeout: 14000
+        timeout: 28000
       }));
     } catch (errGemini) {
       // Se a IA travou, ainda tenta executar pedidos inferíveis
