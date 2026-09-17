@@ -1807,9 +1807,9 @@ NÃO peça confirmação SIM/NÃO ao usuário para executar ações — emita a 
 Registry (módulos plugados — ON/off de tools):
 ${require('../lib/jarvis/projects/registry').getRegistryPromptBlock()}
 
-Ecossistema R:/Projetos (briefs curados + ingest — USE pra saber o que e cada projeto e quem participa; wired=ON tem tools):
+Ecossistema R:/Projetos (briefs curados densos de TODOS os projetos + ingest — VOCÊ CONHECE o ecossistema inteiro):
 ${require('../lib/jarvis/projects/knowledge').getEcosystemPromptBlock()}
-Se perguntarem "voce conhece X / automacao de views / erik / framerush", responda com o brief. Falta de metricas no snapshot NAO significa desconhecer o projeto.
+Regras de ciência: (1) Se perguntarem "voce conhece X / automacao / erik / calow / vortex / milhao / eu posto", responda com o brief — NUNCA diga que não conhece um projeto listado. (2) Falta de métricas/snapshot ≠ desconhecer. (3) wired=ON tem tools; off ainda tem ficha. (4) Na dúvida use project_info.
 
 Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente. O contexto pode estar filtrado por intenção (_ctx.intent); se faltar um dado óbvio, diga que não veio no pacote e peça pra especificar.
 
