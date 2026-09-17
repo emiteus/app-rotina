@@ -10,6 +10,7 @@ const {
   normalizeWaId,
   isPhoneAllowed,
   sendText,
+  sendApprovalButtons,
   evolutionReady,
   textoParaWhatsApp
 } = require('../lib/evolution');
@@ -74,10 +75,32 @@ function extractTextFromMessage(msg) {
   if (msg.extendedTextMessage?.text) return String(msg.extendedTextMessage.text);
   if (msg.imageMessage?.caption) return String(msg.imageMessage.caption);
   if (msg.videoMessage?.caption) return String(msg.videoMessage.caption);
-  if (msg.buttonsResponseMessage?.selectedDisplayText) {
-    return String(msg.buttonsResponseMessage.selectedDisplayText);
+
+  // Botões HITL / replies interativos
+  const btnId =
+    msg.buttonsResponseMessage?.selectedButtonId ||
+    msg.templateButtonReplyMessage?.selectedId ||
+    msg.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson ||
+    null;
+  const btnText =
+    msg.buttonsResponseMessage?.selectedDisplayText ||
+    msg.listResponseMessage?.title ||
+    msg.templateButtonReplyMessage?.selectedDisplayText ||
+    null;
+
+  if (btnId || btnText) {
+    const id = String(btnId || '').toLowerCase();
+    const display = String(btnText || '').trim();
+    if (/jarvis_sim|^(sim)$/i.test(id) || /^sim$/i.test(display)) {
+      const m = id.match(/jarvis_sim_([a-f0-9]{6,12})/i);
+      return m ? `SIM ${m[1]}` : 'SIM';
+    }
+    if (/jarvis_nao|jarvis_n[aã]o|^(nao|não|no)$/i.test(id) || /^n[aã]o$/i.test(display)) {
+      const m = id.match(/jarvis_nao_([a-f0-9]{6,12})/i);
+      return m ? `NÃO ${m[1]}` : 'NÃO';
+    }
+    if (display) return display;
   }
-  if (msg.listResponseMessage?.title) return String(msg.listResponseMessage.title);
   return '';
 }
 
@@ -149,7 +172,17 @@ async function processPhoneQueue(phone) {
       media: media || null
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
-    await sendText(phone, out.resposta || 'Beleza. Em que posso ajudar?');
+    const resposta = out.resposta || 'Beleza. Em que posso ajudar?';
+    const pendingHitl = (out.acoes || []).find((a) => a && a.pending_approval);
+    if (pendingHitl && process.env.JARVIS_HITL_BUTTONS !== '0') {
+      try {
+        await sendApprovalButtons(phone, resposta, pendingHitl.approval_id);
+        return;
+      } catch (btnErr) {
+        console.error('[whatsapp] buttons:', btnErr.message);
+      }
+    }
+    await sendText(phone, resposta);
   } catch (err) {
     console.error('[whatsapp] jarvis:', err.message);
     try {

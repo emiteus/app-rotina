@@ -50,9 +50,9 @@
 - [x] Planner LLM (`JARVIS_LLM_PLANNER`, fallback quando heurística é free-only)
 - [x] Budget persistido em Postgres (`jarvis_budget_daily`)
 - [x] UI status strip no Assist (`#assist-os` + chips Missão/Módulos/Finanças)
-- [ ] STT dedicado (Whisper) se Gemini áudio falhar
-- [ ] Botões Evolution p/ HITL
+- [x] Whisper STT fallback (`OPENAI_API_KEY` / `JARVIS_WHISPER`) se Gemini áudio falhar
+- [x] Botões Evolution SIM/NÃO p/ HITL (`JARVIS_HITL_BUTTONS`, fallback texto)
 
 ## Rollback
 
-Feature flags: `JARVIS_PROACTIVE_WA=0`, `JARVIS_LLM_PLANNER=0`, budgets `0`, não usar comandos de missão.
+Feature flags: `JARVIS_PROACTIVE_WA=0`, `JARVIS_LLM_PLANNER=0`, `JARVIS_HITL_BUTTONS=0`, `JARVIS_WHISPER=0`, budgets `0`.
