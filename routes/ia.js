@@ -221,6 +221,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           : 'Nenhum assinante encontrado no CineRush com esse filtro.');
       } else if (a.tipo === 'cinerush_provisionar') {
         partes.push(`Disparei provisionamento CineRush pra **${a.nome || a.email || a.id}**.`);
+      } else if (a.tipo === 'cinerush_criar') {
+        partes.push(
+          `Criei acesso CineRush pra **${a.email || a.nome}**` +
+            (a.usuario ? ` (usuário **${a.usuario}**)` : '') +
+            (a.config_link ? `.\nLink config: ${a.config_link}` : '.')
+        );
       } else if (a.tipo === 'cinerush_reenviar_email') {
         partes.push(`Reenviei o email de acesso CineRush pra **${a.nome || a.email || a.id}**.`);
       } else if (a.tipo === 'chatwoot_listar') {
@@ -1700,8 +1706,22 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       .test(mensagem.trim());
 
     const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
-    // Limite documentado: cria assinante → sempre responde com erro claro, sem LLM
+    // Acesso manual CineRush: atalho local (com ou sem email)
     if (acoesRapidas.length === 1 && acoesRapidas[0].tipo === 'cinerush_criar') {
+      if (!acoesRapidas[0].email) {
+        const resposta =
+          'Pra gerar o acesso preciso do **email** (nome/plano opcional). Ex.: criar acesso pra joao@x.com no cinerush';
+        await salvarMensagem(conversaId, 'assistant', resposta, uid);
+        return {
+          resposta,
+          acoes: [],
+          snapshot: snap,
+          provider: 'local',
+          usage: null,
+          conversa_id: conversaId,
+          agent: agent.id
+        };
+      }
       const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey });
       const resposta = reconciliarRespostaComAcoes('', acoesExec);
       await salvarMensagem(conversaId, 'assistant', resposta, uid);
@@ -1816,8 +1836,8 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - categorias → criar/renomear/fundir/recategorizar
 - Memória de projeto → project_memory_get / project_memory_set / project_memory_list
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
-- CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_reenviar_email / cinerush_criar / chatwoot_*
-- **CineRush criar ≠ provisionar:** cadastro novo só via venda Kirvano. "criar/gerar acesso/assinante novo" (cinehub/cinerush) → SEMPRE emita cinerush_criar (1 linha de limite). NÃO invente provision, NÃO ofereça "registrar pedido", NÃO pergunte se prefere localizar e-mail. Provisionar = liberar quem já está **pendente**.
+- CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
+- **CineRush:** venda Kirvano → pendente → provisionar. **Acesso manual** (sem venda) → cinerush_criar com email (+ nome/plano opcional). CineHub = painel Havok, mesmo produto. NÃO diga que criar "não existe" — existe via cinerush_criar. NÃO ofereça "registrar pendência" genérica.
 - Attracione ações: attracione_coleta / attracione_backup / attracione_ranking
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
@@ -1856,7 +1876,7 @@ Tipos de ação:
 - {"tipo":"recategorizar","categoria_label":"...","ids":["uuid"]} ou "filtros"
 - {"tipo":"cinerush_buscar","search":"email ou nome","status":"pendente|email_enviado"|null}
 - {"tipo":"cinerush_provisionar","id":"uuid"} ou {"tipo":"cinerush_provisionar","search":"email"}
-- {"tipo":"cinerush_criar","email":"...","nome":"..."} — documenta limite (sem API de create)
+- {"tipo":"cinerush_criar","email":"a@b.com","nome":"João","plano":"mensal"} — cria acesso Havok+DB
 - {"tipo":"cinerush_reenviar_email","id":"uuid"} ou {"tipo":"cinerush_reenviar_email","search":"email"}
 - {"tipo":"cutflix_status"}
 - {"tipo":"chatwoot_listar","status":"open|pending"}
