@@ -17,9 +17,10 @@ const {
   geminiUrl
 } = require('../lib/jarvis/ai-gateway');
 const {
-  getCachedProjetos,
-  invalidateProjetosCache
+  getCachedProjetos
 } = require('../lib/jarvis/snapshot-cache');
+const { runToolBatch } = require('../lib/jarvis/tools');
+const { getToolCatalog, listToolNames } = require('../lib/jarvis/tools/registry');
 
 
 const router = express.Router();
@@ -248,11 +249,14 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
 
 router.get('/status', (req, res) => {
   const prov = providerAtivo();
+  const tools = listToolNames();
   res.json({
     ok: true,
     disponivel: !!prov,
     provider: prov,
-    model: prov === 'gemini' ? GEMINI_MODEL : (prov === 'anthropic' ? ANTHROPIC_MODEL : null)
+    model: prov === 'gemini' ? GEMINI_MODEL : (prov === 'anthropic' ? ANTHROPIC_MODEL : null),
+    tools: tools.length,
+    toolsHighRisk: getToolCatalog().filter((t) => t.needsApproval).map((t) => t.name)
   });
 });
 
@@ -950,6 +954,16 @@ async function snapshotAssistente(opts = {}) {
 }
 
 async function executarAcoes(acoes, userId) {
+  if (!Array.isArray(acoes) || acoes.length === 0) return [];
+  return runToolBatch({
+    acoes,
+    userId,
+    executeAll: executarAcoesCorpo
+  });
+}
+
+/** Handlers legados (if/else). Registry envolve timeout/log/invalidate. */
+async function executarAcoesCorpo(acoes, userId) {
   if (!Array.isArray(acoes) || acoes.length === 0) return [];
   const feitos = [];
   const ym = ymAtual();
@@ -2003,24 +2017,6 @@ async function executarAcoes(acoes, userId) {
       feitos.push({ tipo, ok: false, erro: e.message });
     }
   }
-
-  // Snapshot de projetos fica stale após mutações (provisionar, coleta, post, clip…).
-  const MUTACOES_PROJETOS = new Set([
-    'cinerush_provisionar',
-    'cinerush_reenviar_email',
-    'chatwoot_resolver',
-    'chatwoot_atribuir',
-    'attracione_coleta',
-    'attracione_backup',
-    'socialhub_agendar',
-    'socialhub_publicar_agendados',
-    'clipper_criar',
-    'clipper_retry'
-  ]);
-  if (feitos.some((f) => f.ok && MUTACOES_PROJETOS.has(f.tipo))) {
-    invalidateProjetosCache(userId);
-  }
-
   return feitos;
 }
 
