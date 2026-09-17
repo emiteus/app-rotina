@@ -1801,8 +1801,11 @@ Visão: hub do Mateus. **Status ON/off de módulo = só registry[]** (bloco abai
 
 NÃO peça confirmação SIM/NÃO ao usuário para executar ações — emita a tool na hora. O sistema cuida de aprovação quando necessário. Se faltar dado (email/id), pergunte o dado; se o pedido estiver completo, emita a ação.
 
-Registry (aliases NL → id) — fonte da verdade de status:
+Registry (módulos plugados — ON/off de tools):
 ${require('../lib/jarvis/projects/registry').getRegistryPromptBlock()}
+
+Ecossistema R:/Projetos (leitura local de TODAS as pastas — use pra "quais projetos", "o que e X", stack/estrutura; wired=ON so tem tools no hub):
+${require('../lib/jarvis/projects/knowledge').getEcosystemPromptBlock()}
 
 Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente. O contexto pode estar filtrado por intenção (_ctx.intent); se faltar um dado óbvio, diga que não veio no pacote e peça pra especificar.
 

@@ -1,0 +1,605 @@
+{
+  "version": 1,
+  "updatedAt": "2026-09-17T22:12:03.255Z",
+  "root": "R:\\Projetos",
+  "count": 19,
+  "wired": [
+    "approtina",
+    "attracione",
+    "cinerush_editor",
+    "cinerush",
+    "clipper",
+    "cutflix",
+    "jarvis",
+    "socialhub"
+  ],
+  "projects": [
+    {
+      "id": "app_prime",
+      "folder": "app prime",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "template",
+      "summary": "Aplicação Next.js para geração de planos de treino e dieta personalizados usando Inteligência Artificial.",
+      "stack": [
+        "next",
+        "react",
+        "tailwind",
+        "typescript"
+      ],
+      "structure": [
+        "data",
+        "deploy",
+        "img",
+        "public",
+        "scripts",
+        "src",
+        "_restore"
+      ],
+      "scripts": [
+        "dev",
+        "build",
+        "start",
+        "lint",
+        "check"
+      ],
+      "packagePath": "app prime\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.234Z"
+    },
+    {
+      "id": "approtina",
+      "folder": "Approtina",
+      "role": "host",
+      "wired": true,
+      "note": "Host Railway — finanças, rotina, WA, Assist",
+      "env": [],
+      "name": "app-rotina",
+      "summary": "Dashboard pessoal para gerenciar rotina diária, financeiro e alarmes com notificações via Telegram.",
+      "stack": [
+        "express",
+        "playwright",
+        "node"
+      ],
+      "structure": [
+        "app-rotina",
+        "app-rotina-mobile",
+        "app-rotina-mobile-v2"
+      ],
+      "scripts": [
+        "start",
+        "dev",
+        "sync:jarvis",
+        "electron-dev",
+        "electron-build",
+        "release",
+        "release:patch",
+        "release:minor",
+        "test"
+      ],
+      "packagePath": "Approtina\\app-rotina\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.235Z"
+    },
+    {
+      "id": "attracione",
+      "folder": "Attracione",
+      "role": "http",
+      "wired": true,
+      "note": null,
+      "env": [
+        "ATTRACIONE_URL",
+        "ATTRACIONE_SCRAPER_TOKEN"
+      ],
+      "name": "attracione",
+      "summary": "Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automaticamente.",
+      "stack": [
+        "express",
+        "playwright",
+        "node"
+      ],
+      "structure": [
+        "Attracione",
+        "vps"
+      ],
+      "scripts": [
+        "start",
+        "dev"
+      ],
+      "packagePath": "Attracione\\Attracione\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.237Z"
+    },
+    {
+      "id": "attracione_2_0",
+      "folder": "Attracione 2.0",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "attracione",
+      "summary": "Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automaticamente.",
+      "stack": [
+        "express",
+        "playwright",
+        "node"
+      ],
+      "structure": [
+        "Attracione",
+        "Attracione-bot"
+      ],
+      "scripts": [
+        "start",
+        "dev"
+      ],
+      "packagePath": "Attracione 2.0\\Attracione\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.238Z"
+    },
+    {
+      "id": "capcut_style_analyzer",
+      "folder": "capcut-style-analyzer",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "capcut-style-analyzer",
+      "summary": "Lê os seus projetos do **CapCut Desktop (Windows)** e extrai um **perfil de edição** — um resumo estruturado do *seu padrão* de edição (ritmo de corte, zoom, texto, efeitos, transições, velocidade) — salvo como JSON versionado, pensado para depois alimentar um editor automático.",
+      "stack": [],
+      "structure": [
+        "capcut_analyzer",
+        "capcut_builder",
+        "output"
+      ],
+      "scripts": [],
+      "packagePath": null,
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.238Z"
+    },
+    {
+      "id": "cinerush_editor",
+      "folder": "Cinerush",
+      "role": "http",
+      "wired": true,
+      "note": "Editor de vídeo em massa",
+      "env": [
+        "CINERUSH_EDITOR_URL",
+        "CINERUSH_EDITOR_OPS_KEY"
+      ],
+      "name": "cinerush",
+      "summary": "CineRush — Cortes virais com IA",
+      "stack": [
+        "node"
+      ],
+      "structure": [
+        "assets",
+        "cache",
+        "electron",
+        "frontend",
+        "input",
+        "landing",
+        "logs",
+        "output",
+        "railway",
+        "support",
+        "temp"
+      ],
+      "scripts": [
+        "start",
+        "build"
+      ],
+      "packagePath": "Cinerush\\electron\\package.json",
+      "hasReadme": false,
+      "remote": "https://github.com/emiteus/cinerush.git",
+      "scannedAt": "2026-09-17T22:12:03.244Z"
+    },
+    {
+      "id": "cinerush",
+      "folder": "CineRushTV",
+      "role": "http",
+      "wired": true,
+      "note": "TV + backend; criar/provisionar assinantes",
+      "env": [
+        "CINERUSH_BACKEND_URL",
+        "CINERUSH_OPS_KEY"
+      ],
+      "name": "cinerush-tv-admin",
+      "summary": "Stack para **vários atendentes no mesmo WhatsApp** (Evolution + Chatwoot self-hosted).",
+      "stack": [
+        "react",
+        "tailwind",
+        "typescript",
+        "node"
+      ],
+      "structure": [
+        "cinerush-support",
+        "cinerush-tv-admin",
+        "cinerush-tv-afiliados",
+        "cinerush-tv-backend",
+        "cinerush-tv-config",
+        "cinerush-tv-landing",
+        "docs",
+        "scripts"
+      ],
+      "scripts": [
+        "dev",
+        "build",
+        "preview",
+        "start",
+        "typecheck",
+        "lint"
+      ],
+      "packagePath": "CineRushTV\\cinerush-tv-admin\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.245Z"
+    },
+    {
+      "id": "clipper",
+      "folder": "Clipper",
+      "role": "http_tunnel",
+      "wired": true,
+      "note": "off até túnel / CLIPPER_API_URL",
+      "env": [
+        "CLIPPER_API_URL",
+        "CLIPPER_API_KEY"
+      ],
+      "name": "vortex-clip-control",
+      "summary": "Retroactive multi-stream clipping for FIFA/EA FC broadcast operators.",
+      "stack": [
+        "node"
+      ],
+      "structure": [
+        "backend",
+        "desktop",
+        "frontend",
+        "scripts",
+        "shared",
+        "storage"
+      ],
+      "scripts": [
+        "build:shared",
+        "dev",
+        "dev:shared",
+        "dev:backend",
+        "dev:frontend",
+        "desktop",
+        "desktop:wait",
+        "desktop:pack",
+        "desktop:dist",
+        "build",
+        "start",
+        "open"
+      ],
+      "packagePath": "Clipper\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.246Z"
+    },
+    {
+      "id": "cutflix",
+      "folder": "Cutflix",
+      "role": "http",
+      "wired": true,
+      "note": "health via cutflix_status",
+      "env": [
+        "CUTFLIX_API_URL"
+      ],
+      "name": "cutflix",
+      "summary": "Plataforma de automação de vídeo com IA — crie templates inteligentes de edição, envie um vídeo (upload ou URL autorizada), deixe o pipeline de processamento (FFmpeg + IA) fazer o trabalho, revise o preview e publique automaticamente no Instagram.",
+      "stack": [
+        "monorepo",
+        "docker",
+        "typescript",
+        "node"
+      ],
+      "structure": [
+        "apps",
+        "docker",
+        "docs",
+        "packages",
+        "storage"
+      ],
+      "scripts": [
+        "dev",
+        "dev:web",
+        "dev:api",
+        "dev:worker",
+        "build",
+        "lint",
+        "typecheck",
+        "test",
+        "format",
+        "db:generate",
+        "db:migrate",
+        "db:studio"
+      ],
+      "packagePath": "Cutflix\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.247Z"
+    },
+    {
+      "id": "dashboard_visualizacoes",
+      "folder": "dashboard-visualizacoes",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "dashboard-visualizacoes",
+      "summary": null,
+      "stack": [],
+      "structure": [],
+      "scripts": [],
+      "packagePath": null,
+      "hasReadme": false,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.247Z"
+    },
+    {
+      "id": "discord_antinuke",
+      "folder": "discord-antinuke",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "discord-antinuke",
+      "summary": "Bot de utilidades do servidor: mute de Among Us pelo botao do mouse, sons de entrada, comando /fael e log de atividade de voz. Roda 24/7 na Railway.",
+      "stack": [
+        "node"
+      ],
+      "structure": [
+        "sounds"
+      ],
+      "scripts": [
+        "start"
+      ],
+      "packagePath": "discord-antinuke\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.248Z"
+    },
+    {
+      "id": "euposto",
+      "folder": "EuPosto",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "EuPosto",
+      "summary": null,
+      "stack": [],
+      "structure": [],
+      "scripts": [],
+      "packagePath": null,
+      "hasReadme": false,
+      "remote": "https://github.com/lucasfarianinja-sketch/EuPosto.git",
+      "scannedAt": "2026-09-17T22:12:03.249Z"
+    },
+    {
+      "id": "framerush",
+      "folder": "framerush",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "framerush",
+      "summary": "Editor de composição desktop (Windows + Mac). Você posiciona **1 foto** e **vários vídeos** numa tela vertical **9:16 (1080×1920)** e exporta tudo em lote automaticamente.",
+      "stack": [
+        "node"
+      ],
+      "structure": [
+        "assets",
+        "renderer",
+        "scripts"
+      ],
+      "scripts": [
+        "start",
+        "dist",
+        "dist:win",
+        "dist:mac"
+      ],
+      "packagePath": "framerush\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.249Z"
+    },
+    {
+      "id": "jarvis",
+      "folder": "Jarvis",
+      "role": "os",
+      "wired": true,
+      "note": "Fonte de verdade do OS — sync → app-rotina",
+      "env": [],
+      "name": "jarvis-os",
+      "summary": "Hub do assistente pessoal. **Pasta canônica:** `R:\\Projetos\\Jarvis`.",
+      "stack": [
+        "node"
+      ],
+      "structure": [
+        "connectors",
+        "docs",
+        "projects",
+        "scripts",
+        "src"
+      ],
+      "scripts": [
+        "sync:host",
+        "manifest:scan",
+        "ingest:projects",
+        "check",
+        "smoke:host"
+      ],
+      "packagePath": "Jarvis\\package.json",
+      "hasReadme": true,
+      "remote": "https://github.com/emiteus/jarvis-os.git",
+      "scannedAt": "2026-09-17T22:12:03.249Z"
+    },
+    {
+      "id": "portfolio",
+      "folder": "portfolio",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "cusersmateuportfolio",
+      "summary": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+      "stack": [
+        "react",
+        "tailwind",
+        "typescript",
+        "node"
+      ],
+      "structure": [
+        "public",
+        "src"
+      ],
+      "scripts": [
+        "dev",
+        "build",
+        "lint",
+        "preview"
+      ],
+      "packagePath": "portfolio\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.250Z"
+    },
+    {
+      "id": "projeto_milhao",
+      "folder": "Projeto Milhão",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "projeto-milhao",
+      "summary": "Monitor de postagens Instagram + alerta no WhatsApp",
+      "stack": [
+        "docker",
+        "node"
+      ],
+      "structure": [
+        "data",
+        "scripts",
+        "src"
+      ],
+      "scripts": [
+        "start",
+        "now",
+        "dry",
+        "groups"
+      ],
+      "packagePath": "Projeto Milhão\\package.json",
+      "hasReadme": false,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.251Z"
+    },
+    {
+      "id": "scraper_service",
+      "folder": "scraper-service",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "scraper-service",
+      "summary": "Multi-platform view scraper for clip competitions",
+      "stack": [
+        "docker",
+        "express",
+        "playwright",
+        "node"
+      ],
+      "structure": [
+        "src"
+      ],
+      "scripts": [
+        "start",
+        "dev"
+      ],
+      "packagePath": "scraper-service\\package.json",
+      "hasReadme": false,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.253Z"
+    },
+    {
+      "id": "socialhub",
+      "folder": "socialhub",
+      "role": "http",
+      "wired": true,
+      "note": null,
+      "env": [
+        "SOCIALHUB_URL",
+        "SOCIALHUB_OPS_KEY"
+      ],
+      "name": "socialhub",
+      "summary": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+      "stack": [
+        "prisma",
+        "next",
+        "react",
+        "tailwind",
+        "typescript"
+      ],
+      "structure": [
+        "app",
+        "components",
+        "lib",
+        "prisma",
+        "public",
+        "types",
+        "workers"
+      ],
+      "scripts": [
+        "dev",
+        "build",
+        "start",
+        "lint",
+        "postinstall"
+      ],
+      "packagePath": "socialhub\\package.json",
+      "hasReadme": true,
+      "remote": "https://github.com/emiteus/socialhub.git",
+      "scannedAt": "2026-09-17T22:12:03.254Z"
+    },
+    {
+      "id": "viral_factory",
+      "folder": "Viral Factory",
+      "role": "unlinked",
+      "wired": false,
+      "note": "Ainda não no hub — plugar sob demanda",
+      "env": [],
+      "name": "viral-factory-ai",
+      "summary": "App minimalista para afiliados: **página → reels virais → template → baixar → postar**.",
+      "stack": [
+        "next",
+        "react",
+        "tailwind",
+        "typescript"
+      ],
+      "structure": [
+        "data",
+        "public",
+        "scripts",
+        "src"
+      ],
+      "scripts": [
+        "dev",
+        "build",
+        "start",
+        "lint"
+      ],
+      "packagePath": "Viral Factory\\package.json",
+      "hasReadme": true,
+      "remote": null,
+      "scannedAt": "2026-09-17T22:12:03.255Z"
+    }
+  ],
+  "promptBlock": "- app prime [app_prime] off stack:next+react+tailwind+typescript — Aplicação Next.js para geração de planos de treino e dieta personalizados usando Inteligência Artificial.\n- Approtina [approtina] ON stack:express+playwright+node — Dashboard pessoal para gerenciar rotina diária, financeiro e alarmes com notificações via Telegram.\n- Attracione [attracione] ON stack:express+playwright+node — Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automati\n- Attracione 2.0 [attracione_2_0] off stack:express+playwright+node — Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automati\n- capcut-style-analyzer [capcut_style_analyzer] off stack:? — Lê os seus projetos do **CapCut Desktop (Windows)** e extrai um **perfil de edição** — um resumo estruturado do *seu padrão* de edição (ritm\n- Cinerush [cinerush_editor] ON stack:node — CineRush — Cortes virais com IA\n- CineRushTV [cinerush] ON stack:react+tailwind+typescript+node — Stack para **vários atendentes no mesmo WhatsApp** (Evolution + Chatwoot self-hosted).\n- Clipper [clipper] ON stack:node — Retroactive multi-stream clipping for FIFA/EA FC broadcast operators.\n- Cutflix [cutflix] ON stack:monorepo+docker+typescript+node — Plataforma de automação de vídeo com IA — crie templates inteligentes de edição, envie um vídeo (upload ou URL autorizada), deixe o pipeline\n- dashboard-visualizacoes [dashboard_visualizacoes] off stack:? — Ainda não no hub — plugar sob demanda\n- discord-antinuke [discord_antinuke] off stack:node — Bot de utilidades do servidor: mute de Among Us pelo botao do mouse, sons de entrada, comando /fael e log de atividade de voz. Roda 24/7 na \n- EuPosto [euposto] off stack:? — Ainda não no hub — plugar sob demanda\n- framerush [framerush] off stack:node — Editor de composição desktop (Windows + Mac). Você posiciona **1 foto** e **vários vídeos** numa tela vertical **9:16 (1080×1920)** e export\n- Jarvis [jarvis] ON stack:node — Hub do assistente pessoal. **Pasta canônica:** `R:\\Projetos\\Jarvis`.\n- portfolio [portfolio] off stack:react+tailwind+typescript+node — This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.\n- Projeto Milhão [projeto_milhao] off stack:docker+node — Monitor de postagens Instagram + alerta no WhatsApp\n- scraper-service [scraper_service] off stack:docker+express+playwright+node — Multi-platform view scraper for clip competitions\n- socialhub [socialhub] ON stack:prisma+next+react+tailwind+typescript — This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-n\n- Viral Factory [viral_factory] off stack:next+react+tailwind+typescript — App minimalista para afiliados: **página → reels virais → template → baixar → postar**."
+}
