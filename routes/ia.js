@@ -109,8 +109,11 @@ function respostaClaimMutacao(texto) {
 function formatAcaoFalhas(fails) {
   return (fails || [])
     .map((f) => {
-      if (f && f.erro) return `Não consegui **${f.tipo}**: ${f.erro}`;
-      return `Não consegui **${(f && f.tipo) || 'ação'}**.`;
+      if (!f) return 'Não consegui a ação.';
+      // Limite documentado — mensagem já é humana
+      if (f.tipo === 'cinerush_criar' && f.erro) return f.erro;
+      if (f.erro) return `Não consegui **${f.tipo}**: ${f.erro}`;
+      return `Não consegui **${f.tipo || 'ação'}**.`;
     })
     .join('\n');
 }
@@ -304,6 +307,14 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   }
 
   if (claim) {
+    // Explicação de limite / impossibilidade — não é mentira de mutação
+    if (
+      /\b(n[aã]o\s+(é\s+)?suport|n[aã]o\s+(est[aá]|d[aá]|consigo)|s[oó]\s+via\s+kirvano|ainda\s+n[aã]o\s+est[aá]\s+no\s+hub|sem\s+api)\b/i.test(
+        String(resposta || '')
+      )
+    ) {
+      return resposta;
+    }
     const pareceAnalise = /\b(analis|encontrei|verific|olhei|no extrato|no banco|despesas?|gastos?|saldo)\b/i
       .test(String(resposta || ''));
     if (pareceAnalise) return resposta;
@@ -1353,6 +1364,30 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
+  // "criar/gerar acesso novo" no CineRush — documenta limite (não provisiona)
+  if (
+    !acoes.some(
+      (a) =>
+        a.tipo === 'cinerush_criar' ||
+        a.tipo === 'cinerush_provisionar' ||
+        a.tipo === 'cinerush_buscar'
+    )
+  ) {
+    const isCine =
+      /\b(cinerush|cine\s*rush|cinehub|cine\s*hub|havok)\b/i.test(msg) ||
+      (/\bacesso\b/i.test(msg) && /\b(tv|streaming|assinante)\b/i.test(msg));
+    const isCreate =
+      /\b(criar|cadast[rt]|gere|gerar|gera|novo\s+acesso|acesso\s+novo|assinante\s+novo|gera(?:r)?\s+(?:um\s+)?acesso)\b/i.test(
+        msg
+      );
+    const isProvisionOnly =
+      /\b(provision|liber[aeo])\b/i.test(msg) && !/\b(criar|gerar|cadast)/i.test(msg);
+    if (isCine && isCreate && !isProvisionOnly) {
+      const email = (msg.match(/[\w.+-]+@[\w.-]+\.\w+/i) || [])[0];
+      acoes.push({ tipo: 'cinerush_criar', email: email || undefined });
+    }
+  }
+
   return acoes;
 }
 
@@ -1665,6 +1700,21 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       .test(mensagem.trim());
 
     const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
+    // Limite documentado: cria assinante → sempre responde com erro claro, sem LLM
+    if (acoesRapidas.length === 1 && acoesRapidas[0].tipo === 'cinerush_criar') {
+      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey });
+      const resposta = reconciliarRespostaComAcoes('', acoesExec);
+      await salvarMensagem(conversaId, 'assistant', resposta, uid);
+      return {
+        resposta,
+        acoes: acoesExec,
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
     const TIPOS_FAST = new Set([
       // fundir_categorias / deletar etc. ficam fora — HITL (risk high)
       'recategorizar', 'renomear_categoria', 'criar_categoria',
@@ -1767,7 +1817,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Memória de projeto → project_memory_get / project_memory_set / project_memory_list
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_reenviar_email / cinerush_criar / chatwoot_*
-- **CineRush criar ≠ provisionar:** cadastro novo só via venda Kirvano. "criar/gerar acesso/assinante novo" → cinerush_criar (explica limite) — NÃO invente provision. Provisionar = liberar quem já está **pendente**.
+- **CineRush criar ≠ provisionar:** cadastro novo só via venda Kirvano. "criar/gerar acesso/assinante novo" (cinehub/cinerush) → SEMPRE emita cinerush_criar (1 linha de limite). NÃO invente provision, NÃO ofereça "registrar pedido", NÃO pergunte se prefere localizar e-mail. Provisionar = liberar quem já está **pendente**.
 - Attracione ações: attracione_coleta / attracione_backup / attracione_ranking
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
