@@ -95,12 +95,24 @@ function textoAssistenteSeguro(textoBruto, parsed) {
 /** Detecta claim de mutação sem pegar negações ("não alterei"). */
 function respostaClaimMutacao(texto) {
   const verbs =
-    'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi';
+    'feito|fiz|gerei|gerado|liberei|liberado|provision(?:ei|ado)?|salvei|guardei|anotei|' +
+    'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|' +
+    'paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|' +
+    'corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi|enfileirei';
   const limpo = String(texto || '').replace(
     new RegExp(`\\b(?:n[aã]o|nunca|ainda\\s+n[aã]o)\\s+(?:${verbs})\\b`, 'gi'),
     ' '
   );
   return new RegExp(`\\b(?:${verbs})\\b`, 'i').test(limpo);
+}
+
+function formatAcaoFalhas(fails) {
+  return (fails || [])
+    .map((f) => {
+      if (f && f.erro) return `Não consegui **${f.tipo}**: ${f.erro}`;
+      return `Não consegui **${(f && f.tipo) || 'ação'}**.`;
+    })
+    .join('\n');
 }
 
 /** Nunca deixa a IA afirmar que alterou o app se a ação não rodou de verdade. */
@@ -114,31 +126,32 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
     'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito',
     'reconciliar_despesas', 'sincronizar_bancos',
-    'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email',
+    'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email', 'cinerush_criar',
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
     'attracione_coleta', 'attracione_backup', 'attracione_ranking',
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
-    'project_memory_get', 'project_memory_set', 'project_memory_list'
+    'project_memory_get', 'project_memory_set', 'project_memory_list',
+    'cutflix_status'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
+  const failText = fails.length ? formatAcaoFalhas(fails) : '';
 
   function askHitl() {
     if (!pending.length) return '';
     const id = pending[0].approval_id;
     const tipos = [...new Set(pending.map((p) => p.tipo))].join(', ');
-    const risk = (pending[0].risk || 'high').toUpperCase();
     return (
       `⚠️ Ainda preciso da sua confirmação (**${id}**): **${tipos}**.\n` +
       `Responde **SIM** (ou **SIM ${id}**) pra executar, **NÃO** pra cancelar.`
     );
   }
 
-  if (finOk.length) {
+  function narrarOks(finOkList) {
     const partes = [];
-    for (const a of finOk) {
+    for (const a of finOkList) {
       if (a.tipo === 'criar_categoria') {
         partes.push(a.criada
           ? `Criei a categoria **${a.label || a.categoria}**.`
@@ -258,35 +271,39 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Consultei memória de **${a.name || a.project_id}**.`);
       } else if (a.tipo === 'project_memory_list') {
         partes.push(`Listei **${(a.itens || []).length}** projeto(s) com memória.`);
+      } else if (a.tipo === 'cutflix_status') {
+        partes.push(
+          a.conectado
+            ? `Cutflix API **ON**${a.status ? ` (${a.status})` : ''}.`
+            : `Cutflix **off**${a.erro || a.motivo ? `: ${a.erro || a.motivo}` : ''}.`
+        );
       }
     }
-    const hitl = askHitl();
+    return partes;
+  }
+
+  const hitl = askHitl();
+
+  // Fail-first: nunca esconde falha atrás de sucesso parcial ou texto do LLM
+  if (finOk.length) {
+    const partes = narrarOks(finOk);
     const base = String(resposta || '').trim();
     let out;
     if (base && base.length > 40 && !claim) out = `${base}\n\n${partes.join(' ')}`;
     else out = partes.join(' ');
+    if (failText) out = `${out}\n\n${failText}`;
     return hitl ? `${out}\n\n${hitl}` : out;
   }
 
   if (pending.length) {
-    // Nunca deixe a IA parecer que já executou — só o pedido de confirmação
     return askHitl();
   }
 
-  if (fails.length && !finOk.length) {
-    const f = fails.find(x => x.tipo === 'recategorizar') || fails[0];
-    if (f && f.erro) {
-      return `Não consegui executar **${f.tipo}**: ${f.erro}`;
-    }
+  if (fails.length) {
+    return failText;
   }
 
-  // Só sobrescreve se CLAIMOU mutação e nada rodou — análises passam intactas
   if (claim) {
-    const err = fails.map(f => f.erro).filter(Boolean)[0];
-    if (err) {
-      return `Tentei alterar, mas não consegui: ${err}.`;
-    }
-    // Pedido de análise/pergunta: mantém a resposta original
     const pareceAnalise = /\b(analis|encontrei|verific|olhei|no extrato|no banco|despesas?|gastos?|saldo)\b/i
       .test(String(resposta || ''));
     if (pareceAnalise) return resposta;
@@ -1556,8 +1573,17 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       );
       if (missionOut && missionOut.handled) {
         let resposta = missionOut.resposta;
-        if (missionOut.acoes && missionOut.acoes.length) {
-          resposta = reconciliarRespostaComAcoes(resposta || '', missionOut.acoes);
+        const missionAcoes = missionOut.acoes || [];
+        const missionFailed = missionAcoes.some((a) => a && a.ok === false && !a.pending_approval);
+        // Em falha, mantém narrativa da missão (já honesta) — não deixa oks anteriores sobrescrever
+        if (!missionFailed && missionAcoes.length) {
+          resposta = reconciliarRespostaComAcoes(resposta || '', missionAcoes);
+        } else if (missionFailed) {
+          const fails = missionAcoes.filter((a) => a && a.ok === false && !a.pending_approval);
+          const reconFail = reconciliarRespostaComAcoes('', fails.slice(-1));
+          if (!/falhou|não consegui/i.test(String(resposta || ''))) {
+            resposta = reconFail;
+          }
         }
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
@@ -1701,11 +1727,11 @@ ${prefs.cumprimento_curto !== false
   : '- Pode resumir o dia em 1 linha se fizer sentido.'}
 - Cumprimento NÃO é pedido de ação: acoes deve ser [].
 
-Visão: hub do Mateus. Projetos no registry (veja registry[] + projetos.*.conectado). CineRush Editor (massa) ESTÁ no registry quando conectado=ON. Se perguntarem "quais módulos/projetos", use registry (nome + conectado) em 1 linha cada.
+Visão: hub do Mateus. **Status ON/off de módulo = só registry[]** (bloco abaixo / pack.registry). `projetos.*.conectado` é health/métricas HTTP — NÃO use pra contradizer registry ON. CineRush Editor ESTÁ no registry quando conectado=ON. Se perguntarem "quais módulos/projetos", liste registry (nome + ON/off) em 1 linha cada. Memória de projeto (memoria_projetos) ≠ módulo ligado.
 
 NÃO peça confirmação SIM/NÃO ao usuário para executar ações — emita a tool na hora. O sistema cuida de aprovação quando necessário. Se faltar dado (email/id), pergunte o dado; se o pedido estiver completo, emita a ação.
 
-Registry (aliases NL → id):
+Registry (aliases NL → id) — fonte da verdade de status:
 ${require('../lib/jarvis/projects/registry').getRegistryPromptBlock()}
 
 Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente. O contexto pode estar filtrado por intenção (_ctx.intent); se faltar um dado óbvio, diga que não veio no pacote e peça pra especificar.
@@ -1739,7 +1765,9 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - sincronizar bancos / reconciliar despesas → sincronizar_bancos / reconciliar_despesas
 - categorias → criar/renomear/fundir/recategorizar
 - Memória de projeto → project_memory_get / project_memory_set / project_memory_list
-- CineRush TV ações: cinerush_buscar / cinerush_provisionar / cinerush_reenviar_email / chatwoot_listar / chatwoot_resolver / chatwoot_atribuir
+- Cutflix → cutflix_status (health da API; sem ops de write ainda)
+- CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_reenviar_email / cinerush_criar / chatwoot_*
+- **CineRush criar ≠ provisionar:** cadastro novo só via venda Kirvano. "criar/gerar acesso/assinante novo" → cinerush_criar (explica limite) — NÃO invente provision. Provisionar = liberar quem já está **pendente**.
 - Attracione ações: attracione_coleta / attracione_backup / attracione_ranking
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
@@ -1749,6 +1777,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Attracione: ranking atual em projetos.attracione.ranking; comps passadas → attracione_ranking com n da comp (ex.: 7).
 - "Roda" / "sincroniza" sem contexto de banco: NÃO dispare sincronizar_bancos. Só se pedir banco/extrato/financeiro explicitamente.
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
+- NUNCA diga "Feito" / "liberei" / "criei" se a tool retornou ok:false.
 
 Responda APENAS um JSON válido completo:
 {"resposta":"texto em markdown simples (máx 120 palavras). Use **negrito** em números-chave.","acoes":[]}
@@ -1777,7 +1806,9 @@ Tipos de ação:
 - {"tipo":"recategorizar","categoria_label":"...","ids":["uuid"]} ou "filtros"
 - {"tipo":"cinerush_buscar","search":"email ou nome","status":"pendente|email_enviado"|null}
 - {"tipo":"cinerush_provisionar","id":"uuid"} ou {"tipo":"cinerush_provisionar","search":"email"}
+- {"tipo":"cinerush_criar","email":"...","nome":"..."} — documenta limite (sem API de create)
 - {"tipo":"cinerush_reenviar_email","id":"uuid"} ou {"tipo":"cinerush_reenviar_email","search":"email"}
+- {"tipo":"cutflix_status"}
 - {"tipo":"chatwoot_listar","status":"open|pending"}
 - {"tipo":"chatwoot_resolver","id":123}
 - {"tipo":"chatwoot_atribuir","id":123}

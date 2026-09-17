@@ -57,10 +57,10 @@ Objetivo: Jarvis **conhece o ecossistema** e **não mente / não trava** em ops.
 | # | Entrega | Aceite |
 |---|---------|--------|
 | 1 | **Memória de projetos** — store por `project_id` (stack, objetivo, status, decisões, links, “última falha”) | “como tá o Cutflix?” usa memória + registry |
-| 2 | **Plugar 1 produto** (Cutflix ou o de maior ROI) no padrão catalog+connector+tools | `quais módulos` mostra ON + 1 ação real |
-| 3 | **Ops honesty** — reconciler nunca diz “Feito” se tool falhou; provision/criar com erros claros | smoke WA sem mentira |
-| 4 | **CineRush: criar assinante** (se API existir) ou documentar limite “só pendente” | pedido “acesso novo” não vira provision cego |
-| 5 | **Prompt/contexto** — registry sempre fonte da verdade; sem “editor não ligado” | módulos batem com `getRegistryStatus` |
+| 2 | **Plugar 1 produto** (Cutflix) catalog+connector+`cutflix_status` | `quais módulos` mostra Cutflix ON/off + health |
+| 3 | **Ops honesty** — reconciler fail-first; claim “Feito/liberei” coberto | smoke WA sem mentira |
+| 4 | **CineRush: criar vs provisionar** — `cinerush_criar` documenta limite Kirvano | pedido “acesso novo” não vira provision cego |
+| 5 | **Prompt/contexto** — registry única fonte de ON/off | módulos batem com `getRegistryStatus` |
 
 **Fora do 30:** browser, coding agent, multi-agent pesado.
 
@@ -117,11 +117,11 @@ Objetivo: Orchestrator delega; você só dá a missão.
 
 ## 6. Próxima ação (esta semana)
 
-1. ~~Implementar **memória de projetos** (schema + tools `project_memory_*` + pack + NL).~~ **DONE** (v0.8.4).
-2. Decidir produto a plugar: **Cutflix** vs outro.
-3. Melhorar **missions** (batch, retries, UI) e fechar gaps de **proactive** + **budget**.
+1. ~~Memória de projetos~~ **DONE** (v0.8.4).
+2. ~~Ops honesty + CineRush criar≠provision + registry truth + Cutflix health~~ **DONE** (v0.8.5).
+3. Melhorar **missions** (batch, retries, UI) e **proactive** + **budget**.
 4. Smoke contínuo com `railway run node scripts/jarvis-wa-probe.js "…"`.
-
+5. (Opcional) `CUTFLIX_API_URL` no Railway pra Cutflix ON.
 ---
 
 ## 7. Definition of Done — “OS 3.0 mínimo”
