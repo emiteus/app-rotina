@@ -11,7 +11,7 @@
 4. **Assist OS strip + panel** — pills / Detalhes
 5. **Assist dashboard fullscreen** — overlay `#assist-dash` (pill OS / botão)
 6. **Missão batch** — `executa missão` + progresso WA
-7. **CineRush Editor** — registry `wired: false` até existir API
+7. **CineRush Editor** — wired v0.8.2 (`lib/cinerush-editor.js` + tools)
 
 ## Manual (não é código)
 

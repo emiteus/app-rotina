@@ -40,7 +40,7 @@ Redeploy após mudar env.
 
 | Item | Por quê | O que fazer |
 |------|---------|-------------|
-| **Editor de vídeo CineRush em massa** | Sem API/ops endpoint no hub | Quando existir URL+auth no backend CineRush, avisa — aí pluga no registry (`cinerush_editor` já está como `wired: false`) |
+| **Editor de vídeo CineRush em massa** | ✅ ligado (`cinerush_editor_*`) | Confere `CINERUSH_EDITOR_URL` + `CINERUSH_EDITOR_OPS_KEY` |
 | **Validar botões Evolution** | Depende da build da Evolution | Testa HITL; se botão não aparecer, texto SIM/NÃO já funciona |
 | **Whisper** | Precisa da sua key OpenAI | Seta `OPENAI_API_KEY` se quiser fallback de áudio |
 | **Multi-user WA** | Precisa logins reais | `WHATSAPP_PHONE_USERS=fone:login` |

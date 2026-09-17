@@ -118,7 +118,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
     'attracione_coleta', 'attracione_backup', 'attracione_ranking',
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
-    'clipper_criar', 'clipper_retry'
+    'clipper_criar', 'clipper_retry',
+    'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -232,6 +233,24 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Criei clip no Clipper (**${a.id || 'ok'}**).`);
       } else if (a.tipo === 'clipper_retry') {
         partes.push(`Retry do clip **${a.id}** no Clipper.`);
+      } else if (a.tipo === 'cinerush_editor_process') {
+        partes.push(
+          `Enfileirei corte no Editor (**${a.job_id || '?'}**, status **${a.status || 'queued'}**).`
+        );
+      } else if (a.tipo === 'cinerush_editor_batch') {
+        const n = (a.jobs || []).length;
+        partes.push(
+          `Enfileirei batch no Editor (**${a.batch_id || '?'}**, ${n} job${n === 1 ? '' : 's'}).`
+        );
+      } else if (a.tipo === 'cinerush_editor_job_status') {
+        if (a.batch_id) {
+          partes.push(`Consultei batch do Editor **${a.batch_id}**.`);
+        } else {
+          partes.push(
+            `Job Editor **${a.job_id}**: **${a.status || '?'}**` +
+              (a.result?.play_url ? ` → ${a.result.play_url}` : '')
+          );
+        }
       }
     }
     const hitl = askHitl();
@@ -1640,7 +1659,9 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Attracione ações: attracione_coleta / attracione_backup / attracione_ranking
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
+- CineRush Editor: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
 - CineRush TV: use projetos.cinerush (receita_mes, vendas_ontem, chart_7d, créditos, suporte). Faturamento no resumo é bruto Kirvano — se pedirem líquido, diga o que tem (bruto) e que líquido/taxas ainda não estão no hub.
+- CineRush Editor: fila em projetos.cinerush_editor.queue; processa por URL (ops). Sem owner_* não debita créditos de user.
 - Attracione: ranking atual em projetos.attracione.ranking; comps passadas → attracione_ranking com n da comp (ex.: 7).
 - "Roda" / "sincroniza" sem contexto de banco: NÃO dispare sincronizar_bancos. Só se pedir banco/extrato/financeiro explicitamente.
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
@@ -1684,6 +1705,9 @@ Tipos de ação:
 - {"tipo":"socialhub_publicar_agendados"}
 - {"tipo":"clipper_criar","durationSeconds":30,"note":"..."}
 - {"tipo":"clipper_retry","id":"groupId"}
+- {"tipo":"cinerush_editor_process","url":"https://youtube.com/...","manual_headline":"...","clip_duration":60}
+- {"tipo":"cinerush_editor_batch","items":[{"url":"...","manual_headline":"A"},{"url":"...","manual_headline":"B"}]}
+- {"tipo":"cinerush_editor_job_status","job_id":"..."} ou {"tipo":"cinerush_editor_job_status","batch_id":"..."}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
