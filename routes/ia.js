@@ -119,7 +119,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'attracione_coleta', 'attracione_backup', 'attracione_ranking',
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
     'clipper_criar', 'clipper_retry',
-    'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status'
+    'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
+    'project_memory_get', 'project_memory_set', 'project_memory_list'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -251,6 +252,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
               (a.result?.play_url ? ` → ${a.result.play_url}` : '')
           );
         }
+      } else if (a.tipo === 'project_memory_set') {
+        partes.push(`Salvei memória do projeto **${a.name || a.project_id}**.`);
+      } else if (a.tipo === 'project_memory_get') {
+        partes.push(`Consultei memória de **${a.name || a.project_id}**.`);
+      } else if (a.tipo === 'project_memory_list') {
+        partes.push(`Listei **${(a.itens || []).length}** projeto(s) com memória.`);
       }
     }
     const hitl = askHitl();
@@ -1575,6 +1582,50 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
     if (prefsInferidas) await saveJarvisPrefs(uid, prefsInferidas);
     const prefs = await getJarvisPrefs(uid);
 
+    // Memória de projetos (NL + load pro contexto)
+    const {
+      inferProjectMemoryFromMessage,
+      upsertProjectMemory,
+      loadMemoriesForMessage
+    } = require('../lib/jarvis/memory/projects');
+    let projectMemorySaved = null;
+    const inferredPm = inferProjectMemoryFromMessage(mensagem);
+    if (inferredPm) {
+      try {
+        projectMemorySaved = await upsertProjectMemory(uid, inferredPm);
+      } catch (e) {
+        console.error('[jarvis.memory] infer upsert', e.message);
+      }
+    }
+    const projectMemories = await loadMemoriesForMessage(uid, mensagem);
+
+    // Só pedido de memória de projeto → confirma sem LLM
+    if (
+      projectMemorySaved &&
+      /^(lembra|anota|guarda|registra)\b/i.test(mensagem.trim()) &&
+      !/\b(e\s+|também\s+|depois\s+)/i.test(mensagem.slice(0, 40))
+    ) {
+      const pid = projectMemorySaved.project_id;
+      const resposta = `Anotei na memória do **${pid}**.`;
+      await salvarMensagem(conversaId, 'assistant', resposta, uid);
+      return {
+        resposta,
+        acoes: [
+          {
+            tipo: 'project_memory_set',
+            ok: true,
+            project_id: pid,
+            memory: require('../lib/jarvis/memory/projects').slimMemory(projectMemorySaved)
+          }
+        ],
+        snapshot: null,
+        provider: 'memory',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
+
     const conv = await get(`SELECT titulo FROM assist_conversas WHERE id = $1 AND user_id = $2`, [conversaId, uid]);
     if (conv && (!conv.titulo || conv.titulo === 'Nova conversa')) {
       await run(`UPDATE assist_conversas SET titulo = $1 WHERE id = $2 AND user_id = $3`, [tituloDeMensagem(mensagem), conversaId, uid]);
@@ -1616,7 +1667,9 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       }
     }
 
-    const { pack: ctxPack, intent, stats: ctxStats } = packContext(snap, mensagem, prefs);
+    const { pack: ctxPack, intent, stats: ctxStats } = packContext(snap, mensagem, prefs, {
+      projectMemories
+    });
     console.log(
       JSON.stringify({
         tag: 'jarvis.context',
@@ -1669,6 +1722,7 @@ Como usar o contexto:
 - Agenda: eventos_proximos, alarmes.
 - Hábitos: só Academia (feito_hoje, semana e mês).
 - Se o usuário disser "lembra que…" / "anota que…", confirme em 1 linha (já persistido).
+- Memória de projetos: use memoria_projetos[] (stack, objetivo, status, decisões, ultima_falha, notas). Responda sobre projetos com esses fatos + registry/projetos.*. Para gravar: project_memory_set (ou o usuário já gravou via "lembra que no X: …").
 
 Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir na tela manualmente):
 - registrar pendência/dívida/despesa/tarefa/meta → criar_*
@@ -1684,6 +1738,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - DAS pago → marcar_das
 - sincronizar bancos / reconciliar despesas → sincronizar_bancos / reconciliar_despesas
 - categorias → criar/renomear/fundir/recategorizar
+- Memória de projeto → project_memory_get / project_memory_set / project_memory_list
 - CineRush TV ações: cinerush_buscar / cinerush_provisionar / cinerush_reenviar_email / chatwoot_listar / chatwoot_resolver / chatwoot_atribuir
 - Attracione ações: attracione_coleta / attracione_backup / attracione_ranking
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
@@ -1737,6 +1792,9 @@ Tipos de ação:
 - {"tipo":"cinerush_editor_process","url":"https://youtube.com/...","manual_headline":"...","clip_duration":60}
 - {"tipo":"cinerush_editor_batch","items":[{"url":"...","manual_headline":"A"},{"url":"...","manual_headline":"B"}]}
 - {"tipo":"cinerush_editor_job_status","job_id":"..."} ou {"tipo":"cinerush_editor_job_status","batch_id":"..."}
+- {"tipo":"project_memory_get","project":"cutflix|cinerush|…"}
+- {"tipo":"project_memory_set","project":"cutflix","stack":"…","objetivo":"…","status":"…","nota":"…","decisao":"…","ultima_falha":"…","link":"https://…"}
+- {"tipo":"project_memory_list"}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.

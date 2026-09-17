@@ -1,0 +1,135 @@
+# JARVIS Gap Map — Hub operacional → OS 3.0
+
+**Date:** 2026-09-17  
+**Baseline:** v0.8.3 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Target:** interface NL + memória + orquestrador + tools + agentes + missões
+
+> Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
+
+---
+
+## 1. Onde estamos (1 frase)
+
+**Hub pessoal com tools reais** (finanças, rotina, CineRush, Attracione, SocialHub, Editor) + HITL + missões v1 + multimodal leve.  
+**Ainda não** é um OS que pesquisa a web, debuga código ou coordena subagentes de verdade.
+
+---
+
+## 2. Gap por camada
+
+| Camada | Hoje | Gap principal | Código âncora |
+|--------|------|---------------|---------------|
+| **Cérebro** | Turno + intent pack + LLM JSON | Planner frágil; histórico contamina decisões | `core.js`, `context/`, `routes/ia.js` |
+| **Research** | — | Sem web/browser/relatório | *(novo)* `tools` + agent |
+| **Dev** | — | Sem git/logs/arquivos/deploy | *(novo)* sandbox + agent |
+| **Creative** | — | Sem imagem/layout | *(novo)* |
+| **Memória** | Prefs + notas curtas | Sem memória de projeto / episódios ricos | `memory/episodic.js` |
+| **Automation** | 38 tools + connectors | Só o que está plugado; criar assinante etc. faltam | `tools/`, `connectors/` |
+| **Analytics** | Snapshots HTTP | Sem séries/alertas genéricos | registry snapshots |
+| **Vision** | Gemini image + STT | PDF/doc fraco; sem “reproduzir layout” | `multimodal/ingress.js` |
+| **Voice** | STT | Sem TTS / conversa contínua | ingress |
+| **Agents** | Personas de prompt | Não há workers isolados | `agents/registry.js` |
+| **Missions** | Heurística + LLM + batch | Mission Mode “lançar produto” incompleto | `missions/` |
+| **Permissions** | Risk + HITL (WA off por default) | Calibragem + não mentir sucesso | `permissions/`, reconciler |
+
+**Maturidade global estimada: ~35% do blueprint 3.0** (automation ~55%, resto puxa a média pra baixo).
+
+---
+
+## 3. Já existe (não reinventar)
+
+- Core façade + AI gateway (Gemini→Anthropic) + budget  
+- Tool registry + handlers por domínio + HITL canal-aware  
+- Project registry + `manifest.json` + sync host  
+- Missões (create / próximo / executa / batch)  
+- Multimodal ingress (áudio/imagem)  
+- Probe WA: `app-rotina/scripts/jarvis-wa-probe.js`  
+- Repos: `emiteus/jarvis-os` (fonte) + `emiteus/app-rotina` (deploy)
+
+---
+
+## 4. Plano 30 / 60 / 90 dias
+
+### Dias 1–30 — **fundação que paga**
+
+Objetivo: Jarvis **conhece o ecossistema** e **não mente / não trava** em ops.
+
+| # | Entrega | Aceite |
+|---|---------|--------|
+| 1 | **Memória de projetos** — store por `project_id` (stack, objetivo, status, decisões, links, “última falha”) | “como tá o Cutflix?” usa memória + registry |
+| 2 | **Plugar 1 produto** (Cutflix ou o de maior ROI) no padrão catalog+connector+tools | `quais módulos` mostra ON + 1 ação real |
+| 3 | **Ops honesty** — reconciler nunca diz “Feito” se tool falhou; provision/criar com erros claros | smoke WA sem mentira |
+| 4 | **CineRush: criar assinante** (se API existir) ou documentar limite “só pendente” | pedido “acesso novo” não vira provision cego |
+| 5 | **Prompt/contexto** — registry sempre fonte da verdade; sem “editor não ligado” | módulos batem com `getRegistryStatus` |
+
+**Fora do 30:** browser, coding agent, multi-agent pesado.
+
+---
+
+### Dias 31–60 — **primeiro braço novo**
+
+Objetivo: 1 capacidade “MCU-like” de verdade.
+
+Escolher **um** trilho (não dois):
+
+**A) Research Agent (recomendado se o dia a dia é negócio)**  
+- Tools: `web_search`, `fetch_url` (allowlist), `write_report`  
+- Missão: “pesquisa concorrentes X → relatório no WA”  
+- HITL: publish/share = approval  
+
+**B) Ops/Debug Agent (recomendado se o dia a dia é código)**  
+- Tools read-only primeiro: `git_status`, `read_file` (paths allowlist), `tail_logs` (Railway/API)  
+- Missão: “CineRush checkout quebrando → diagnóstico”  
+- Write/deploy = APPROVAL  
+
+| # | Entrega | Aceite |
+|---|---------|--------|
+| 6 | Agent real (A ou B) com tools próprias + timeout + audit log | 1 missão end-to-end no WA |
+| 7 | Mission Mode v2 — steps tipados + progresso + pause em HITL | `missão: …` + `executa missão` estável |
+| 8 | Memória operacional — “última tentativa falhou porque Y” | não repete o mesmo erro na missão seguinte |
+
+---
+
+### Dias 61–90 — **orquestração**
+
+Objetivo: Orchestrator delega; você só dá a missão.
+
+| # | Entrega | Aceite |
+|---|---------|--------|
+| 9 | Orchestrator escolhe agent(s) por intent (não só addendum de prompt) | “prepara landing” → research→copy→… (mesmo stub) |
+| 10 | Vision v2 — PDF + screenshot → achados estruturados | “o que está errado?” em print |
+| 11 | Proatividade útil — 1–2 alertas reais (deploy fail, fila editor, crédito Havok) | ping WA sem auto-CRITICAL |
+| 12 | Permission matrix documentada (AUTO / APPROVAL / BLOCKED) por tool | tabela no Manual |
+
+**Ainda depois do 90 (backlog consciente):** Creative/image gen, Voice TTS, coding agent full (patch+test+deploy), browser genérico, “lançar produto” mission completa.
+
+---
+
+## 5. Princípios (pra não descarrilar)
+
+1. **Evolution > rewrite** — extrair tools/agents no `Jarvis/`, sync pro host.  
+2. **1 braço por vez** — Research **ou** Dev no dia 60, não os dois.  
+3. **Allowlist sempre** — paths, hosts, deploys.  
+4. **HITL no write/deploy/financeiro destrutivo**; WA pode continuar trust-owner.  
+5. **Medir:** `jarvis.turn` / `jarvis.tool` / missões done vs failed (já tem logs).
+
+---
+
+## 6. Próxima ação (esta semana)
+
+1. ~~Implementar **memória de projetos** (schema + tools `project_memory_*` + pack + NL).~~ **DONE** (v0.8.4).
+2. Decidir produto a plugar: **Cutflix** vs outro.
+3. Melhorar **missions** (batch, retries, UI) e fechar gaps de **proactive** + **budget**.
+4. Smoke contínuo com `railway run node scripts/jarvis-wa-probe.js "…"`.
+
+---
+
+## 7. Definition of Done — “OS 3.0 mínimo”
+
+- [x] Memória de projeto responde fatos gravados (stack/status/notas) — “semana passada” ainda depende de episodic/time  
+- [ ] ≥1 agent com tools próprias (não só persona)  
+- [ ] ≥1 missão multi-sistema sem mentir sucesso  
+- [ ] Permission matrix publicada e respeitada  
+- [ ] WA continua só como canal  
+
+*Enquanto isso não fechar, somos um **hub operacional excelente**, não o JARVIS do filme — e está ok.*
