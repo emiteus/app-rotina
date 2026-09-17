@@ -216,7 +216,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'reconciliar_despesas', 'sincronizar_bancos',
     'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email',
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
-    'attracione_coleta', 'attracione_backup'
+    'attracione_coleta', 'attracione_backup',
+    'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
+    'clipper_criar', 'clipper_retry'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   // Só intercepta se a resposta CLAIMAR mutação (verbo no passado), não análise ("já está pendente").
@@ -304,6 +306,16 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push('Disparei a coleta do Attracione.');
       } else if (a.tipo === 'attracione_backup') {
         partes.push('Fiz backup manual do Attracione.');
+      } else if (a.tipo === 'socialhub_posts') {
+        partes.push(`Listei **${(a.itens || []).length}** post(s) no SocialHub.`);
+      } else if (a.tipo === 'socialhub_agendar') {
+        partes.push(`Agendei post no SocialHub (**${a.id || 'ok'}**).`);
+      } else if (a.tipo === 'socialhub_publicar_agendados') {
+        partes.push(`Disparei publicação dos agendados no SocialHub (${a.processed != null ? a.processed + ' processados' : 'ok'}).`);
+      } else if (a.tipo === 'clipper_criar') {
+        partes.push(`Criei clip no Clipper (**${a.id || 'ok'}**).`);
+      } else if (a.tipo === 'clipper_retry') {
+        partes.push(`Retry do clip **${a.id}** no Clipper.`);
       }
     }
     // Se a análise veio completa, anexa o resumo das ações em vez de substituir
@@ -1015,15 +1027,23 @@ async function snapshotAssistente(opts = {}) {
     projetos: ehPlanoOwner ? await (async () => {
       const { cinerushReady, getCinerushSnapshot } = require('../lib/cinerush');
       const { attracioneReady, getAttracioneSnapshot } = require('../lib/attracione');
-      const [cinerush, attracione] = await Promise.all([
+      const { socialhubReady, getSocialhubSnapshot } = require('../lib/socialhub');
+      const { clipperReady, getClipperSnapshot } = require('../lib/clipper');
+      const [cinerush, attracione, socialhub, clipper] = await Promise.all([
         cinerushReady()
           ? getCinerushSnapshot()
           : Promise.resolve({ conectado: false, motivo: 'CINERUSH_BACKEND_URL/OPS_KEY ausentes' }),
         attracioneReady()
           ? getAttracioneSnapshot()
-          : Promise.resolve({ conectado: false, motivo: 'ATTRACIONE_URL/SCRAPER_TOKEN ausentes' })
+          : Promise.resolve({ conectado: false, motivo: 'ATTRACIONE_URL/SCRAPER_TOKEN ausentes' }),
+        socialhubReady()
+          ? getSocialhubSnapshot()
+          : Promise.resolve({ conectado: false, motivo: 'SOCIALHUB_URL/OPS_KEY ausentes' }),
+        clipperReady()
+          ? getClipperSnapshot()
+          : Promise.resolve({ conectado: false, motivo: 'CLIPPER_API_URL ausente (PC local / túnel)' })
       ]);
-      return { cinerush, attracione };
+      return { cinerush, attracione, socialhub, clipper };
     })() : null
   };
 }
@@ -1991,6 +2011,77 @@ async function executarAcoes(acoes, userId) {
           const out = await at.dispararBackup();
           feitos.push({ tipo, ok: true, resultado: out });
         }
+      } else if (
+        tipo === 'socialhub_posts' ||
+        tipo === 'socialhub_agendar' ||
+        tipo === 'socialhub_publicar_agendados'
+      ) {
+        const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+        if (!(await isPlanoOwnerUserId(userId))) {
+          feitos.push({ tipo, ok: false, erro: 'SocialHub só pro dono' });
+          continue;
+        }
+        const sh = require('../lib/socialhub');
+        if (!sh.socialhubReady()) {
+          feitos.push({ tipo, ok: false, erro: 'SocialHub não configurado' });
+          continue;
+        }
+        if (tipo === 'socialhub_posts') {
+          const out = await sh.listarPosts(acao.status || undefined, acao.limit || 10);
+          feitos.push({ tipo, ok: true, itens: out.posts || [] });
+        } else if (tipo === 'socialhub_agendar') {
+          const out = await sh.agendarPost({
+            caption: acao.caption,
+            socialAccountIds: acao.socialAccountIds || acao.accountIds,
+            scheduledAt: acao.scheduledAt,
+            mediaUrls: acao.mediaUrls,
+            mediaType: acao.mediaType
+          });
+          feitos.push({
+            tipo,
+            ok: true,
+            id: out.post?.id,
+            scheduledAt: out.post?.scheduledAt
+          });
+        } else {
+          const out = await sh.publicarAgendados();
+          feitos.push({
+            tipo,
+            ok: true,
+            processed: out.cron?.processed,
+            resultado: out.cron || out
+          });
+        }
+      } else if (tipo === 'clipper_criar' || tipo === 'clipper_retry') {
+        const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+        if (!(await isPlanoOwnerUserId(userId))) {
+          feitos.push({ tipo, ok: false, erro: 'Clipper só pro dono' });
+          continue;
+        }
+        const cl = require('../lib/clipper');
+        if (!cl.clipperReady()) {
+          feitos.push({
+            tipo,
+            ok: false,
+            erro: 'Clipper offline — defina CLIPPER_API_URL (túnel pro PC)'
+          });
+          continue;
+        }
+        if (tipo === 'clipper_criar') {
+          const out = await cl.criarClip({
+            durationSeconds: acao.durationSeconds || acao.duracao || 30,
+            note: acao.note || acao.nota,
+            streamIds: acao.streamIds
+          });
+          feitos.push({ tipo, ok: true, id: out.group?.id, group: out.group });
+        } else {
+          if (!acao.id) {
+            feitos.push({ tipo, ok: false, erro: 'id do grupo obrigatório' });
+            continue;
+          }
+          const out = await cl.retryClip(acao.id);
+          feitos.push({ tipo, ok: true, id: acao.id, group: out.group });
+        }
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
       }
@@ -2472,7 +2563,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (estilo braço-direito, não mordomo britânico). Trata o usuário por "você". Em cumprimentos curtos ("oi", "e aí"), se apresenta como Jarvis em 1 frase.
 
-Visão: hub pessoal do Mateus — rotina, finanças, projetos e operações. Sistemas no contexto (se .conectado): App Rotina; projetos.cinerush (assinantes, receita, Havok, fila, suporte Chatwoot); projetos.attracione (coleta, ranking, backups). Use esses blocos pra ops. Se pedirem algo ainda não ligado, diga o que consegue agora.
+Visão: hub pessoal do Mateus — rotina, finanças, projetos e operações. Sistemas no contexto (se .conectado): App Rotina; projetos.cinerush (+ Chatwoot); projetos.attracione; projetos.socialhub; projetos.clipper. Use esses blocos pra ops. Se pedirem algo ainda não ligado, diga o que consegue agora.
 
 Missão no App Rotina: responder QUALQUER pergunta sobre os dados do contexto — tarefas, hábitos, financeiro, despesas do mês, metas, alarmes, eventos/calendário, recorrentes, saldos, plano financeiro, MEI/DAS, histórico e streak. Se existir no contexto, use. Se não, diga que não tem esse dado agora (não invente).
 
@@ -2504,6 +2595,8 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - categorias → criar/renomear/fundir/recategorizar
 - CineRush (se projetos.cinerush.conectado): status/receita/créditos/suporte no contexto; buscar → cinerush_buscar; provision → cinerush_provisionar; reenviar email → cinerush_reenviar_email; listar tickets → chatwoot_listar; resolver → chatwoot_resolver; atribuir time → chatwoot_atribuir
 - Attracione (se projetos.attracione.conectado): status/ranking no contexto; disparar coleta → attracione_coleta; backup → attracione_backup
+- SocialHub (se projetos.socialhub.conectado): contas/métricas/posts no contexto; listar → socialhub_posts; agendar → socialhub_agendar; publicar vencidos → socialhub_publicar_agendados
+- Clipper (se projetos.clipper.conectado): streams/clips no contexto; criar clip → clipper_criar; retry → clipper_retry
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
 
 Responda APENAS um JSON válido completo:
@@ -2539,6 +2632,11 @@ Tipos de ação:
 - {"tipo":"chatwoot_atribuir","id":123}
 - {"tipo":"attracione_coleta","plataforma":"tiktok|kwai"|null}
 - {"tipo":"attracione_backup"}
+- {"tipo":"socialhub_posts","status":"SCHEDULED|PUBLISHED|FAILED"|null}
+- {"tipo":"socialhub_agendar","caption":"...","socialAccountIds":["id"],"scheduledAt":"ISO"}
+- {"tipo":"socialhub_publicar_agendados"}
+- {"tipo":"clipper_criar","durationSeconds":30,"note":"..."}
+- {"tipo":"clipper_retry","id":"groupId"}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
