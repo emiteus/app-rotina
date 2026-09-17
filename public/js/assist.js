@@ -74,6 +74,8 @@ function assistQuickCmd(texto) {
 
 async function assistRefreshOsStrip() {
   const el = document.getElementById('assist-os');
+  const panel = document.getElementById('assist-os-panel');
+  const grid = document.getElementById('assist-os-panel-grid');
   if (!el) return;
   try {
     const [osR, missR] = await Promise.all([
@@ -83,15 +85,15 @@ async function assistRefreshOsStrip() {
     if (!osR.ok) return;
     const os = await osR.json();
     const miss = missR.ok ? await missR.json() : null;
-    const projectsOn = (os.projects || []).filter((p) => p.conectado && p.snapshotKey).length;
-    const projectsTotal = (os.projects || []).filter((p) => p.snapshotKey).length;
+    const projects = (os.projects || []).filter((p) => p.snapshotKey || p.id === 'approtina' || p.wired === false);
+    const projectsOn = projects.filter((p) => p.conectado).length;
     const budget = os.budget || {};
     const pills = [];
     pills.push({ cls: os.provider ? 'on' : 'off', text: os.provider || 'IA off' });
     pills.push({ cls: os.hitl ? 'on' : 'warn', text: os.hitl ? 'HITL' : 'HITL off' });
     pills.push({
       cls: projectsOn ? 'on' : 'off',
-      text: `Projetos ${projectsOn}/${projectsTotal}`
+      text: `Projetos ${projectsOn}/${projects.length}`
     });
     pills.push({ cls: 'on', text: `${os.tools?.count || 0} tools` });
     if (budget.calls != null) {
@@ -103,14 +105,50 @@ async function assistRefreshOsStrip() {
         text: `Missão ${miss.active.status}`
       });
     }
+    pills.push({ cls: 'on', text: 'Detalhes', action: 'toggle' });
     el.innerHTML = pills
-      .map((p) => `<span class="assist-os-pill ${p.cls}">${escapeHtml(p.text)}</span>`)
+      .map((p) => {
+        const act = p.action === 'toggle' ? ' onclick="assistToggleOsPanel()"' : '';
+        return `<button type="button" class="assist-os-pill ${p.cls}"${act}>${escapeHtml(p.text)}</button>`;
+      })
       .join('');
     el.hidden = false;
+
+    if (grid) {
+      const projLines = projects
+        .map((p) => {
+          const st = !p.wired ? 'não ligado' : p.conectado ? 'ON' : 'off';
+          return `${p.name}: <strong>${st}</strong>`;
+        })
+        .join('<br>');
+      const missLine = miss?.active
+        ? `<strong>${escapeHtml(miss.active.status)}</strong> — ${escapeHtml((miss.active.goal || '').slice(0, 48))}`
+        : 'nenhuma ativa';
+      grid.innerHTML = `
+        <div class="assist-os-card">
+          <div class="assist-os-card-title">Projetos</div>
+          <div class="assist-os-card-body">${projLines}</div>
+        </div>
+        <div class="assist-os-card">
+          <div class="assist-os-card-title">Sistema</div>
+          <div class="assist-os-card-body">
+            OS <strong>v${escapeHtml(os.version || '—')}</strong><br>
+            HITL <strong>${os.hitl ? 'on' : 'off'}</strong> · ${escapeHtml(os.approvalThreshold || 'high')}<br>
+            Budget <strong>${budget.calls || 0}</strong> calls · Missão: ${missLine}
+          </div>
+        </div>`;
+    }
+
     if (os.provider) {
       assistSetTitulo('Jarvis', `OS v${os.version || '—'} · ${os.provider}`);
     }
   } catch (e) { /* silencioso */ }
+}
+
+function assistToggleOsPanel() {
+  const panel = document.getElementById('assist-os-panel');
+  if (!panel) return;
+  panel.hidden = !panel.hidden;
 }
 
 function toggleAssistente() {

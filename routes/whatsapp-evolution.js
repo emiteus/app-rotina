@@ -1,25 +1,28 @@
 /**
  * Webhook Evolution → Jarvis (assistente pessoal via WhatsApp).
- * Instance separada do CineRush. Whitelist em WHATSAPP_ALLOWED_PHONES.
- * Phase 8: multimodal (áudio/imagem) via ingress.
+ * Instance separada do CineRush.
+ * Whitelist: WHATSAPP_ALLOWED_PHONES e/ou mapa WHATSAPP_PHONE_USERS=fone:login
  */
 const express = require('express');
 const { get, run } = require('../lib/db');
-const { OWNER_LOGIN } = require('../lib/plano-owner');
 const {
   normalizeWaId,
-  isPhoneAllowed,
   sendText,
   sendApprovalButtons,
   evolutionReady,
   textoParaWhatsApp
 } = require('../lib/evolution');
 const { extractMediaMeta } = require('../lib/jarvis/multimodal/ingress');
+const {
+  resolveUserIdForPhone,
+  isPhoneMappedOrAllowed,
+  phoneMapStatus
+} = require('../lib/jarvis/whatsapp-users');
 
 const router = express.Router();
 
 /** Debounce: junta bolhas rápidas do mesmo número. */
-const pending = new Map(); // phone -> { texts: [], medias: [], timer, conversaId }
+const pending = new Map(); // phone -> { texts: [], medias: [], timer }
 const DEBOUNCE_MS = Number(process.env.WHATSAPP_DEBOUNCE_MS) || 1000;
 
 async function ensureWhatsappTables() {
@@ -40,14 +43,6 @@ async function readyTables() {
   tablesReady = true;
 }
 
-async function ownerUserId() {
-  const row = await get(
-    `SELECT id FROM usuarios WHERE lower(login) = $1 AND ativo = true`,
-    [OWNER_LOGIN]
-  );
-  return row?.id || null;
-}
-
 async function getOrCreateSessao(phone, userId) {
   await readyTables();
   let row = await get(`SELECT * FROM whatsapp_sessoes WHERE phone = $1`, [phone]);
@@ -58,6 +53,12 @@ async function getOrCreateSessao(phone, userId) {
       [phone, userId]
     );
     row = await get(`SELECT * FROM whatsapp_sessoes WHERE phone = $1`, [phone]);
+  } else if (row.user_id !== userId) {
+    await run(
+      `UPDATE whatsapp_sessoes SET user_id = $1, atualizado_em = CURRENT_TIMESTAMP WHERE phone = $2`,
+      [userId, phone]
+    );
+    row.user_id = userId;
   }
   return row;
 }
@@ -153,11 +154,12 @@ async function processPhoneQueue(phone) {
   const media = slot.medias && slot.medias.length ? slot.medias[slot.medias.length - 1] : null;
   if (!mensagem && !media) return;
 
-  const uid = await ownerUserId();
-  if (!uid) {
-    console.error('[whatsapp] owner user não encontrado:', OWNER_LOGIN);
+  const resolved = await resolveUserIdForPhone(phone);
+  if (!resolved?.userId) {
+    console.error('[whatsapp] sem user para phone:', phone);
     return;
   }
+  const uid = resolved.userId;
 
   const sessao = await getOrCreateSessao(phone, uid);
 
@@ -169,7 +171,17 @@ async function processPhoneQueue(phone) {
       conversaId: sessao?.conversa_id || null,
       historico: [],
       channel: 'whatsapp',
-      media: media || null
+      media: media || null,
+      onProgress:
+        process.env.JARVIS_MISSION_PROGRESS === '0'
+          ? null
+          : async (msg) => {
+              try {
+                await sendText(phone, `⏳ ${String(msg || '').slice(0, 800)}`);
+              } catch (e) {
+                console.error('[whatsapp] progress ping:', e.message);
+              }
+            }
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
     const resposta = out.resposta || 'Beleza. Em que posso ajudar?';
@@ -208,11 +220,13 @@ function enqueueMessage(phone, text, media = null) {
 }
 
 router.get('/status', (_req, res) => {
+  const map = phoneMapStatus();
   res.json({
     ok: true,
     evolution: evolutionReady(),
     instance: process.env.EVOLUTION_INSTANCE || null,
-    allowed: (process.env.WHATSAPP_ALLOWED_PHONES || '').split(/[,;\s]+/).filter(Boolean).length
+    allowed: (process.env.WHATSAPP_ALLOWED_PHONES || '').split(/[,;\s]+/).filter(Boolean).length,
+    phoneUsers: map
   });
 });
 
@@ -227,8 +241,8 @@ router.post('/evolution', async (req, res) => {
     const msgs = parseEvolutionPayload(req.body || {});
     for (const m of msgs) {
       if (m.fromMe || m.isGroup) continue;
-      if (!isPhoneAllowed(m.phone)) {
-        console.log('[whatsapp] ignorado (fora da whitelist):', m.phone);
+      if (!isPhoneMappedOrAllowed(m.phone)) {
+        console.log('[whatsapp] ignorado (fora da whitelist/mapa):', m.phone);
         continue;
       }
       enqueueMessage(m.phone, m.text, m.media || null);
