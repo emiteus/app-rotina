@@ -275,6 +275,7 @@ router.get('/status', (req, res) => {
   const prov = providerAtivo();
   const tools = listToolNames();
   const { hitlEnabled, approvalThreshold } = require('../lib/jarvis/permissions/engine');
+  const { getRegistryStatus } = require('../lib/jarvis/projects/registry');
   res.json({
     ok: true,
     disponivel: !!prov,
@@ -283,7 +284,8 @@ router.get('/status', (req, res) => {
     tools: tools.length,
     toolsHighRisk: getToolCatalog().filter((t) => t.needsApproval).map((t) => t.name),
     hitl: hitlEnabled(),
-    approvalThreshold: approvalThreshold()
+    approvalThreshold: approvalThreshold(),
+    projects: getRegistryStatus()
   });
 });
 
@@ -956,27 +958,12 @@ async function snapshotAssistente(opts = {}) {
       semana: 'habitos[].semana_concluidas e tarefas.stats_7d',
       mes: 'despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas'
     },
-    projetos: ehPlanoOwner ? await getCachedProjetos(userId, async () => {
-      const { cinerushReady, getCinerushSnapshot } = require('../lib/cinerush');
-      const { attracioneReady, getAttracioneSnapshot } = require('../lib/attracione');
-      const { socialhubReady, getSocialhubSnapshot } = require('../lib/socialhub');
-      const { clipperReady, getClipperSnapshot } = require('../lib/clipper');
-      const [cinerush, attracione, socialhub, clipper] = await Promise.all([
-        cinerushReady()
-          ? getCinerushSnapshot()
-          : Promise.resolve({ conectado: false, motivo: 'CINERUSH_BACKEND_URL/OPS_KEY ausentes' }),
-        attracioneReady()
-          ? getAttracioneSnapshot()
-          : Promise.resolve({ conectado: false, motivo: 'ATTRACIONE_URL/SCRAPER_TOKEN ausentes' }),
-        socialhubReady()
-          ? getSocialhubSnapshot()
-          : Promise.resolve({ conectado: false, motivo: 'SOCIALHUB_URL/OPS_KEY ausentes' }),
-        clipperReady()
-          ? getClipperSnapshot()
-          : Promise.resolve({ conectado: false, motivo: 'CLIPPER_API_URL ausente (PC local / túnel)' })
-      ]);
-      return { cinerush, attracione, socialhub, clipper };
-    }) : null
+    projetos: ehPlanoOwner
+      ? await getCachedProjetos(userId, () => {
+          const { loadAllProjectSnapshots } = require('../lib/jarvis/projects/registry');
+          return loadAllProjectSnapshots();
+        })
+      : null
   };
 }
 
@@ -2594,7 +2581,10 @@ ${prefs.cumprimento_curto !== false
   : '- Pode resumir o dia em 1 linha se fizer sentido.'}
 - Cumprimento NÃO é pedido de ação: acoes deve ser [].
 
-Visão: hub do Mateus. Módulos no contexto (veja projetos.*.conectado): App Rotina; CineRush TV (+ Chatwoot); Attracione; SocialHub; Clipper. CineRush editor de vídeo em massa NÃO está ligado. Se perguntarem "quais módulos", liste só os conectados com 1 linha cada.
+Visão: hub do Mateus. Projetos no registry (veja registry[] + projetos.*.conectado). CineRush editor de vídeo em massa NÃO está ligado. Se perguntarem "quais módulos/projetos", use registry (nome + conectado) em 1 linha cada.
+
+Registry (aliases NL → id):
+${require('../lib/jarvis/projects/registry').getRegistryPromptBlock()}
 
 Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente. O contexto pode estar filtrado por intenção (_ctx.intent); se faltar um dado óbvio, diga que não veio no pacote e peça pra especificar.
 
