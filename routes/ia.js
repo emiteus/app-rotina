@@ -204,6 +204,17 @@ function textoAssistenteSeguro(textoBruto, parsed) {
   return 'Beleza — me conta mais um detalhe pra eu agir.';
 }
 
+/** Detecta claim de mutação sem pegar negações ("não alterei"). */
+function respostaClaimMutacao(texto) {
+  const verbs =
+    'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi';
+  const limpo = String(texto || '').replace(
+    new RegExp(`\\b(?:n[aã]o|nunca|ainda\\s+n[aã]o)\\s+(?:${verbs})\\b`, 'gi'),
+    ' '
+  );
+  return new RegExp(`\\b(?:${verbs})\\b`, 'i').test(limpo);
+}
+
 /** Nunca deixa a IA afirmar que alterou o app se a ação não rodou de verdade. */
 function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const oks = (acoesExec || []).filter(a => a && a.ok);
@@ -216,14 +227,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'reconciliar_despesas', 'sincronizar_bancos',
     'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email',
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
-    'attracione_coleta', 'attracione_backup',
+    'attracione_coleta', 'attracione_backup', 'attracione_ranking',
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
     'clipper_criar', 'clipper_retry'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
-  // Só intercepta se a resposta CLAIMAR mutação (verbo no passado), não análise ("já está pendente").
-  const claim = /\b(criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|corrigi|marquei|sincronizei|reconciliei)\b/i
-    .test(String(resposta || ''));
+  const claim = respostaClaimMutacao(resposta);
 
   if (finOk.length) {
     const partes = [];
@@ -306,6 +315,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push('Disparei a coleta do Attracione.');
       } else if (a.tipo === 'attracione_backup') {
         partes.push('Fiz backup manual do Attracione.');
+      } else if (a.tipo === 'attracione_ranking') {
+        const linhas = (a.top || []).slice(0, 10)
+          .map((t) => `${t.pos}º ${t.nome} — **${Number(t.views || 0).toLocaleString('pt-BR')}** views`)
+          .join('\n');
+        partes.push(linhas
+          ? `Ranking **${a.competicao || 'Attracione'}**:\n${linhas}`
+          : `Ranking **${a.competicao || 'Attracione'}** sem linhas.`);
       } else if (a.tipo === 'socialhub_posts') {
         partes.push(`Listei **${(a.itens || []).length}** post(s) no SocialHub.`);
       } else if (a.tipo === 'socialhub_agendar') {
@@ -1993,7 +2009,7 @@ async function executarAcoes(acoes, userId) {
           await cr.atribuirChatwoot(acao.id, acao.team_id);
           feitos.push({ tipo, ok: true, id: acao.id });
         }
-      } else if (tipo === 'attracione_coleta' || tipo === 'attracione_backup') {
+      } else if (tipo === 'attracione_coleta' || tipo === 'attracione_backup' || tipo === 'attracione_ranking') {
         const { isPlanoOwnerUserId } = require('../lib/plano-owner');
         if (!(await isPlanoOwnerUserId(userId))) {
           feitos.push({ tipo, ok: false, erro: 'Attracione só pro dono' });
@@ -2007,9 +2023,22 @@ async function executarAcoes(acoes, userId) {
         if (tipo === 'attracione_coleta') {
           const out = await at.dispararColeta(acao.plataforma || undefined);
           feitos.push({ tipo, ok: true, resultado: out });
-        } else {
+        } else if (tipo === 'attracione_backup') {
           const out = await at.dispararBackup();
           feitos.push({ tipo, ok: true, resultado: out });
+        } else {
+          const out = await at.rankingComp(acao.n || acao.comp || acao.numero);
+          feitos.push({
+            tipo,
+            ok: true,
+            competicao: out.competicao,
+            top: (out.linhas || []).slice(0, 15).map((l) => ({
+              pos: l.posicao,
+              nome: l.nomeCompleto,
+              views: l.views,
+              premio: l.valor
+            }))
+          });
         }
       } else if (
         tipo === 'socialhub_posts' ||
@@ -2526,6 +2555,16 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     await salvarMensagem(conversaId, 'user', mensagem, uid);
 
+    // Preferências Jarvis (tratamento, cumprimento curto)
+    const {
+      getJarvisPrefs,
+      saveJarvisPrefs,
+      inferirPrefsDaMensagem
+    } = require('../lib/jarvis-prefs');
+    const prefsInferidas = inferirPrefsDaMensagem(mensagem);
+    if (prefsInferidas) await saveJarvisPrefs(uid, prefsInferidas);
+    const prefs = await getJarvisPrefs(uid);
+
     const conv = await get(`SELECT titulo FROM assist_conversas WHERE id = $1 AND user_id = $2`, [conversaId, uid]);
     if (conv && (!conv.titulo || conv.titulo === 'Nova conversa')) {
       await run(`UPDATE assist_conversas SET titulo = $1 WHERE id = $2 AND user_id = $3`, [tituloDeMensagem(mensagem), conversaId, uid]);
@@ -2533,7 +2572,10 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const snap = await snapshotAssistente({ lite: true, userId: uid });
 
-    const acoesRapidas = inferirAcoesDaMensagem(mensagem, snap, []);
+    const isGreeting = /^(oi|ol[áa]|e a[ií]|fala(\s+jarvis)?|bom dia|boa tarde|boa noite|al[oôô]|hey|hola|kkk+)\s*[!.?]*$/i
+      .test(mensagem.trim());
+
+    const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
     const TIPOS_FAST = new Set([
       'recategorizar', 'fundir_categorias', 'renomear_categoria', 'criar_categoria',
       'confirmar_despesa', 'confirmar_receita', 'criar_receita',
@@ -2561,11 +2603,19 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       }
     }
 
-    const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (estilo braço-direito, não mordomo britânico). Trata o usuário por "você". Em cumprimentos curtos ("oi", "e aí"), se apresenta como Jarvis em 1 frase.
+    const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (braço-direito).
 
-Visão: hub pessoal do Mateus — rotina, finanças, projetos e operações. Sistemas no contexto (se .conectado): App Rotina; projetos.cinerush (+ Chatwoot); projetos.attracione; projetos.socialhub; projetos.clipper. Use esses blocos pra ops. Se pedirem algo ainda não ligado, diga o que consegue agora.
+Tratamento: chame o usuário de **${prefs.tratamento || 'chefe'}**${prefs.extras?.tratamento_alt ? ` (ou ${prefs.extras.tratamento_alt})` : ''}. Nunca force "Mateus" se ele pediu outro tratamento.
 
-Missão no App Rotina: responder QUALQUER pergunta sobre os dados do contexto — tarefas, hábitos, financeiro, despesas do mês, metas, alarmes, eventos/calendário, recorrentes, saldos, plano financeiro, MEI/DAS, histórico e streak. Se existir no contexto, use. Se não, diga que não tem esse dado agora (não invente).
+Cumprimentos ("oi", "e aí", "fala jarvis", "bom dia", "alô", "kkk" solto):
+${prefs.cumprimento_curto !== false
+  ? '- Resposta CURTA: saudação + "o que você precisa?" — SEM listar tarefas, saldo, sobra, academia nem status de projetos.'
+  : '- Pode resumir o dia em 1 linha se fizer sentido.'}
+- Cumprimento NÃO é pedido de ação: acoes deve ser [].
+
+Visão: hub do Mateus. Módulos no contexto (veja projetos.*.conectado): App Rotina; CineRush TV (+ Chatwoot); Attracione; SocialHub; Clipper. CineRush editor de vídeo em massa NÃO está ligado. Se perguntarem "quais módulos", liste só os conectados com 1 linha cada.
+
+Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente.
 
 Contexto atual (fonte da verdade):
 ${JSON.stringify(snap)}
@@ -2593,10 +2643,13 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - DAS pago → marcar_das
 - sincronizar bancos / reconciliar despesas → sincronizar_bancos / reconciliar_despesas
 - categorias → criar/renomear/fundir/recategorizar
-- CineRush (se projetos.cinerush.conectado): status/receita/créditos/suporte no contexto; buscar → cinerush_buscar; provision → cinerush_provisionar; reenviar email → cinerush_reenviar_email; listar tickets → chatwoot_listar; resolver → chatwoot_resolver; atribuir time → chatwoot_atribuir
-- Attracione (se projetos.attracione.conectado): status/ranking no contexto; disparar coleta → attracione_coleta; backup → attracione_backup
-- SocialHub (se projetos.socialhub.conectado): contas/métricas/posts no contexto; listar → socialhub_posts; agendar → socialhub_agendar; publicar vencidos → socialhub_publicar_agendados
-- Clipper (se projetos.clipper.conectado): streams/clips no contexto; criar clip → clipper_criar; retry → clipper_retry
+- CineRush TV ações: cinerush_buscar / cinerush_provisionar / cinerush_reenviar_email / chatwoot_listar / chatwoot_resolver / chatwoot_atribuir
+- Attracione ações: attracione_coleta / attracione_backup / attracione_ranking
+- SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
+- Clipper: clipper_criar / clipper_retry
+- CineRush TV: use projetos.cinerush (receita_mes, vendas_ontem, chart_7d, créditos, suporte). Faturamento no resumo é bruto Kirvano — se pedirem líquido, diga o que tem (bruto) e que líquido/taxas ainda não estão no hub.
+- Attracione: ranking atual em projetos.attracione.ranking; comps passadas → attracione_ranking com n da comp (ex.: 7).
+- "Roda" / "sincroniza" sem contexto de banco: NÃO dispare sincronizar_bancos. Só se pedir banco/extrato/financeiro explicitamente.
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
 
 Responda APENAS um JSON válido completo:
@@ -2632,6 +2685,7 @@ Tipos de ação:
 - {"tipo":"chatwoot_atribuir","id":123}
 - {"tipo":"attracione_coleta","plataforma":"tiktok|kwai"|null}
 - {"tipo":"attracione_backup"}
+- {"tipo":"attracione_ranking","n":"7"}
 - {"tipo":"socialhub_posts","status":"SCHEDULED|PUBLISHED|FAILED"|null}
 - {"tipo":"socialhub_agendar","caption":"...","socialAccountIds":["id"],"scheduledAt":"ISO"}
 - {"tipo":"socialhub_publicar_agendados"}
