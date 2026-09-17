@@ -56,7 +56,7 @@ function assistLimparMsgs() {
 }
 
 function assistBoasVindas() {
-  assistAddBubble('bot', 'Jarvis aqui. Rotina, finanças, hábitos, agenda — pergunta ou manda eu executar. Ex.: "boleto de 240 no dia 18" ou "fui na academia".');
+  assistAddBubble('bot', 'Jarvis aqui. Rotina, finanças, CineRush, hábitos, agenda — pergunta ou manda eu executar.');
   verificarStatusIA();
 }
 

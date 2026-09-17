@@ -213,7 +213,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'confirmar_despesa', 'confirmar_receita', 'criar_receita', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
     'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
     'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito',
-    'reconciliar_despesas', 'sincronizar_bancos'
+    'reconciliar_despesas', 'sincronizar_bancos',
+    'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   // Só intercepta se a resposta CLAIMAR mutação (verbo no passado), não análise ("já está pendente").
@@ -282,6 +283,15 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           `Sincronizei os bancos (**${a.importadas || 0}** txs novas)` +
           (a.matched ? ` e confirmei **${a.matched}** despesa(s).` : '.')
         );
+      } else if (a.tipo === 'cinerush_buscar') {
+        const n = (a.itens || []).length;
+        partes.push(n
+          ? `Achei **${n}** assinante(s) no CineRush${a.total != null ? ` (${a.total} no total)` : ''}.`
+          : 'Nenhum assinante encontrado no CineRush com esse filtro.');
+      } else if (a.tipo === 'cinerush_provisionar') {
+        partes.push(`Disparei provisionamento CineRush pra **${a.nome || a.email || a.id}**.`);
+      } else if (a.tipo === 'cinerush_reenviar_email') {
+        partes.push(`Reenviei o email de acesso CineRush pra **${a.nome || a.email || a.id}**.`);
       }
     }
     // Se a análise veio completa, anexa o resumo das ações em vez de substituir
@@ -989,7 +999,15 @@ async function snapshotAssistente(opts = {}) {
       amanha,
       semana: 'habitos[].semana_concluidas e tarefas.stats_7d',
       mes: 'despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas'
-    }
+    },
+    projetos: ehPlanoOwner ? await (async () => {
+      const { cinerushReady, getCinerushSnapshot } = require('../lib/cinerush');
+      return {
+        cinerush: cinerushReady()
+          ? await getCinerushSnapshot()
+          : { conectado: false, motivo: 'CINERUSH_BACKEND_URL/OPS_KEY ausentes' }
+      };
+    })() : null
   };
 }
 
@@ -1822,6 +1840,84 @@ async function executarAcoes(acoes, userId) {
           matched: out.matched || 0,
           detalhes: (out.detalhes || []).slice(0, 12)
         });
+      } else if (
+        tipo === 'cinerush_buscar' ||
+        tipo === 'cinerush_provisionar' ||
+        tipo === 'cinerush_reenviar_email'
+      ) {
+        const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+        if (!(await isPlanoOwnerUserId(userId))) {
+          feitos.push({ tipo, ok: false, erro: 'CineRush só pro dono' });
+          continue;
+        }
+        const cr = require('../lib/cinerush');
+        if (!cr.cinerushReady()) {
+          feitos.push({ tipo, ok: false, erro: 'CineRush não configurado' });
+          continue;
+        }
+        if (tipo === 'cinerush_buscar') {
+          const out = await cr.buscarAssinantes(acao.search || acao.q || '', acao.status || undefined);
+          feitos.push({
+            tipo,
+            ok: true,
+            total: out.total,
+            itens: (out.data || []).slice(0, 8).map((s) => ({
+              id: s.id,
+              nome: s.nome,
+              email: s.email,
+              plano: s.plano,
+              status: s.status
+            }))
+          });
+        } else if (tipo === 'cinerush_provisionar') {
+          let id = acao.id;
+          if (!id && (acao.search || acao.email || acao.nome)) {
+            const found = await cr.buscarAssinantes(acao.search || acao.email || acao.nome, 'pendente');
+            const hit = (found.data || [])[0];
+            if (!hit) {
+              feitos.push({ tipo, ok: false, erro: 'Assinante pendente não encontrado' });
+              continue;
+            }
+            id = hit.id;
+          }
+          if (!id) {
+            feitos.push({ tipo, ok: false, erro: 'id ou search obrigatório' });
+            continue;
+          }
+          const updated = await cr.provisionarAssinante(id);
+          feitos.push({
+            tipo,
+            ok: true,
+            id: updated.id || id,
+            nome: updated.nome,
+            email: updated.email,
+            status: updated.status
+          });
+        } else {
+          let id = acao.id;
+          if (!id && (acao.search || acao.email || acao.nome)) {
+            const found = await cr.buscarAssinantes(acao.search || acao.email || acao.nome);
+            const hit = (found.data || [])[0];
+            if (!hit) {
+              feitos.push({ tipo, ok: false, erro: 'Assinante não encontrado' });
+              continue;
+            }
+            id = hit.id;
+          }
+          if (!id) {
+            feitos.push({ tipo, ok: false, erro: 'id ou search obrigatório' });
+            continue;
+          }
+          const updated = await cr.reenviarEmailAssinante(id, acao.force !== false);
+          feitos.push({
+            tipo,
+            ok: true,
+            id: updated.id || id,
+            nome: updated.nome,
+            email: updated.email,
+            status: updated.status
+          });
+        }
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
       }
@@ -2303,7 +2399,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (estilo braço-direito, não mordomo britânico). Trata o usuário por "você". Em cumprimentos curtos ("oi", "e aí"), se apresenta como Jarvis em 1 frase.
 
-Visão: hub pessoal do Mateus — rotina, finanças, projetos e operações. Hoje o sistema conectado é o App Rotina (dados abaixo). Outros projetos (ex.: CineRush) entram depois; se pedirem algo fora do contexto, diga o que consegue agora e o que ainda não está ligado.
+Visão: hub pessoal do Mateus — rotina, finanças, projetos e operações. Sistemas conectados no contexto: App Rotina (sempre) e, se projetos.cinerush.conectado, o CineRush TV (assinantes, receita do mês, créditos Havok, fila). Use projetos.cinerush pra perguntas de ops/negócio. Se pedirem algo de outro projeto ainda não ligado, diga o que consegue agora.
 
 Missão no App Rotina: responder QUALQUER pergunta sobre os dados do contexto — tarefas, hábitos, financeiro, despesas do mês, metas, alarmes, eventos/calendário, recorrentes, saldos, plano financeiro, MEI/DAS, histórico e streak. Se existir no contexto, use. Se não, diga que não tem esse dado agora (não invente).
 
@@ -2333,6 +2429,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - DAS pago → marcar_das
 - sincronizar bancos / reconciliar despesas → sincronizar_bancos / reconciliar_despesas
 - categorias → criar/renomear/fundir/recategorizar
+- CineRush (se projetos.cinerush.conectado): status/receita/créditos já estão no contexto; buscar assinante → cinerush_buscar; retry provision → cinerush_provisionar; reenviar email → cinerush_reenviar_email
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
 
 Responda APENAS um JSON válido completo:
@@ -2360,6 +2457,9 @@ Tipos de ação:
 - {"tipo":"renomear_categoria","de":"...","categoria_label":"..."}
 - {"tipo":"fundir_categorias","de":["a","b"],"categoria_label":"..."}
 - {"tipo":"recategorizar","categoria_label":"...","ids":["uuid"]} ou "filtros"
+- {"tipo":"cinerush_buscar","search":"email ou nome","status":"pendente|email_enviado"|null}
+- {"tipo":"cinerush_provisionar","id":"uuid"} ou {"tipo":"cinerush_provisionar","search":"email"}
+- {"tipo":"cinerush_reenviar_email","id":"uuid"} ou {"tipo":"cinerush_reenviar_email","search":"email"}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
