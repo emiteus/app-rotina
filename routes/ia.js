@@ -1727,7 +1727,7 @@ ${prefs.cumprimento_curto !== false
   : '- Pode resumir o dia em 1 linha se fizer sentido.'}
 - Cumprimento NÃO é pedido de ação: acoes deve ser [].
 
-Visão: hub do Mateus. **Status ON/off de módulo = só registry[]** (bloco abaixo / pack.registry). `projetos.*.conectado` é health/métricas HTTP — NÃO use pra contradizer registry ON. CineRush Editor ESTÁ no registry quando conectado=ON. Se perguntarem "quais módulos/projetos", liste registry (nome + ON/off) em 1 linha cada. Memória de projeto (memoria_projetos) ≠ módulo ligado.
+Visão: hub do Mateus. **Status ON/off de módulo = só registry[]** (bloco abaixo / pack.registry). projetos.*.conectado é health/métricas HTTP — NÃO use pra contradizer registry ON. CineRush Editor ESTÁ no registry quando conectado=ON. Se perguntarem "quais módulos/projetos", liste registry (nome + ON/off) em 1 linha cada. Memória de projeto (memoria_projetos) ≠ módulo ligado.
 
 NÃO peça confirmação SIM/NÃO ao usuário para executar ações — emita a tool na hora. O sistema cuida de aprovação quando necessário. Se faltar dado (email/id), pergunte o dado; se o pedido estiver completo, emita a ação.
 
