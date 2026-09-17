@@ -8,136 +8,21 @@ const { persistirHistoricoDia } = require('../lib/historico');
 const plano = require('../lib/plano-financeiro');
 const openfinanceRouter = require('./openfinance');
 const { requireUserId } = require('../lib/tenant');
+const {
+  chamarIA,
+  providerAtivo,
+  mensagemGemini,
+  GEMINI_MODEL,
+  ANTHROPIC_MODEL,
+  geminiUrl
+} = require('../lib/jarvis/ai-gateway');
+const {
+  getCachedProjetos,
+  invalidateProjetosCache
+} = require('../lib/jarvis/snapshot-cache');
 
 
 const router = express.Router();
-
-const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
-
-// Flash primeiro; se estiver saturado, cai no Lite (mais folga no free tier).
-const GEMINI_MODELS = [
-  'gemini-3.5-flash',
-  'gemini-flash-latest',
-  'gemini-2.5-flash',
-  'gemini-flash-lite-latest'
-];
-const GEMINI_MODEL = GEMINI_MODELS[0];
-
-function geminiUrl(model) {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-}
-
-function providerAtivo() {
-  if (process.env.GEMINI_API_KEY) return 'gemini';
-  if (process.env.ANTHROPIC_API_KEY) return 'anthropic';
-  return null;
-}
-
-function isTimeoutErr(err) {
-  const code = err.code || err.cause?.code;
-  const msg = String(err.message || '');
-  return code === 'ECONNABORTED' || code === 'ETIMEDOUT' || /timeout/i.test(msg);
-}
-
-function mensagemGemini(err) {
-  const raw = err.response?.data?.error?.message || err.message || '';
-  const status = err.response?.status;
-  if (isTimeoutErr(err)) {
-    return 'A IA demorou demais pra responder. Tenta de novo — pedidos tipo “muda categoria X pra Y” costumam ir mais rápido agora.';
-  }
-  const saturado = status === 429 || status === 503 || /high demand|overloaded|unavailable|resource.?exhausted/i.test(raw);
-  if (saturado) return 'O Gemini está saturado agora. Tenta de novo em alguns segundos.';
-  return raw || 'Falha ao falar com a IA.';
-}
-
-function modeloSaturado(err) {
-  if (isTimeoutErr(err)) return true;
-  const raw = err.response?.data?.error?.message || err.message || '';
-  const status = err.response?.status;
-  return status === 404 || status === 429 || status === 503
-    || /high demand|overloaded|unavailable|resource.?exhausted|no longer available|not found/i.test(raw);
-}
-
-function montarHistorico(historico, user) {
-  const msgs = [];
-  if (Array.isArray(historico)) {
-    for (const m of historico.slice(-10)) {
-      const role = m.role === 'assistant' ? 'assistant' : 'user';
-      const content = String(m.content || '').trim();
-      if (!content) continue;
-      msgs.push({ role, content: content.slice(0, 4000) });
-    }
-  }
-  msgs.push({ role: 'user', content: String(user || '') });
-  return msgs;
-}
-
-async function chamarGemini({ body, timeout, models = GEMINI_MODELS }) {
-  let ultimo = null;
-  for (const model of models) {
-    try {
-      const resp = await axios.post(
-        `${geminiUrl(model)}?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`,
-        body,
-        { headers: { 'content-type': 'application/json' }, timeout }
-      );
-      const texto = (resp.data?.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
-      return { texto, usage: resp.data?.usageMetadata, provider: 'gemini', model };
-    } catch (err) {
-      ultimo = err;
-      if (modeloSaturado(err)) continue;
-      throw err;
-    }
-  }
-  throw ultimo;
-}
-
-// Helper único: chama Gemini (grátis) ou Anthropic (fallback) e devolve
-// { texto: string, usage: object }. jsonMode=true força resposta em JSON.
-async function chamarIA({ system, user, historico, maxTokens = 300, jsonMode = false, timeout = 20000 }) {
-  const prov = providerAtivo();
-  if (!prov) throw new Error('Nenhuma API key configurada (GEMINI_API_KEY ou ANTHROPIC_API_KEY).');
-  const msgs = montarHistorico(historico, user);
-
-  if (prov === 'gemini') {
-    const contents = msgs.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
-    const body = {
-      systemInstruction: { parts: [{ text: system }] },
-      contents,
-      generationConfig: {
-        temperature: 0.5,
-        maxOutputTokens: maxTokens,
-        ...(jsonMode ? { responseMimeType: 'application/json' } : {})
-      }
-    };
-    return chamarGemini({ body, timeout });
-  }
-
-  // Anthropic (fallback)
-  const resp = await axios.post(
-    ANTHROPIC_URL,
-    {
-      model: ANTHROPIC_MODEL,
-      max_tokens: maxTokens,
-      system,
-      messages: msgs.map(m => ({ role: m.role, content: m.content }))
-    },
-    {
-      headers: {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json'
-      },
-      timeout
-    }
-  );
-  const texto = (resp.data?.content?.[0]?.text || '').trim();
-  return { texto, usage: resp.data?.usage, provider: 'anthropic', model: ANTHROPIC_MODEL };
-}
 
 // Parse JSON tolerante (aceita ```json ... ``` e JSON truncado com "resposta")
 function limparJsonIA(txt) {
@@ -1040,7 +925,7 @@ async function snapshotAssistente(opts = {}) {
       semana: 'habitos[].semana_concluidas e tarefas.stats_7d',
       mes: 'despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas'
     },
-    projetos: ehPlanoOwner ? await (async () => {
+    projetos: ehPlanoOwner ? await getCachedProjetos(userId, async () => {
       const { cinerushReady, getCinerushSnapshot } = require('../lib/cinerush');
       const { attracioneReady, getAttracioneSnapshot } = require('../lib/attracione');
       const { socialhubReady, getSocialhubSnapshot } = require('../lib/socialhub');
@@ -1060,7 +945,7 @@ async function snapshotAssistente(opts = {}) {
           : Promise.resolve({ conectado: false, motivo: 'CLIPPER_API_URL ausente (PC local / túnel)' })
       ]);
       return { cinerush, attracione, socialhub, clipper };
-    })() : null
+    }) : null
   };
 }
 
@@ -2118,6 +2003,24 @@ async function executarAcoes(acoes, userId) {
       feitos.push({ tipo, ok: false, erro: e.message });
     }
   }
+
+  // Snapshot de projetos fica stale após mutações (provisionar, coleta, post, clip…).
+  const MUTACOES_PROJETOS = new Set([
+    'cinerush_provisionar',
+    'cinerush_reenviar_email',
+    'chatwoot_resolver',
+    'chatwoot_atribuir',
+    'attracione_coleta',
+    'attracione_backup',
+    'socialhub_agendar',
+    'socialhub_publicar_agendados',
+    'clipper_criar',
+    'clipper_retry'
+  ]);
+  if (feitos.some((f) => f.ok && MUTACOES_PROJETOS.has(f.tipo))) {
+    invalidateProjetosCache(userId);
+  }
+
   return feitos;
 }
 
