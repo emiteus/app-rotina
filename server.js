@@ -90,6 +90,7 @@ const receitasRouter = require('./routes/receitas');
 const pushRouter = require('./routes/push');
 const iaRouter = require('./routes/ia');
 const rankingRouter = require('./routes/ranking');
+const whatsappEvolutionRouter = require('./routes/whatsapp-evolution');
 const { garantirRecorrentesHabitosTodos } = require('./lib/habitos');
 const { enviarPush } = require('./lib/push');
 const { TZ, hojeStr, ymAtual, diaDoMes, diaSemana, ymdDe, dataResetSql, horaAtual, addDias } = require('./lib/datas');
@@ -115,6 +116,8 @@ app.use('/api/eventos', requireAuth, eventosRouter);
 // Webhook Pluggy precisa ser público (sem cookie de sessão)
 app.post('/api/openfinance/webhook', openfinanceRouter.handlePluggyWebhook);
 app.use('/api/openfinance', requireAuth, openfinanceRouter);
+// WhatsApp Evolution — público (whitelist + secret)
+app.use('/api/whatsapp', whatsappEvolutionRouter);
 app.use('/api/categorias', requireAuth, categoriasRouter);
 app.use('/api/estado', requireAuth, estadoRouter);
 app.use('/api/apostas', requireAuth, apostasRouter);
