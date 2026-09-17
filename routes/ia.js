@@ -135,7 +135,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
-    'project_memory_get', 'project_memory_set', 'project_memory_list',
+    'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
@@ -280,6 +280,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Consultei memória de **${a.name || a.project_id}**.`);
       } else if (a.tipo === 'project_memory_list') {
         partes.push(`Listei **${(a.itens || []).length}** projeto(s) com memória.`);
+      } else if (a.tipo === 'project_info') {
+        if (a.itens) partes.push(`Listei ficha de **${a.count || a.itens.length}** projeto(s) do ecossistema.`);
+        else partes.push(`Ficha do projeto **${a.name || a.project_id}**.`);
       } else if (a.tipo === 'cutflix_status') {
         partes.push(
           a.conectado
@@ -1804,8 +1807,9 @@ NÃO peça confirmação SIM/NÃO ao usuário para executar ações — emita a 
 Registry (módulos plugados — ON/off de tools):
 ${require('../lib/jarvis/projects/registry').getRegistryPromptBlock()}
 
-Ecossistema R:/Projetos (leitura local de TODAS as pastas — use pra "quais projetos", "o que e X", stack/estrutura; wired=ON so tem tools no hub):
+Ecossistema R:/Projetos (briefs curados + ingest — USE pra saber o que e cada projeto e quem participa; wired=ON tem tools):
 ${require('../lib/jarvis/projects/knowledge').getEcosystemPromptBlock()}
+Se perguntarem "voce conhece X / automacao de views / erik / framerush", responda com o brief. Falta de metricas no snapshot NAO significa desconhecer o projeto.
 
 Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente. O contexto pode estar filtrado por intenção (_ctx.intent); se faltar um dado óbvio, diga que não veio no pacote e peça pra especificar.
 
@@ -1838,6 +1842,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - sincronizar bancos / reconciliar despesas → sincronizar_bancos / reconciliar_despesas
 - categorias → criar/renomear/fundir/recategorizar
 - Memória de projeto → project_memory_get / project_memory_set / project_memory_list
+- Ficha do ecossistema → project_info (project: "attracione"|… ou "all")
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
@@ -1899,6 +1904,7 @@ Tipos de ação:
 - {"tipo":"project_memory_get","project":"cutflix|cinerush|…"}
 - {"tipo":"project_memory_set","project":"cutflix","stack":"…","objetivo":"…","status":"…","nota":"…","decisao":"…","ultima_falha":"…","link":"https://…"}
 - {"tipo":"project_memory_list"}
+- {"tipo":"project_info","project":"attracione|cinerush|framerush|all"}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
