@@ -1095,6 +1095,24 @@
       <div class="assist-os-panel" id="assist-os-panel" hidden>
         <div class="assist-os-panel-grid" id="assist-os-panel-grid"></div>
       </div>
+      <div class="assist-dash" id="assist-dash" hidden role="dialog" aria-label="Jarvis OS Dashboard">
+        <div class="assist-dash-head">
+          <div>
+            <strong id="assist-dash-title">Jarvis OS</strong>
+            <span id="assist-dash-sub" class="assist-dash-sub"></span>
+          </div>
+          <button type="button" class="assist-icon-btn" onclick="assistCloseDash()" aria-label="Fechar dashboard">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="assist-dash-body" id="assist-dash-body"></div>
+        <div class="assist-dash-actions">
+          <button type="button" onclick="assistCloseDash(); assistQuickCmd('quais módulos')">Módulos</button>
+          <button type="button" onclick="assistCloseDash(); assistQuickCmd('status missão')">Missão</button>
+          <button type="button" onclick="assistCloseDash(); assistQuickCmd('executa missão')">Executa missão</button>
+          <button type="button" onclick="assistRefreshDash()">Atualizar</button>
+        </div>
+      </div>
       <button type="button" class="assist-hist-backdrop" id="assist-hist-backdrop" onclick="assistFecharHistorico()" hidden aria-label="Fechar histórico"></button>
       <div class="assist-msgs" id="assist-msgs"></div>
       <div class="assist-chips">

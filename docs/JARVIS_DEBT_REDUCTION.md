@@ -1,21 +1,21 @@
-# JARVIS Debt reduction (item 3) — v0.8.0
+# JARVIS Debt reduction — v0.8.1
 
 **Date:** 2026-09-17  
-**Status:** IMPLEMENTED
+**Status:** DONE (código). Manual restante → `JARVIS_MANUAL.md`
 
 ## Shipped
 
-1. **Handlers extract** — `executarAcoesCorpo` → `lib/jarvis/tools/handlers.js` (~1k lines fora de `ia.js`)
-2. **WA multi-user** — `WHATSAPP_PHONE_USERS=fone:login` (`lib/jarvis/whatsapp-users.js`); senão whitelist → owner
-3. **Assist OS panel** — pills + “Detalhes” com cards projetos/sistema
-4. **Missão batch** — `executa missão` / `roda tudo` com pings `⏳` no WA (`JARVIS_MISSION_PROGRESS`)
-5. **CineRush Editor** — no registry como `wired: false` (explícito “não ligado”)
+1. **Handlers extract** — `lib/jarvis/tools/handlers.js` (+ domains)
+2. **Handlers by domain** — `handlers/finance.js` · `rotina.js` · `ops.js` · `helpers.js`
+3. **WA multi-user** — `WHATSAPP_PHONE_USERS=fone:login`
+4. **Assist OS strip + panel** — pills / Detalhes
+5. **Assist dashboard fullscreen** — overlay `#assist-dash` (pill OS / botão)
+6. **Missão batch** — `executa missão` + progresso WA
+7. **CineRush Editor** — registry `wired: false` até existir API
 
-## Still later (não bloqueia)
+## Manual (não é código)
 
-- Split handlers por domínio (finance/ops/…)
-- Dashboard Assist fullscreen
-- Ligar editor de vídeo CineRush de verdade (quando API existir)
+Ver **[JARVIS_MANUAL.md](./JARVIS_MANUAL.md)**.
 
 ## Config
 

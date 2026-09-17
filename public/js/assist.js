@@ -106,9 +106,12 @@ async function assistRefreshOsStrip() {
       });
     }
     pills.push({ cls: 'on', text: 'Detalhes', action: 'toggle' });
+    pills.push({ cls: 'on', text: 'OS', action: 'dash' });
     el.innerHTML = pills
       .map((p) => {
-        const act = p.action === 'toggle' ? ' onclick="assistToggleOsPanel()"' : '';
+        let act = '';
+        if (p.action === 'toggle') act = ' onclick="assistToggleOsPanel()"';
+        if (p.action === 'dash') act = ' onclick="assistOpenDash()"';
         return `<button type="button" class="assist-os-pill ${p.cls}"${act}>${escapeHtml(p.text)}</button>`;
       })
       .join('');
@@ -139,6 +142,7 @@ async function assistRefreshOsStrip() {
         </div>`;
     }
 
+    window.__jarvisOsCache = { os, miss };
     if (os.provider) {
       assistSetTitulo('Jarvis', `OS v${os.version || '—'} · ${os.provider}`);
     }
@@ -149,6 +153,82 @@ function assistToggleOsPanel() {
   const panel = document.getElementById('assist-os-panel');
   if (!panel) return;
   panel.hidden = !panel.hidden;
+}
+
+function assistOpenDash() {
+  const dash = document.getElementById('assist-dash');
+  if (!dash) return;
+  dash.hidden = false;
+  assistRefreshDash();
+}
+
+function assistCloseDash() {
+  const dash = document.getElementById('assist-dash');
+  if (dash) dash.hidden = true;
+}
+
+async function assistRefreshDash() {
+  await assistRefreshOsStrip();
+  const body = document.getElementById('assist-dash-body');
+  const title = document.getElementById('assist-dash-title');
+  const sub = document.getElementById('assist-dash-sub');
+  if (!body) return;
+  const cache = window.__jarvisOsCache || {};
+  let os = cache.os;
+  let miss = cache.miss;
+  if (!os) {
+    try {
+      const r = await fetch('/api/ia/os');
+      os = await r.json();
+    } catch (e) {
+      body.innerHTML = '<p class="assist-dash-sub">Não deu pra carregar o OS.</p>';
+      return;
+    }
+  }
+  if (title) title.textContent = `Jarvis OS v${os.version || ''}`;
+  if (sub) sub.textContent = `${os.provider || 'sem IA'} · HITL ${os.hitl ? 'on' : 'off'}`;
+
+  const projects = os.projects || [];
+  const high = (os.tools && os.tools.highRisk) || [];
+  const budget = os.budget || {};
+  const agents = os.agents || [];
+  const missHtml = miss?.active
+    ? `<div class="assist-dash-row"><span>Ativa</span><span>${escapeHtml(miss.active.status)}</span></div>
+       <div class="assist-dash-row"><span>Objetivo</span><span>${escapeHtml((miss.active.goal || '').slice(0, 80))}</span></div>
+       <div class="assist-dash-row"><span>Passo</span><span>${Number(miss.active.currentStep || 0) + 1}/${(miss.active.steps || []).length}</span></div>`
+    : `<div class="assist-dash-row"><span>Status</span><span>nenhuma ativa</span></div>`;
+
+  const projHtml = projects
+    .map((p) => {
+      const cls = !p.wired ? 'warn' : p.conectado ? 'on' : 'off';
+      const st = !p.wired ? 'não ligado' : p.conectado ? 'ON' : 'off';
+      return `<div class="assist-dash-row"><span><i class="assist-dash-dot ${cls}"></i>${escapeHtml(p.name)}</span><span>${st}</span></div>`;
+    })
+    .join('');
+
+  body.innerHTML = `
+    <section class="assist-dash-section">
+      <h4>Projetos</h4>
+      ${projHtml || '<div class="assist-dash-row"><span>Nenhum</span></div>'}
+    </section>
+    <section class="assist-dash-section">
+      <h4>Missão</h4>
+      ${missHtml}
+    </section>
+    <section class="assist-dash-section">
+      <h4>Sistema</h4>
+      <div class="assist-dash-row"><span>Tools</span><span>${os.tools?.count || 0}</span></div>
+      <div class="assist-dash-row"><span>High-risk</span><span>${high.length}</span></div>
+      <div class="assist-dash-row"><span>Calls hoje</span><span>${budget.calls || 0}</span></div>
+      <div class="assist-dash-row"><span>Tokens</span><span>${budget.totalTokens || 0}</span></div>
+      <div class="assist-dash-row"><span>Agentes</span><span>${agents.map((a) => a.id).filter((id) => id !== 'default').join(', ') || '—'}</span></div>
+    </section>
+    <section class="assist-dash-section">
+      <h4>Atalhos</h4>
+      <div class="assist-dash-row"><span>Missão</span><span>missão: … / executa missão</span></div>
+      <div class="assist-dash-row"><span>HITL</span><span>SIM / NÃO</span></div>
+      <div class="assist-dash-row"><span>Agente</span><span>/ops /finance /rotina</span></div>
+    </section>`;
 }
 
 function toggleAssistente() {
