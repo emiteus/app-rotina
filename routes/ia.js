@@ -106,7 +106,8 @@ function respostaClaimMutacao(texto) {
 /** Nunca deixa a IA afirmar que alterou o app se a ação não rodou de verdade. */
 function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const oks = (acoesExec || []).filter(a => a && a.ok);
-  const fails = (acoesExec || []).filter(a => a && a.ok === false);
+  const fails = (acoesExec || []).filter(a => a && a.ok === false && !a.pending_approval);
+  const pending = (acoesExec || []).filter(a => a && a.pending_approval);
   const acaoTipos = new Set([
     'recategorizar', 'criar_categoria', 'renomear_categoria', 'fundir_categorias',
     'confirmar_despesa', 'confirmar_receita', 'criar_receita', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
@@ -121,6 +122,17 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
+
+  function askHitl() {
+    if (!pending.length) return '';
+    const id = pending[0].approval_id;
+    const tipos = [...new Set(pending.map((p) => p.tipo))].join(', ');
+    const risk = (pending[0].risk || 'high').toUpperCase();
+    return (
+      `⚠️ Ação **${risk}** aguardando confirmação (**${id}**): **${tipos}**.\n` +
+      `Responde **SIM** pra executar ou **NÃO** pra cancelar.`
+    );
+  }
 
   if (finOk.length) {
     const partes = [];
@@ -222,10 +234,20 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Retry do clip **${a.id}** no Clipper.`);
       }
     }
-    // Se a análise veio completa, anexa o resumo das ações em vez de substituir
+    const hitl = askHitl();
     const base = String(resposta || '').trim();
-    if (base && base.length > 40 && !claim) return `${base}\n\n${partes.join(' ')}`;
-    return partes.join(' ');
+    let out;
+    if (base && base.length > 40 && !claim) out = `${base}\n\n${partes.join(' ')}`;
+    else out = partes.join(' ');
+    return hitl ? `${out}\n\n${hitl}` : out;
+  }
+
+  if (pending.length) {
+    const hitl = askHitl();
+    const base = String(resposta || '').trim();
+    // Evita a IA dizer que já fez a ação high-risk
+    if (claim || !base || base.length < 20) return hitl;
+    return `${base}\n\n${hitl}`;
   }
 
   if (fails.length && !finOk.length && !String(resposta || '').trim()) {
@@ -252,13 +274,16 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
 router.get('/status', (req, res) => {
   const prov = providerAtivo();
   const tools = listToolNames();
+  const { hitlEnabled, approvalThreshold } = require('../lib/jarvis/permissions/engine');
   res.json({
     ok: true,
     disponivel: !!prov,
     provider: prov,
     model: prov === 'gemini' ? GEMINI_MODEL : (prov === 'anthropic' ? ANTHROPIC_MODEL : null),
     tools: tools.length,
-    toolsHighRisk: getToolCatalog().filter((t) => t.needsApproval).map((t) => t.name)
+    toolsHighRisk: getToolCatalog().filter((t) => t.needsApproval).map((t) => t.name),
+    hitl: hitlEnabled(),
+    approvalThreshold: approvalThreshold()
   });
 });
 
@@ -955,12 +980,13 @@ async function snapshotAssistente(opts = {}) {
   };
 }
 
-async function executarAcoes(acoes, userId) {
+async function executarAcoes(acoes, userId, opts = {}) {
   if (!Array.isArray(acoes) || acoes.length === 0) return [];
   return runToolBatch({
     acoes,
     userId,
-    executeAll: executarAcoesCorpo
+    executeAll: executarAcoesCorpo,
+    skipHitl: !!opts.skipHitl
   });
 }
 
@@ -2458,6 +2484,33 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     await salvarMensagem(conversaId, 'user', mensagem, uid);
 
+    // HITL: SIM / NÃO contra aprovação pendente (antes da IA)
+    {
+      const { tryHandleApprovalReply } = require('../lib/jarvis/permissions/engine');
+      const hitl = await tryHandleApprovalReply(uid, mensagem, (acoes) =>
+        executarAcoes(acoes, uid, { skipHitl: true })
+      );
+      if (hitl && hitl.handled) {
+        let resposta = hitl.resposta;
+        if (hitl.approved) {
+          resposta = reconciliarRespostaComAcoes('', hitl.acoes || []);
+          if (!String(resposta || '').trim()) {
+            resposta = 'Pronto — executei o que estava pendente.';
+          }
+        }
+        await salvarMensagem(conversaId, 'assistant', resposta, uid);
+        return {
+          resposta,
+          acoes: hitl.acoes || [],
+          snapshot: null,
+          provider: 'hitl',
+          usage: null,
+          conversa_id: conversaId,
+          approval_id: hitl.approval && hitl.approval.id
+        };
+      }
+    }
+
     // Preferências Jarvis (tratamento, cumprimento curto)
     const {
       getJarvisPrefs,
@@ -2482,7 +2535,8 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
     const TIPOS_FAST = new Set([
-      'recategorizar', 'fundir_categorias', 'renomear_categoria', 'criar_categoria',
+      // fundir_categorias / deletar etc. ficam fora — HITL (risk high)
+      'recategorizar', 'renomear_categoria', 'criar_categoria',
       'confirmar_despesa', 'confirmar_receita', 'criar_receita',
       'marcar_das', 'marcar_habito', 'depositar_meta'
     ]);
