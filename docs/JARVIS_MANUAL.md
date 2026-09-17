@@ -1,6 +1,9 @@
 # JARVIS — O que é manual (faça você)
 
-Código do OS está no `main` (**v0.8.1+**). Abaixo só o que depende de você / ambiente / produto externo.
+**OS home:** `R:\Projetos\Jarvis` (fonte de verdade).  
+**Host:** App Rotina (`Approtina/app-rotina`) — sync com `npm run sync:host`.  
+Código no deploy: **v0.8.3+**. Abaixo só o que depende de você / ambiente / produto externo.
+
 
 ---
 
@@ -19,7 +22,7 @@ Confira / preencha no serviço **app-rotina**:
 | `CINERUSH_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
 | `OPENAI_API_KEY` | Só se quiser Whisper no áudio |
 | `JARVIS_HITL=1` | Confirmação high-risk (default on) |
-| `JARVIS_HITL_BUTTONS=1` | Botões SIM/NÃO (fallback texto) |
+| `JARVIS_HITL_BUTTONS=1` | Botões SIM/NÃO com id (fallback: `SIM <id>`) |
 
 Redeploy após mudar env.
 
@@ -29,7 +32,7 @@ Redeploy após mudar env.
 
 1. WA: `oi` → resposta curta  
 2. WA: `quais módulos` → lista registry  
-3. WA: ação high-risk (ex. provisionar) → **SIM/NÃO** (botão ou texto)  
+3. WA: ação high-risk (ex. provisionar / recategorizar) → **SIM `<id>`** / **NÃO `<id>`** (botão ou texto)  
 4. WA: `missão: sincronizar bancos e reconciliar` → `executa missão`  
 5. Assist web: abrir chat → pills → **OS** (dashboard)  
 6. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool`
@@ -57,7 +60,7 @@ cancela missão
 agente ops: status cinerush
 /finance quanto gastei
 lembra que …
-SIM / NÃO
+SIM a1b2c3d4 / NÃO a1b2c3d4
 ```
 
 API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`

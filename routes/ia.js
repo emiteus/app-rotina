@@ -131,7 +131,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const risk = (pending[0].risk || 'high').toUpperCase();
     return (
       `⚠️ Ação **${risk}** aguardando confirmação (**${id}**): **${tipos}**.\n` +
-      `Responde **SIM** pra executar ou **NÃO** pra cancelar.`
+      `Responde **SIM ${id}** pra executar ou **NÃO ${id}** pra cancelar.`
     );
   }
 
@@ -1032,7 +1032,8 @@ async function executarAcoes(acoes, userId, opts = {}) {
     acoes,
     userId,
     executeAll: executarAcoesCorpo,
-    skipHitl: !!opts.skipHitl
+    skipHitl: !!opts.skipHitl,
+    channel: opts.channel || null
   });
 }
 
@@ -1437,13 +1438,13 @@ router.delete('/conversas/:id', async (req, res) => {
 
 // Núcleo do assistente — usado via lib/jarvis (web + WhatsApp)
 async function processarChat({ userId, mensagem, conversaId = null, historico = [], channel = null, agentId = null, onProgress = null }) {
+  const channelKey = String(channel || 'unknown');
   const uid = userId;
   if (!uid) {
     const e = new Error('userId obrigatório');
     e.status = 400;
     throw e;
   }
-  void channel;
   if (!providerAtivo()) {
     const e = new Error('IA não configurada. Defina GEMINI_API_KEY ou ANTHROPIC_API_KEY.');
     e.status = 400;
@@ -1483,11 +1484,14 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     await salvarMensagem(conversaId, 'user', mensagem, uid);
 
-    // HITL: SIM / NÃO contra aprovação pendente (antes da IA)
+    // HITL: SIM <id> / NÃO <id> contra aprovação pendente deste canal (antes da IA)
     {
       const { tryHandleApprovalReply } = require('../lib/jarvis/permissions/engine');
-      const hitl = await tryHandleApprovalReply(uid, mensagem, (acoes) =>
-        executarAcoes(acoes, uid, { skipHitl: true })
+      const hitl = await tryHandleApprovalReply(
+        uid,
+        mensagem,
+        (acoes) => executarAcoes(acoes, uid, { skipHitl: true, channel: channelKey }),
+        { channel: channelKey }
       );
       if (hitl && hitl.handled) {
         let resposta = hitl.resposta;
@@ -1517,7 +1521,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       const missionOut = await tryHandleMissionCommand(
         uid,
         mensagem,
-        (acoes, u) => executarAcoes(acoes, u || uid),
+        (acoes, u) => executarAcoes(acoes, u || uid, { channel: channelKey }),
         onProgress
       );
       if (missionOut && missionOut.handled) {
@@ -1568,7 +1572,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       'marcar_das', 'marcar_habito', 'depositar_meta'
     ]);
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
-      const acoesExec = await executarAcoes(acoesRapidas, uid);
+      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey });
       if (acoesExec.some(a => a && a.ok)) {
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
@@ -1730,7 +1734,7 @@ Regras:
     } catch (errGemini) {
       const fallback = inferirAcoesDaMensagem(mensagem, snap, []);
       if (fallback.length) {
-        const acoesExec = await executarAcoes(fallback, uid);
+        const acoesExec = await executarAcoes(fallback, uid, { channel: channelKey });
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
@@ -1746,7 +1750,7 @@ Regras:
 
     const respostaBruta = textoAssistenteSeguro(texto, parsed);
     const acoesMerged = inferirAcoesDaMensagem(mensagem, snap, parsed && parsed.acoes);
-    const acoesExec = await executarAcoes(acoesMerged, uid);
+    const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey });
     const resposta = reconciliarRespostaComAcoes(respostaBruta, acoesExec);
     await salvarMensagem(conversaId, 'assistant', resposta, uid);
 

@@ -226,7 +226,7 @@ async function assistRefreshDash() {
     <section class="assist-dash-section">
       <h4>Atalhos</h4>
       <div class="assist-dash-row"><span>Missão</span><span>missão: … / executa missão</span></div>
-      <div class="assist-dash-row"><span>HITL</span><span>SIM / NÃO</span></div>
+      <div class="assist-dash-row"><span>HITL</span><span>SIM &lt;id&gt; / NÃO &lt;id&gt;</span></div>
       <div class="assist-dash-row"><span>Agente</span><span>/ops /finance /rotina</span></div>
     </section>`;
 }
