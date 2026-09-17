@@ -266,9 +266,11 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     return askHitl();
   }
 
-  if (fails.length && !finOk.length && !String(resposta || '').trim()) {
+  if (fails.length && !finOk.length) {
     const f = fails.find(x => x.tipo === 'recategorizar') || fails[0];
-    if (f && f.erro) return f.erro;
+    if (f && f.erro) {
+      return `Não consegui executar **${f.tipo}**: ${f.erro}`;
+    }
   }
 
   // Só sobrescreve se CLAIMOU mutação e nada rodou — análises passam intactas

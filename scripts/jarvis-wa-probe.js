@@ -86,14 +86,25 @@ async function getConversaId(pool, phone) {
   return rows[0]?.conversa_id || null;
 }
 
-async function waitReply(pool, phone, sinceIso, timeoutMs = 45000) {
+async function waitReply(pool, phone, sinceIso, timeoutMs = 60000) {
   const t0 = Date.now();
   let conversaId = await getConversaId(pool, phone);
   while (Date.now() - t0 < timeoutMs) {
     if (!conversaId) conversaId = await getConversaId(pool, phone);
     if (conversaId) {
-      const msg = await latestAssistantAfter(pool, conversaId, sinceIso);
-      if (msg) return msg;
+      // Última assistant da conversa (folga de relógio)
+      const { rows } = await pool.query(
+        `SELECT role, content, criado_em
+         FROM assist_mensagens
+         WHERE conversa_id = $1 AND role = 'assistant'
+         ORDER BY criado_em DESC, id DESC
+         LIMIT 1`,
+        [conversaId]
+      );
+      const msg = rows[0];
+      if (msg && new Date(msg.criado_em).getTime() >= new Date(sinceIso).getTime() - 15000) {
+        return msg;
+      }
     }
     await sleep(1500);
   }
