@@ -1646,7 +1646,9 @@ ${prefs.cumprimento_curto !== false
   : '- Pode resumir o dia em 1 linha se fizer sentido.'}
 - Cumprimento NÃO é pedido de ação: acoes deve ser [].
 
-Visão: hub do Mateus. Projetos no registry (veja registry[] + projetos.*.conectado). CineRush editor de vídeo em massa NÃO está ligado. Se perguntarem "quais módulos/projetos", use registry (nome + conectado) em 1 linha cada.
+Visão: hub do Mateus. Projetos no registry (veja registry[] + projetos.*.conectado). CineRush Editor (massa) ESTÁ no registry quando conectado=ON. Se perguntarem "quais módulos/projetos", use registry (nome + conectado) em 1 linha cada.
+
+NÃO peça confirmação SIM/NÃO ao usuário para executar ações — emita a tool na hora. O sistema cuida de aprovação quando necessário. Se faltar dado (email/id), pergunte o dado; se o pedido estiver completo, emita a ação.
 
 Registry (aliases NL → id):
 ${require('../lib/jarvis/projects/registry').getRegistryPromptBlock()}
