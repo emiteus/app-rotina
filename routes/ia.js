@@ -276,6 +276,8 @@ router.get('/status', (req, res) => {
   const tools = listToolNames();
   const { hitlEnabled, approvalThreshold } = require('../lib/jarvis/permissions/engine');
   const { getRegistryStatus } = require('../lib/jarvis/projects/registry');
+  const { listAgents } = require('../lib/jarvis/agents/registry');
+  const { getBudgetStatus } = require('../lib/jarvis/budget');
   res.json({
     ok: true,
     disponivel: !!prov,
@@ -285,8 +287,45 @@ router.get('/status', (req, res) => {
     toolsHighRisk: getToolCatalog().filter((t) => t.needsApproval).map((t) => t.name),
     hitl: hitlEnabled(),
     approvalThreshold: approvalThreshold(),
-    projects: getRegistryStatus()
+    projects: getRegistryStatus(),
+    agents: listAgents(),
+    budget: getBudgetStatus()
   });
+});
+
+/** Dashboard JARVIS OS (Phase 11) */
+router.get('/os', (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
+  const { getOsStatus } = require('../lib/jarvis/os-status');
+  res.json(getOsStatus());
+});
+
+/** Missões ativas / lista (Phase 7) */
+router.get('/missions', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
+  try {
+    const { listMissions, getActiveMission } = require('../lib/jarvis/missions/planner');
+    const active = await getActiveMission(uid);
+    const list = await listMissions(uid, 20);
+    res.json({ ok: true, active, missions: list });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+/** Sweep proativo manual (Phase 10) */
+router.post('/proactive/sweep', async (req, res) => {
+  const uid = requireUserId(req, res);
+  if (!uid) return;
+  try {
+    const { runProactiveSweep, formatProactiveNotes } = require('../lib/jarvis/events/bus');
+    const notes = await runProactiveSweep(uid);
+    res.json({ ok: true, notes, text: formatProactiveNotes(notes) });
+  } catch (e) {
+    res.status(500).json({ erro: e.message });
+  }
 });
 
 // Debug: lista modelos disponíveis no projeto Gemini
@@ -2434,14 +2473,13 @@ router.delete('/conversas/:id', async (req, res) => {
 });
 
 // Núcleo do assistente — usado via lib/jarvis (web + WhatsApp)
-async function processarChat({ userId, mensagem, conversaId = null, historico = [], channel = null }) {
+async function processarChat({ userId, mensagem, conversaId = null, historico = [], channel = null, agentId = null }) {
   const uid = userId;
   if (!uid) {
     const e = new Error('userId obrigatório');
     e.status = 400;
     throw e;
   }
-  // channel reserved for Core logging / future routing (adapters pass via runJarvisTurn)
   void channel;
   if (!providerAtivo()) {
     const e = new Error('IA não configurada. Defina GEMINI_API_KEY ou ANTHROPIC_API_KEY.');
@@ -2455,6 +2493,17 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
     throw e;
   }
   historico = Array.isArray(historico) ? historico : [];
+
+  // Agent routing (Phase 9)
+  const { pickAgentForMessage, getAgent } = require('../lib/jarvis/agents/registry');
+  let agent = agentId ? getAgent(agentId) : null;
+  if (!agent) {
+    const picked = pickAgentForMessage(mensagem);
+    agent = picked.agent;
+    if (picked.explicit) {
+      mensagem = picked.message || `status do agente ${agent.name}`;
+    }
+  }
 
   try {
     conversaId = await garantirConversa(conversaId, mensagem, uid);
@@ -2493,7 +2542,32 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
           provider: 'hitl',
           usage: null,
           conversa_id: conversaId,
-          approval_id: hitl.approval && hitl.approval.id
+          approval_id: hitl.approval && hitl.approval.id,
+          agent: agent.id
+        };
+      }
+    }
+
+    // Missions (Phase 7)
+    {
+      const { tryHandleMissionCommand } = require('../lib/jarvis/missions/planner');
+      const missionOut = await tryHandleMissionCommand(uid, mensagem, (acoes, u) =>
+        executarAcoes(acoes, u || uid)
+      );
+      if (missionOut && missionOut.handled) {
+        let resposta = missionOut.resposta;
+        if (missionOut.acoes && missionOut.acoes.length) {
+          resposta = reconciliarRespostaComAcoes(resposta || '', missionOut.acoes);
+        }
+        await salvarMensagem(conversaId, 'assistant', resposta, uid);
+        return {
+          resposta,
+          acoes: missionOut.acoes || [],
+          snapshot: null,
+          provider: missionOut.provider || 'mission',
+          usage: null,
+          conversa_id: conversaId,
+          agent: agent.id
         };
       }
     }
@@ -2534,7 +2608,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
           resposta, acoes: acoesExec, snapshot: snap,
-          provider: 'local', usage: null, conversa_id: conversaId
+          provider: 'local', usage: null, conversa_id: conversaId, agent: agent.id
         };
       }
       const soRecat = acoesRapidas.length === 1 && acoesRapidas[0].tipo === 'recategorizar';
@@ -2544,7 +2618,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
           resposta, acoes: acoesExec, snapshot: snap,
-          provider: 'local', usage: null, conversa_id: conversaId
+          provider: 'local', usage: null, conversa_id: conversaId, agent: agent.id
         };
       }
     }
@@ -2571,7 +2645,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
         : '';
 
     const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (braço-direito).
-
+${agent && agent.addendum ? `\n${agent.addendum}\n` : ''}
 Tratamento: chame o usuário de **${prefs.tratamento || 'chefe'}**${prefs.extras?.tratamento_alt ? ` (ou ${prefs.extras.tratamento_alt})` : ''}. Nunca force "Mateus" se ele pediu outro tratamento.
 ${tomHint}${memoriaHint}
 
@@ -2690,7 +2764,7 @@ Regras:
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
           resposta, acoes: acoesExec, snapshot: snap,
-          provider: 'local-fallback', usage: null, conversa_id: conversaId
+          provider: 'local-fallback', usage: null, conversa_id: conversaId, agent: agent.id
         };
       }
       throw errGemini;
@@ -2707,7 +2781,7 @@ Regras:
 
     return {
       resposta, acoes: acoesExec, snapshot: snap,
-      provider, usage, conversa_id: conversaId
+      provider, usage, conversa_id: conversaId, agent: agent.id
     };
   } catch (err) {
     if (err.status) throw err;

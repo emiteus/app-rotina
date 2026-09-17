@@ -1,9 +1,10 @@
 /**
  * Webhook Evolution → Jarvis (assistente pessoal via WhatsApp).
  * Instance separada do CineRush. Whitelist em WHATSAPP_ALLOWED_PHONES.
+ * Phase 8: multimodal (áudio/imagem) via ingress.
  */
 const express = require('express');
-const { get, run, all } = require('../lib/db');
+const { get, run } = require('../lib/db');
 const { OWNER_LOGIN } = require('../lib/plano-owner');
 const {
   normalizeWaId,
@@ -12,11 +13,12 @@ const {
   evolutionReady,
   textoParaWhatsApp
 } = require('../lib/evolution');
+const { extractMediaMeta } = require('../lib/jarvis/multimodal/ingress');
 
 const router = express.Router();
 
 /** Debounce: junta bolhas rápidas do mesmo número. */
-const pending = new Map(); // phone -> { texts: [], timer, conversaId }
+const pending = new Map(); // phone -> { texts: [], medias: [], timer, conversaId }
 const DEBOUNCE_MS = Number(process.env.WHATSAPP_DEBOUNCE_MS) || 1000;
 
 async function ensureWhatsappTables() {
@@ -79,11 +81,10 @@ function extractTextFromMessage(msg) {
   return '';
 }
 
-/** Normaliza payload Evolution (v1/v2) → lista de { phone, text, fromMe, isGroup }. */
+/** Normaliza payload Evolution (v1/v2) → lista de { phone, text, media, fromMe, isGroup }. */
 function parseEvolutionPayload(body) {
   const event = String(body?.event || body?.type || '').toLowerCase();
   if (event && !event.includes('messages.upsert') && !event.includes('messages_upsert')) {
-    // Alguns envios vêm sem event — ainda tenta parsear data
     if (!body?.data && !body?.message) return [];
   }
 
@@ -93,7 +94,6 @@ function parseEvolutionPayload(body) {
 
   const out = [];
   for (const item of items) {
-    // Formato com key no root do item
     const key = item.key || item.message?.key || {};
     const remoteJid = String(key.remoteJid || item.remoteJid || '');
     const fromMe = !!(key.fromMe || item.fromMe);
@@ -101,8 +101,11 @@ function parseEvolutionPayload(body) {
     const phone = normalizeWaId(remoteJid.replace(/@.*/, ''));
     const message = item.message || item;
     const text = extractTextFromMessage(message).trim();
-    if (!phone || !text) continue;
-    out.push({ phone, text, fromMe, isGroup, remoteJid });
+    const media = extractMediaMeta(message);
+    if (media && key) media.raw = { ...message, key };
+    if (!phone) continue;
+    if (!text && !media) continue;
+    out.push({ phone, text, media, fromMe, isGroup, remoteJid });
   }
   return out;
 }
@@ -110,7 +113,6 @@ function parseEvolutionPayload(body) {
 function checkSecret(req) {
   const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
   if (!secret) {
-    // Produção: fail-closed. Dev/local: permite sem secret.
     if (process.env.NODE_ENV === 'production') return false;
     return true;
   }
@@ -125,7 +127,8 @@ async function processPhoneQueue(phone) {
   pending.delete(phone);
 
   const mensagem = slot.texts.join('\n').trim();
-  if (!mensagem) return;
+  const media = slot.medias && slot.medias.length ? slot.medias[slot.medias.length - 1] : null;
+  if (!mensagem && !media) return;
 
   const uid = await ownerUserId();
   if (!uid) {
@@ -139,10 +142,11 @@ async function processPhoneQueue(phone) {
     const { runJarvisTurn } = require('../lib/jarvis');
     const out = await runJarvisTurn({
       userId: uid,
-      message: mensagem,
+      message: mensagem || '',
       conversaId: sessao?.conversa_id || null,
       historico: [],
-      channel: 'whatsapp'
+      channel: 'whatsapp',
+      media: media || null
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
     await sendText(phone, out.resposta || 'Beleza. Em que posso ajudar?');
@@ -156,13 +160,14 @@ async function processPhoneQueue(phone) {
   }
 }
 
-function enqueueMessage(phone, text) {
+function enqueueMessage(phone, text, media = null) {
   let slot = pending.get(phone);
   if (!slot) {
-    slot = { texts: [], timer: null };
+    slot = { texts: [], medias: [], timer: null };
     pending.set(phone, slot);
   }
-  slot.texts.push(text);
+  if (text) slot.texts.push(text);
+  if (media) slot.medias.push(media);
   if (slot.timer) clearTimeout(slot.timer);
   slot.timer = setTimeout(() => {
     processPhoneQueue(phone).catch((e) => console.error('[whatsapp] queue', e.message));
@@ -179,7 +184,6 @@ router.get('/status', (_req, res) => {
 });
 
 router.post('/evolution', async (req, res) => {
-  // Responde rápido pra Evolution não retentar
   if (!checkSecret(req)) {
     return res.status(401).json({ erro: 'secret inválido' });
   }
@@ -194,7 +198,7 @@ router.post('/evolution', async (req, res) => {
         console.log('[whatsapp] ignorado (fora da whitelist):', m.phone);
         continue;
       }
-      enqueueMessage(m.phone, m.text);
+      enqueueMessage(m.phone, m.text, m.media || null);
     }
   } catch (err) {
     console.error('[whatsapp] webhook:', err.message);

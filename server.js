@@ -458,6 +458,28 @@ sched('0 9 * * *', runCron('das-reminder', async () => {
   }
 }));
 
+// JARVIS proativo (Phase 10) — avisos only, nunca executa tools HIGH/CRITICAL
+sched('0 */3 * * *', runCron('jarvis-proactive', async () => {
+  const { get } = require('./lib/db');
+  const { OWNER_LOGIN } = require('./lib/plano-owner');
+  const owner = await get(
+    `SELECT id FROM usuarios WHERE lower(login) = $1 AND ativo = true`,
+    [OWNER_LOGIN]
+  );
+  if (!owner?.id) return;
+  const {
+    runProactiveSweep,
+    formatProactiveNotes,
+    notifyOwnerWhatsApp
+  } = require('./lib/jarvis/events/bus');
+  const notes = await runProactiveSweep(owner.id);
+  const text = formatProactiveNotes(notes);
+  if (!text) return;
+  // Só notifica se houver warn (aprovação pendente etc.)
+  if (!notes.some((n) => n.level === 'warn')) return;
+  await notifyOwnerWhatsApp(text);
+}));
+
 // Enviar mensagem Telegram
 function enviarTelegram(mensagem) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
