@@ -56,8 +56,61 @@ function assistLimparMsgs() {
 }
 
 function assistBoasVindas() {
-  assistAddBubble('bot', 'Jarvis aqui. Rotina, CineRush, suporte, Attracione, SocialHub, Clipper — pergunta ou manda eu executar.');
+  assistAddBubble('bot', 'Jarvis OS online. Missão, módulos, finanças — ou manda eu executar. High-risk pede **SIM**.');
   verificarStatusIA();
+  assistRefreshOsStrip();
+}
+
+function assistQuickCmd(texto) {
+  const input = document.getElementById('assist-input');
+  if (!input) return;
+  input.value = texto;
+  const form = document.getElementById('assist-form');
+  if (form) {
+    if (typeof form.requestSubmit === 'function') form.requestSubmit();
+    else form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  }
+}
+
+async function assistRefreshOsStrip() {
+  const el = document.getElementById('assist-os');
+  if (!el) return;
+  try {
+    const [osR, missR] = await Promise.all([
+      fetch('/api/ia/os'),
+      fetch('/api/ia/missions')
+    ]);
+    if (!osR.ok) return;
+    const os = await osR.json();
+    const miss = missR.ok ? await missR.json() : null;
+    const projectsOn = (os.projects || []).filter((p) => p.conectado && p.snapshotKey).length;
+    const projectsTotal = (os.projects || []).filter((p) => p.snapshotKey).length;
+    const budget = os.budget || {};
+    const pills = [];
+    pills.push({ cls: os.provider ? 'on' : 'off', text: os.provider || 'IA off' });
+    pills.push({ cls: os.hitl ? 'on' : 'warn', text: os.hitl ? 'HITL' : 'HITL off' });
+    pills.push({
+      cls: projectsOn ? 'on' : 'off',
+      text: `Projetos ${projectsOn}/${projectsTotal}`
+    });
+    pills.push({ cls: 'on', text: `${os.tools?.count || 0} tools` });
+    if (budget.calls != null) {
+      pills.push({ cls: 'on', text: `${budget.calls} calls/dia` });
+    }
+    if (miss?.active) {
+      pills.push({
+        cls: miss.active.status === 'waiting_approval' ? 'warn' : 'on',
+        text: `Missão ${miss.active.status}`
+      });
+    }
+    el.innerHTML = pills
+      .map((p) => `<span class="assist-os-pill ${p.cls}">${escapeHtml(p.text)}</span>`)
+      .join('');
+    el.hidden = false;
+    if (os.provider) {
+      assistSetTitulo('Jarvis', `OS v${os.version || '—'} · ${os.provider}`);
+    }
+  } catch (e) { /* silencioso */ }
 }
 
 function toggleAssistente() {
@@ -468,6 +521,7 @@ async function enviarAssistente(e) {
     falhas.forEach(a => {
       if (a.tipo) assistAddBubble('acao', `Não deu: ${a.erro || a.tipo}`);
     });
+    assistRefreshOsStrip();
   } catch (err) {
     if (thinking) thinking.remove();
     assistAddBubble('bot erro', err.message || 'Não consegui responder agora.');

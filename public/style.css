@@ -6093,6 +6093,40 @@ body.assist-open:has(.assist-panel.hist-open) {
   background: rgba(255, 255, 255, 0.02);
   flex-shrink: 0;
 }
+.assist-os {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 14px 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.015);
+  flex-shrink: 0;
+}
+.assist-os[hidden] { display: none !important; }
+.assist-os-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: var(--font-ui);
+  letter-spacing: 0.01em;
+}
+.assist-os-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #666;
+  flex-shrink: 0;
+}
+.assist-os-pill.on::before { background: #3dba7a; }
+.assist-os-pill.warn::before { background: #d4a017; }
+.assist-os-pill.off::before { background: #888; }
 .assist-header-main { min-width: 0; flex: 1; }
 .assist-header h3 {
   margin: 0;

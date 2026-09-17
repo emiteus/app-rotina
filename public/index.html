@@ -1091,10 +1091,14 @@
           </button>
         </div>
       </div>
+      <div class="assist-os" id="assist-os" hidden aria-label="Status Jarvis OS"></div>
       <button type="button" class="assist-hist-backdrop" id="assist-hist-backdrop" onclick="assistFecharHistorico()" hidden aria-label="Fechar histórico"></button>
       <div class="assist-msgs" id="assist-msgs"></div>
       <div class="assist-chips">
         <button type="button" onclick="checkinHabitoUI('Academia')">Academia</button>
+        <button type="button" onclick="assistQuickCmd('quais módulos')">Módulos</button>
+        <button type="button" onclick="assistQuickCmd('status missão')">Missão</button>
+        <button type="button" onclick="assistQuickCmd('agente finance: quanto gastei esse mês')">Finanças</button>
       </div>
       <form class="assist-form" id="assist-form" onsubmit="enviarAssistente(event)">
         <input id="assist-input" type="text" placeholder="Ex: quantas vezes fui à academia essa semana?" autocomplete="off" maxlength="800" />
