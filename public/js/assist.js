@@ -56,7 +56,7 @@ function assistLimparMsgs() {
 }
 
 function assistBoasVindas() {
-  assistAddBubble('bot', 'Jarvis aqui. Rotina, finanças, CineRush, hábitos, agenda — pergunta ou manda eu executar.');
+  assistAddBubble('bot', 'Jarvis aqui. Rotina, CineRush, suporte, Attracione, finanças — pergunta ou manda eu executar.');
   verificarStatusIA();
 }
 

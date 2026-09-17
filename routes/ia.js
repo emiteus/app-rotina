@@ -214,7 +214,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
     'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito',
     'reconciliar_despesas', 'sincronizar_bancos',
-    'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email'
+    'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email',
+    'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
+    'attracione_coleta', 'attracione_backup'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   // Só intercepta se a resposta CLAIMAR mutação (verbo no passado), não análise ("já está pendente").
@@ -292,6 +294,16 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Disparei provisionamento CineRush pra **${a.nome || a.email || a.id}**.`);
       } else if (a.tipo === 'cinerush_reenviar_email') {
         partes.push(`Reenviei o email de acesso CineRush pra **${a.nome || a.email || a.id}**.`);
+      } else if (a.tipo === 'chatwoot_listar') {
+        partes.push(`Listei **${(a.itens || []).length}** conversa(s) abertas no suporte (${a.total != null ? a.total : '?'} no total).`);
+      } else if (a.tipo === 'chatwoot_resolver') {
+        partes.push(`Resolvi a conversa **#${a.id}** no Chatwoot.`);
+      } else if (a.tipo === 'chatwoot_atribuir') {
+        partes.push(`Atribui a conversa **#${a.id}** ao time de suporte.`);
+      } else if (a.tipo === 'attracione_coleta') {
+        partes.push('Disparei a coleta do Attracione.');
+      } else if (a.tipo === 'attracione_backup') {
+        partes.push('Fiz backup manual do Attracione.');
       }
     }
     // Se a análise veio completa, anexa o resumo das ações em vez de substituir
@@ -1002,11 +1014,16 @@ async function snapshotAssistente(opts = {}) {
     },
     projetos: ehPlanoOwner ? await (async () => {
       const { cinerushReady, getCinerushSnapshot } = require('../lib/cinerush');
-      return {
-        cinerush: cinerushReady()
-          ? await getCinerushSnapshot()
-          : { conectado: false, motivo: 'CINERUSH_BACKEND_URL/OPS_KEY ausentes' }
-      };
+      const { attracioneReady, getAttracioneSnapshot } = require('../lib/attracione');
+      const [cinerush, attracione] = await Promise.all([
+        cinerushReady()
+          ? getCinerushSnapshot()
+          : Promise.resolve({ conectado: false, motivo: 'CINERUSH_BACKEND_URL/OPS_KEY ausentes' }),
+        attracioneReady()
+          ? getAttracioneSnapshot()
+          : Promise.resolve({ conectado: false, motivo: 'ATTRACIONE_URL/SCRAPER_TOKEN ausentes' })
+      ]);
+      return { cinerush, attracione };
     })() : null
   };
 }
@@ -1918,6 +1935,62 @@ async function executarAcoes(acoes, userId) {
             status: updated.status
           });
         }
+      } else if (
+        tipo === 'chatwoot_listar' ||
+        tipo === 'chatwoot_resolver' ||
+        tipo === 'chatwoot_atribuir'
+      ) {
+        const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+        if (!(await isPlanoOwnerUserId(userId))) {
+          feitos.push({ tipo, ok: false, erro: 'Chatwoot só pro dono' });
+          continue;
+        }
+        const cr = require('../lib/cinerush');
+        if (!cr.cinerushReady()) {
+          feitos.push({ tipo, ok: false, erro: 'CineRush/Chatwoot não configurado' });
+          continue;
+        }
+        if (tipo === 'chatwoot_listar') {
+          const out = await cr.listarChatwoot(acao.status || 'open', acao.limit || 15);
+          feitos.push({
+            tipo,
+            ok: true,
+            total: out.total,
+            itens: out.items || []
+          });
+        } else if (tipo === 'chatwoot_resolver') {
+          if (!acao.id) {
+            feitos.push({ tipo, ok: false, erro: 'id da conversa obrigatório' });
+            continue;
+          }
+          await cr.resolverChatwoot(acao.id);
+          feitos.push({ tipo, ok: true, id: acao.id });
+        } else {
+          if (!acao.id) {
+            feitos.push({ tipo, ok: false, erro: 'id da conversa obrigatório' });
+            continue;
+          }
+          await cr.atribuirChatwoot(acao.id, acao.team_id);
+          feitos.push({ tipo, ok: true, id: acao.id });
+        }
+      } else if (tipo === 'attracione_coleta' || tipo === 'attracione_backup') {
+        const { isPlanoOwnerUserId } = require('../lib/plano-owner');
+        if (!(await isPlanoOwnerUserId(userId))) {
+          feitos.push({ tipo, ok: false, erro: 'Attracione só pro dono' });
+          continue;
+        }
+        const at = require('../lib/attracione');
+        if (!at.attracioneReady()) {
+          feitos.push({ tipo, ok: false, erro: 'Attracione não configurado' });
+          continue;
+        }
+        if (tipo === 'attracione_coleta') {
+          const out = await at.dispararColeta(acao.plataforma || undefined);
+          feitos.push({ tipo, ok: true, resultado: out });
+        } else {
+          const out = await at.dispararBackup();
+          feitos.push({ tipo, ok: true, resultado: out });
+        }
       } else {
         feitos.push({ tipo: tipo || 'desconhecido', ok: false, erro: 'tipo não suportado' });
       }
@@ -2399,7 +2472,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (estilo braço-direito, não mordomo britânico). Trata o usuário por "você". Em cumprimentos curtos ("oi", "e aí"), se apresenta como Jarvis em 1 frase.
 
-Visão: hub pessoal do Mateus — rotina, finanças, projetos e operações. Sistemas conectados no contexto: App Rotina (sempre) e, se projetos.cinerush.conectado, o CineRush TV (assinantes, receita do mês, créditos Havok, fila). Use projetos.cinerush pra perguntas de ops/negócio. Se pedirem algo de outro projeto ainda não ligado, diga o que consegue agora.
+Visão: hub pessoal do Mateus — rotina, finanças, projetos e operações. Sistemas no contexto (se .conectado): App Rotina; projetos.cinerush (assinantes, receita, Havok, fila, suporte Chatwoot); projetos.attracione (coleta, ranking, backups). Use esses blocos pra ops. Se pedirem algo ainda não ligado, diga o que consegue agora.
 
 Missão no App Rotina: responder QUALQUER pergunta sobre os dados do contexto — tarefas, hábitos, financeiro, despesas do mês, metas, alarmes, eventos/calendário, recorrentes, saldos, plano financeiro, MEI/DAS, histórico e streak. Se existir no contexto, use. Se não, diga que não tem esse dado agora (não invente).
 
@@ -2429,7 +2502,8 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - DAS pago → marcar_das
 - sincronizar bancos / reconciliar despesas → sincronizar_bancos / reconciliar_despesas
 - categorias → criar/renomear/fundir/recategorizar
-- CineRush (se projetos.cinerush.conectado): status/receita/créditos já estão no contexto; buscar assinante → cinerush_buscar; retry provision → cinerush_provisionar; reenviar email → cinerush_reenviar_email
+- CineRush (se projetos.cinerush.conectado): status/receita/créditos/suporte no contexto; buscar → cinerush_buscar; provision → cinerush_provisionar; reenviar email → cinerush_reenviar_email; listar tickets → chatwoot_listar; resolver → chatwoot_resolver; atribuir time → chatwoot_atribuir
+- Attracione (se projetos.attracione.conectado): status/ranking no contexto; disparar coleta → attracione_coleta; backup → attracione_backup
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
 
 Responda APENAS um JSON válido completo:
@@ -2460,6 +2534,11 @@ Tipos de ação:
 - {"tipo":"cinerush_buscar","search":"email ou nome","status":"pendente|email_enviado"|null}
 - {"tipo":"cinerush_provisionar","id":"uuid"} ou {"tipo":"cinerush_provisionar","search":"email"}
 - {"tipo":"cinerush_reenviar_email","id":"uuid"} ou {"tipo":"cinerush_reenviar_email","search":"email"}
+- {"tipo":"chatwoot_listar","status":"open|pending"}
+- {"tipo":"chatwoot_resolver","id":123}
+- {"tipo":"chatwoot_atribuir","id":123}
+- {"tipo":"attracione_coleta","plataforma":"tiktok|kwai"|null}
+- {"tipo":"attracione_backup"}
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
