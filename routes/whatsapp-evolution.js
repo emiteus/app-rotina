@@ -17,7 +17,7 @@ const router = express.Router();
 
 /** Debounce: junta bolhas rápidas do mesmo número. */
 const pending = new Map(); // phone -> { texts: [], timer, conversaId }
-const DEBOUNCE_MS = 2500;
+const DEBOUNCE_MS = Number(process.env.WHATSAPP_DEBOUNCE_MS) || 1000;
 
 async function ensureWhatsappTables() {
   await run(`
@@ -109,7 +109,11 @@ function parseEvolutionPayload(body) {
 
 function checkSecret(req) {
   const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) {
+    // Produção: fail-closed. Dev/local: permite sem secret.
+    if (process.env.NODE_ENV === 'production') return false;
+    return true;
+  }
   const q = req.query?.secret;
   const h = req.get('x-webhook-secret') || req.get('apikey');
   return q === secret || h === secret;
@@ -130,20 +134,20 @@ async function processPhoneQueue(phone) {
   }
 
   const sessao = await getOrCreateSessao(phone, uid);
-  const { processarChat } = require('./ia');
 
   try {
-    // typing opcional — ignore errors
-    const out = await processarChat({
+    const { runJarvisTurn } = require('../lib/jarvis');
+    const out = await runJarvisTurn({
       userId: uid,
-      mensagem,
+      message: mensagem,
       conversaId: sessao?.conversa_id || null,
-      historico: []
+      historico: [],
+      channel: 'whatsapp'
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
     await sendText(phone, out.resposta || 'Beleza. Em que posso ajudar?');
   } catch (err) {
-    console.error('[whatsapp] processarChat:', err.message);
+    console.error('[whatsapp] jarvis:', err.message);
     try {
       await sendText(phone, 'Tive um problema aqui. Tenta de novo em instantes.');
     } catch (e2) {

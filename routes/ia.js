@@ -2519,14 +2519,16 @@ router.delete('/conversas/:id', async (req, res) => {
   }
 });
 
-// Núcleo do assistente — usado pelo chat web e pelo WhatsApp
-async function processarChat({ userId, mensagem, conversaId = null, historico = [] }) {
+// Núcleo do assistente — usado via lib/jarvis (web + WhatsApp)
+async function processarChat({ userId, mensagem, conversaId = null, historico = [], channel = null }) {
   const uid = userId;
   if (!uid) {
     const e = new Error('userId obrigatório');
     e.status = 400;
     throw e;
   }
+  // channel reserved for Core logging / future routing (adapters pass via runJarvisTurn)
+  void channel;
   if (!providerAtivo()) {
     const e = new Error('IA não configurada. Defina GEMINI_API_KEY ou ANTHROPIC_API_KEY.');
     e.status = 400;
@@ -2753,11 +2755,13 @@ router.post('/chat', async (req, res) => {
   const mensagem = String(req.body?.mensagem || '').trim();
   if (!mensagem) return res.status(400).json({ erro: 'mensagem é obrigatória' });
   try {
-    const out = await processarChat({
+    const { runJarvisTurn } = require('../lib/jarvis');
+    const out = await runJarvisTurn({
       userId: uid,
-      mensagem,
+      message: mensagem,
       conversaId: req.body?.conversa_id ? String(req.body.conversa_id) : null,
-      historico: Array.isArray(req.body?.historico) ? req.body.historico : []
+      historico: Array.isArray(req.body?.historico) ? req.body.historico : [],
+      channel: 'web'
     });
     res.json(out);
   } catch (err) {
