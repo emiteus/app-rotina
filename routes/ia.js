@@ -130,8 +130,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const tipos = [...new Set(pending.map((p) => p.tipo))].join(', ');
     const risk = (pending[0].risk || 'high').toUpperCase();
     return (
-      `⚠️ Ação **${risk}** aguardando confirmação (**${id}**): **${tipos}**.\n` +
-      `Responde **SIM ${id}** pra executar ou **NÃO ${id}** pra cancelar.`
+      `⚠️ Ainda preciso da sua confirmação (**${id}**): **${tipos}**.\n` +
+      `Responde **SIM** (ou **SIM ${id}**) pra executar, **NÃO** pra cancelar.`
     );
   }
 
@@ -262,11 +262,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   }
 
   if (pending.length) {
-    const hitl = askHitl();
-    const base = String(resposta || '').trim();
-    // Evita a IA dizer que já fez a ação high-risk
-    if (claim || !base || base.length < 20) return hitl;
-    return `${base}\n\n${hitl}`;
+    // Nunca deixe a IA parecer que já executou — só o pedido de confirmação
+    return askHitl();
   }
 
   if (fails.length && !finOk.length && !String(resposta || '').trim()) {
@@ -1484,9 +1481,14 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     await salvarMensagem(conversaId, 'user', mensagem, uid);
 
-    // HITL: SIM <id> / NÃO <id> contra aprovação pendente deste canal (antes da IA)
+    // HITL: SIM / NÃO (com ou sem id) contra aprovação deste canal
     {
-      const { tryHandleApprovalReply } = require('../lib/jarvis/permissions/engine');
+      const {
+        tryHandleApprovalReply,
+        getPendingApproval,
+        formatApprovalAsk,
+        looksLikeApprovalFollowUp
+      } = require('../lib/jarvis/permissions/engine');
       const hitl = await tryHandleApprovalReply(
         uid,
         mensagem,
@@ -1512,6 +1514,25 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
           approval_id: hitl.approval && hitl.approval.id,
           agent: agent.id
         };
+      }
+
+      // "conseguiu?" / follow-up com pendência → relembra o MESMO id (não gera outro)
+      if (looksLikeApprovalFollowUp(mensagem)) {
+        const pending = await getPendingApproval(uid, channelKey);
+        if (pending) {
+          const resposta = formatApprovalAsk(pending);
+          await salvarMensagem(conversaId, 'assistant', resposta, uid);
+          return {
+            resposta,
+            acoes: [],
+            snapshot: null,
+            provider: 'hitl',
+            usage: null,
+            conversa_id: conversaId,
+            approval_id: pending.id,
+            agent: agent.id
+          };
+        }
       }
     }
 
