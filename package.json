@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "sync:jarvis": "node ../../Jarvis/scripts/sync-to-approtina.js",
     "electron-dev": "electron .",
     "electron-build": "electron-builder --win --publish never",
     "release": "electron-builder --win --publish always",

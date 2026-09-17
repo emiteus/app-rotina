@@ -11,6 +11,19 @@ const { router: authRouter, requireAuth } = require('./routes/auth');
 const WebSocketServer = require('./lib/websocket');
 const schedule = require('node-schedule');
 
+// Jarvis OS — host bridge (fonte: R:\Projetos\Jarvis)
+try {
+  const { setHost } = require('./lib/jarvis/host');
+  setHost({
+    name: 'approtina',
+    libRoot: path.join(__dirname, 'lib'),
+    routesRoot: path.join(__dirname, 'routes'),
+    projetosRoot: process.env.PROJETOS_ROOT || path.resolve(__dirname, '..', '..')
+  });
+} catch (e) {
+  console.warn('[jarvis] host bridge skip:', e.message);
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const httpServer = http.createServer(app);
