@@ -46,8 +46,8 @@ function assistFmtRelativo(iso) {
 function assistSetTitulo(titulo, sub) {
   const t = document.getElementById('assist-titulo');
   const s = document.getElementById('assist-subtitulo');
-  if (t) t.textContent = titulo || 'Assistente';
-  if (s) s.textContent = sub || 'Pergunta qualquer coisa dos seus dados';
+  if (t) t.textContent = titulo || 'Jarvis';
+  if (s) s.textContent = sub || 'Seu assistente pessoal';
 }
 
 function assistLimparMsgs() {
@@ -56,7 +56,7 @@ function assistLimparMsgs() {
 }
 
 function assistBoasVindas() {
-  assistAddBubble('bot', 'Pergunta qualquer coisa dos seus dados: tarefas, hábitos, gastos, despesas, metas, agenda... Ou pede pra registrar - tipo "boleto de 240 no dia 18".');
+  assistAddBubble('bot', 'Jarvis aqui. Rotina, finanças, hábitos, agenda — pergunta ou manda eu executar. Ex.: "boleto de 240 no dia 18" ou "fui na academia".');
   verificarStatusIA();
 }
 
@@ -169,7 +169,7 @@ function assistNovaConversa(opts) {
   _assistHist = [];
   assistSalvarConversaLocal(null);
   assistLimparMsgs();
-  assistSetTitulo('Assistente', 'Nova conversa');
+  assistSetTitulo('Jarvis', 'Nova conversa');
   assistBoasVindas();
   assistFecharHistorico();
   if (!opts?.semFoco) {
@@ -255,10 +255,10 @@ async function assistCarregarConversa(id, opts) {
     .map(m => ({ role: m.role, content: m.content }));
 
   if (!msgs.length) {
-    assistSetTitulo(data.conversa?.titulo || 'Assistente', 'Nova conversa');
+    assistSetTitulo(data.conversa?.titulo || 'Jarvis', 'Nova conversa');
     assistBoasVindas();
   } else {
-    assistSetTitulo(data.conversa?.titulo || 'Assistente', 'Conversa salva');
+    assistSetTitulo(data.conversa?.titulo || 'Jarvis', 'Conversa salva');
     msgs.forEach(m => {
       if (m.role === 'user') assistAddBubble('user', m.content);
       else if (m.role === 'assistant') assistAddBubble('bot', m.content);
@@ -327,7 +327,7 @@ function assistAddBubble(kind, text) {
   el.className = 'assist-bubble ' + kind;
   if (kind.includes('thinking')) {
     el.innerHTML = '<span class="assist-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="assist-thinking-label">Pensando</span>';
-    el.setAttribute('aria-label', 'Assistente pensando');
+    el.setAttribute('aria-label', 'Jarvis pensando');
   } else if (kind.includes('bot') || kind === 'acao') {
     el.innerHTML = assistFormatHtml(text);
   } else {
@@ -370,7 +370,7 @@ async function enviarAssistente(e) {
       _assistConversaId = data.conversa_id;
       assistSalvarConversaLocal(data.conversa_id);
       const titEl = document.getElementById('assist-titulo');
-      if (titEl && (titEl.textContent === 'Assistente' || !_assistHist.length)) {
+      if (titEl && (titEl.textContent === 'Jarvis' || titEl.textContent === 'Assistente' || !_assistHist.length)) {
         const t = msg.length > 40 ? msg.slice(0, 37) + '...' : msg;
         assistSetTitulo(t, 'Conversa salva');
       }

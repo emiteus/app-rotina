@@ -114,7 +114,7 @@
         <span class="nav-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         </span>
-        <span>Chat</span>
+        <span>Jarvis</span>
       </button>
     </nav>
 
@@ -1050,13 +1050,13 @@
   <!-- Toast Notifications -->
   <div id="toast-container" class="toast-container"></div>
 
-  <button type="button" class="assist-fab" id="assist-fab" onclick="toggleAssistente()" aria-label="Abrir assistente">
+  <button type="button" class="assist-fab" id="assist-fab" onclick="toggleAssistente()" aria-label="Abrir Jarvis">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
   </button>
   <div class="assist-backdrop" id="assist-backdrop" hidden onclick="fecharAssistente()" aria-hidden="true"></div>
-  <div class="assist-panel" id="assist-panel" role="dialog" aria-label="Assistente">
+  <div class="assist-panel" id="assist-panel" role="dialog" aria-label="Jarvis">
     <aside class="assist-historico" id="assist-historico" hidden aria-label="Conversas">
       <div class="assist-historico-head">
         <div>
@@ -1076,8 +1076,8 @@
     <div class="assist-main" id="assist-main">
       <div class="assist-header">
         <div class="assist-header-main">
-          <h3 id="assist-titulo">Assistente</h3>
-          <span id="assist-subtitulo">Pergunta qualquer coisa dos seus dados</span>
+          <h3 id="assist-titulo">Jarvis</h3>
+          <span id="assist-subtitulo">Seu assistente pessoal</span>
         </div>
         <div class="assist-header-actions">
           <button type="button" class="assist-icon-btn" onclick="assistNovaConversa()" title="Nova conversa" aria-label="Nova conversa">

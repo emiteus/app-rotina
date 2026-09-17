@@ -1,5 +1,5 @@
 /**
- * Webhook Evolution → assistente App Rotina (uso pessoal).
+ * Webhook Evolution → Jarvis (assistente pessoal via WhatsApp).
  * Instance separada do CineRush. Whitelist em WHATSAPP_ALLOWED_PHONES.
  */
 const express = require('express');
@@ -141,11 +141,11 @@ async function processPhoneQueue(phone) {
       historico: []
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
-    await sendText(phone, out.resposta || 'Beleza.');
+    await sendText(phone, out.resposta || 'Beleza. Em que posso ajudar?');
   } catch (err) {
     console.error('[whatsapp] processarChat:', err.message);
     try {
-      await sendText(phone, 'Não consegui processar agora. Tenta de novo em instantes.');
+      await sendText(phone, 'Tive um problema aqui. Tenta de novo em instantes.');
     } catch (e2) {
       console.error('[whatsapp] send error reply:', e2.message);
     }
