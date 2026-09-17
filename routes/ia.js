@@ -17,10 +17,12 @@ const {
   geminiUrl
 } = require('../lib/jarvis/ai-gateway');
 const {
-  getCachedProjetos
+  getCachedProjetos,
+  getCachedAssistSnap
 } = require('../lib/jarvis/snapshot-cache');
 const { runToolBatch } = require('../lib/jarvis/tools');
 const { getToolCatalog, listToolNames } = require('../lib/jarvis/tools/registry');
+const { packContext } = require('../lib/jarvis/context/pack');
 
 
 const router = express.Router();
@@ -2471,7 +2473,9 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       await run(`UPDATE assist_conversas SET titulo = $1 WHERE id = $2 AND user_id = $3`, [tituloDeMensagem(mensagem), conversaId, uid]);
     }
 
-    const snap = await snapshotAssistente({ lite: true, userId: uid });
+    const snap = await getCachedAssistSnap(uid, () =>
+      snapshotAssistente({ lite: true, userId: uid })
+    );
 
     const isGreeting = /^(oi|ol[áa]|e a[ií]|fala(\s+jarvis)?|bom dia|boa tarde|boa noite|al[oôô]|hey|hola|kkk+)\s*[!.?]*$/i
       .test(mensagem.trim());
@@ -2504,9 +2508,31 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       }
     }
 
+    const { pack: ctxPack, intent, stats: ctxStats } = packContext(snap, mensagem, prefs);
+    console.log(
+      JSON.stringify({
+        tag: 'jarvis.context',
+        intent: intent.kind,
+        charsFull: ctxStats.charsFull,
+        charsPack: ctxStats.charsPack,
+        savedPct: ctxStats.savedPct,
+        userId: uid
+      })
+    );
+
+    const memoriaHint = (prefs.extras?.notas || []).length
+      ? `\nMemória (fatos que o usuário pediu pra lembrar — use se relevante): ${JSON.stringify(prefs.extras.notas.slice(0, 8))}`
+      : '';
+    const tomHint = prefs.extras?.tom === 'detalhado'
+      ? '\nTom: um pouco mais detalhado quando fizer sentido.'
+      : prefs.extras?.tom === 'direto'
+        ? '\nTom: máximo direto; poucas palavras.'
+        : '';
+
     const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (braço-direito).
 
 Tratamento: chame o usuário de **${prefs.tratamento || 'chefe'}**${prefs.extras?.tratamento_alt ? ` (ou ${prefs.extras.tratamento_alt})` : ''}. Nunca force "Mateus" se ele pediu outro tratamento.
+${tomHint}${memoriaHint}
 
 Cumprimentos ("oi", "e aí", "fala jarvis", "bom dia", "alô", "kkk" solto):
 ${prefs.cumprimento_curto !== false
@@ -2516,10 +2542,10 @@ ${prefs.cumprimento_curto !== false
 
 Visão: hub do Mateus. Módulos no contexto (veja projetos.*.conectado): App Rotina; CineRush TV (+ Chatwoot); Attracione; SocialHub; Clipper. CineRush editor de vídeo em massa NÃO está ligado. Se perguntarem "quais módulos", liste só os conectados com 1 linha cada.
 
-Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente.
+Missão no App Rotina: responder com dados do contexto — tarefas, hábitos, financeiro, metas, agenda, MEI/DAS. Não invente. O contexto pode estar filtrado por intenção (_ctx.intent); se faltar um dado óbvio, diga que não veio no pacote e peça pra especificar.
 
-Contexto atual (fonte da verdade):
-${JSON.stringify(snap)}
+Contexto atual (fonte da verdade, possivelmente empacotado):
+${JSON.stringify(ctxPack)}
 
 Como usar o contexto:
 - Períodos: "hoje/ontem/amanhã" → tarefas.*; "essa semana" → habitos[].semana_concluidas ou tarefas.stats_7d; "esse mês" → despesas_mes, financeiro.mes_atual, habitos[].mes_concluidas.
@@ -2529,6 +2555,7 @@ Como usar o contexto:
 - Produtividade: tarefas (hoje, atrasadas, próximos), stats_7d/30d, streak_dias_completos, historico_tarefas_recentes, recorrentes, consistencia_horario.
 - Agenda: eventos_proximos, alarmes.
 - Hábitos: só Academia (feito_hoje, semana e mês).
+- Se o usuário disser "lembra que…" / "anota que…", confirme em 1 linha (já persistido).
 
 Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir na tela manualmente):
 - registrar pendência/dívida/despesa/tarefa/meta → criar_*
