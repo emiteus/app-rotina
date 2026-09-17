@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-09-17T22:12:03.255Z",
+  "updatedAt": "2026-09-17T22:24:25.878Z",
   "root": "R:\\Projetos",
   "count": 19,
   "wired": [
@@ -48,7 +48,7 @@
       "packagePath": "app prime\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.234Z"
+      "scannedAt": "2026-09-17T22:24:25.857Z"
     },
     {
       "id": "approtina",
@@ -83,7 +83,7 @@
       "packagePath": "Approtina\\app-rotina\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.235Z"
+      "scannedAt": "2026-09-17T22:24:25.858Z"
     },
     {
       "id": "attracione",
@@ -113,7 +113,7 @@
       "packagePath": "Attracione\\Attracione\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.237Z"
+      "scannedAt": "2026-09-17T22:24:25.860Z"
     },
     {
       "id": "attracione_2_0",
@@ -140,7 +140,7 @@
       "packagePath": "Attracione 2.0\\Attracione\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.238Z"
+      "scannedAt": "2026-09-17T22:24:25.861Z"
     },
     {
       "id": "capcut_style_analyzer",
@@ -161,20 +161,20 @@
       "packagePath": null,
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.238Z"
+      "scannedAt": "2026-09-17T22:24:25.862Z"
     },
     {
       "id": "cinerush_editor",
       "folder": "Cinerush",
       "role": "http",
       "wired": true,
-      "note": "Editor de vídeo em massa",
+      "note": "Editor de vídeo / cortes em massa (esteira de produção)",
       "env": [
         "CINERUSH_EDITOR_URL",
         "CINERUSH_EDITOR_OPS_KEY"
       ],
       "name": "cinerush",
-      "summary": "CineRush — Cortes virais com IA",
+      "summary": "CineRush Editor (pasta Cinerush): cortes/vídeo em massa na esteira de produção. Separado do CineRush TV (assinantes/IPTV).",
       "stack": [
         "node"
       ],
@@ -198,23 +198,23 @@
       "packagePath": "Cinerush\\electron\\package.json",
       "hasReadme": false,
       "remote": "https://github.com/emiteus/cinerush.git",
-      "scannedAt": "2026-09-17T22:12:03.244Z"
+      "scannedAt": "2026-09-17T22:24:25.867Z"
     },
     {
       "id": "cinerush",
       "folder": "CineRushTV",
       "role": "http",
       "wired": true,
-      "note": "TV + backend; criar/provisionar assinantes",
+      "note": "Streaming IPTV (Havok/CineHub) + Chatwoot; criar/provisionar assinantes",
       "env": [
         "CINERUSH_BACKEND_URL",
         "CINERUSH_OPS_KEY"
       ],
-      "name": "cinerush-tv-admin",
-      "summary": "Stack para **vários atendentes no mesmo WhatsApp** (Evolution + Chatwoot self-hosted).",
+      "name": "cinerush-tv-backend",
+      "summary": "Produto CineRush TV: venda Kirvano → assinante pendente → provision Havok/CineHub + email/config. Acesso manual via cinerush_criar. NÃO é o editor de cortes.",
       "stack": [
-        "react",
-        "tailwind",
+        "express",
+        "playwright",
         "typescript",
         "node"
       ],
@@ -231,15 +231,14 @@
       "scripts": [
         "dev",
         "build",
-        "preview",
         "start",
         "typecheck",
-        "lint"
+        "test"
       ],
-      "packagePath": "CineRushTV\\cinerush-tv-admin\\package.json",
+      "packagePath": "CineRushTV\\cinerush-tv-backend\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.245Z"
+      "scannedAt": "2026-09-17T22:24:25.868Z"
     },
     {
       "id": "clipper",
@@ -281,7 +280,7 @@
       "packagePath": "Clipper\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.246Z"
+      "scannedAt": "2026-09-17T22:24:25.869Z"
     },
     {
       "id": "cutflix",
@@ -324,7 +323,7 @@
       "packagePath": "Cutflix\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.247Z"
+      "scannedAt": "2026-09-17T22:24:25.870Z"
     },
     {
       "id": "dashboard_visualizacoes",
@@ -341,7 +340,7 @@
       "packagePath": null,
       "hasReadme": false,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.247Z"
+      "scannedAt": "2026-09-17T22:24:25.870Z"
     },
     {
       "id": "discord_antinuke",
@@ -364,7 +363,7 @@
       "packagePath": "discord-antinuke\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.248Z"
+      "scannedAt": "2026-09-17T22:24:25.871Z"
     },
     {
       "id": "euposto",
@@ -381,7 +380,7 @@
       "packagePath": null,
       "hasReadme": false,
       "remote": "https://github.com/lucasfarianinja-sketch/EuPosto.git",
-      "scannedAt": "2026-09-17T22:12:03.249Z"
+      "scannedAt": "2026-09-17T22:24:25.872Z"
     },
     {
       "id": "framerush",
@@ -409,7 +408,7 @@
       "packagePath": "framerush\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.249Z"
+      "scannedAt": "2026-09-17T22:24:25.873Z"
     },
     {
       "id": "jarvis",
@@ -440,7 +439,7 @@
       "packagePath": "Jarvis\\package.json",
       "hasReadme": true,
       "remote": "https://github.com/emiteus/jarvis-os.git",
-      "scannedAt": "2026-09-17T22:12:03.249Z"
+      "scannedAt": "2026-09-17T22:24:25.873Z"
     },
     {
       "id": "portfolio",
@@ -470,7 +469,7 @@
       "packagePath": "portfolio\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.250Z"
+      "scannedAt": "2026-09-17T22:24:25.874Z"
     },
     {
       "id": "projeto_milhao",
@@ -499,7 +498,7 @@
       "packagePath": "Projeto Milhão\\package.json",
       "hasReadme": false,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.251Z"
+      "scannedAt": "2026-09-17T22:24:25.875Z"
     },
     {
       "id": "scraper_service",
@@ -526,7 +525,7 @@
       "packagePath": "scraper-service\\package.json",
       "hasReadme": false,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.253Z"
+      "scannedAt": "2026-09-17T22:24:25.876Z"
     },
     {
       "id": "socialhub",
@@ -566,7 +565,7 @@
       "packagePath": "socialhub\\package.json",
       "hasReadme": true,
       "remote": "https://github.com/emiteus/socialhub.git",
-      "scannedAt": "2026-09-17T22:12:03.254Z"
+      "scannedAt": "2026-09-17T22:24:25.877Z"
     },
     {
       "id": "viral_factory",
@@ -598,8 +597,8 @@
       "packagePath": "Viral Factory\\package.json",
       "hasReadme": true,
       "remote": null,
-      "scannedAt": "2026-09-17T22:12:03.255Z"
+      "scannedAt": "2026-09-17T22:24:25.878Z"
     }
   ],
-  "promptBlock": "- app prime [app_prime] off stack:next+react+tailwind+typescript — Aplicação Next.js para geração de planos de treino e dieta personalizados usando Inteligência Artificial.\n- Approtina [approtina] ON stack:express+playwright+node — Dashboard pessoal para gerenciar rotina diária, financeiro e alarmes com notificações via Telegram.\n- Attracione [attracione] ON stack:express+playwright+node — Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automati\n- Attracione 2.0 [attracione_2_0] off stack:express+playwright+node — Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automati\n- capcut-style-analyzer [capcut_style_analyzer] off stack:? — Lê os seus projetos do **CapCut Desktop (Windows)** e extrai um **perfil de edição** — um resumo estruturado do *seu padrão* de edição (ritm\n- Cinerush [cinerush_editor] ON stack:node — CineRush — Cortes virais com IA\n- CineRushTV [cinerush] ON stack:react+tailwind+typescript+node — Stack para **vários atendentes no mesmo WhatsApp** (Evolution + Chatwoot self-hosted).\n- Clipper [clipper] ON stack:node — Retroactive multi-stream clipping for FIFA/EA FC broadcast operators.\n- Cutflix [cutflix] ON stack:monorepo+docker+typescript+node — Plataforma de automação de vídeo com IA — crie templates inteligentes de edição, envie um vídeo (upload ou URL autorizada), deixe o pipeline\n- dashboard-visualizacoes [dashboard_visualizacoes] off stack:? — Ainda não no hub — plugar sob demanda\n- discord-antinuke [discord_antinuke] off stack:node — Bot de utilidades do servidor: mute de Among Us pelo botao do mouse, sons de entrada, comando /fael e log de atividade de voz. Roda 24/7 na \n- EuPosto [euposto] off stack:? — Ainda não no hub — plugar sob demanda\n- framerush [framerush] off stack:node — Editor de composição desktop (Windows + Mac). Você posiciona **1 foto** e **vários vídeos** numa tela vertical **9:16 (1080×1920)** e export\n- Jarvis [jarvis] ON stack:node — Hub do assistente pessoal. **Pasta canônica:** `R:\\Projetos\\Jarvis`.\n- portfolio [portfolio] off stack:react+tailwind+typescript+node — This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.\n- Projeto Milhão [projeto_milhao] off stack:docker+node — Monitor de postagens Instagram + alerta no WhatsApp\n- scraper-service [scraper_service] off stack:docker+express+playwright+node — Multi-platform view scraper for clip competitions\n- socialhub [socialhub] ON stack:prisma+next+react+tailwind+typescript — This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-n\n- Viral Factory [viral_factory] off stack:next+react+tailwind+typescript — App minimalista para afiliados: **página → reels virais → template → baixar → postar**."
+  "promptBlock": "- app prime [app_prime] off stack:next+react+tailwind+typescript — Aplicação Next.js para geração de planos de treino e dieta personalizados usando Inteligência Artificial.\n- Approtina [approtina] ON stack:express+playwright+node — Dashboard pessoal para gerenciar rotina diária, financeiro e alarmes com notificações via Telegram.\n- Attracione [attracione] ON stack:express+playwright+node — Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automati\n- Attracione 2.0 [attracione_2_0] off stack:express+playwright+node — Coleta views dos vídeos dos participantes **sem depender das APIs oficiais** e envia para o servidor, que calcula o ganhador diário automati\n- capcut-style-analyzer [capcut_style_analyzer] off stack:? — Lê os seus projetos do **CapCut Desktop (Windows)** e extrai um **perfil de edição** — um resumo estruturado do *seu padrão* de edição (ritm\n- Cinerush [cinerush_editor] ON stack:node — CineRush Editor (pasta Cinerush): cortes/vídeo em massa na esteira de produção. Separado do CineRush TV (assinantes/IPTV).\n- CineRushTV [cinerush] ON stack:express+playwright+typescript+node — Produto CineRush TV: venda Kirvano → assinante pendente → provision Havok/CineHub + email/config. Acesso manual via cinerush_criar. NÃO é o \n- Clipper [clipper] ON stack:node — Retroactive multi-stream clipping for FIFA/EA FC broadcast operators.\n- Cutflix [cutflix] ON stack:monorepo+docker+typescript+node — Plataforma de automação de vídeo com IA — crie templates inteligentes de edição, envie um vídeo (upload ou URL autorizada), deixe o pipeline\n- dashboard-visualizacoes [dashboard_visualizacoes] off stack:? — Ainda não no hub — plugar sob demanda\n- discord-antinuke [discord_antinuke] off stack:node — Bot de utilidades do servidor: mute de Among Us pelo botao do mouse, sons de entrada, comando /fael e log de atividade de voz. Roda 24/7 na \n- EuPosto [euposto] off stack:? — Ainda não no hub — plugar sob demanda\n- framerush [framerush] off stack:node — Editor de composição desktop (Windows + Mac). Você posiciona **1 foto** e **vários vídeos** numa tela vertical **9:16 (1080×1920)** e export\n- Jarvis [jarvis] ON stack:node — Hub do assistente pessoal. **Pasta canônica:** `R:\\Projetos\\Jarvis`.\n- portfolio [portfolio] off stack:react+tailwind+typescript+node — This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.\n- Projeto Milhão [projeto_milhao] off stack:docker+node — Monitor de postagens Instagram + alerta no WhatsApp\n- scraper-service [scraper_service] off stack:docker+express+playwright+node — Multi-platform view scraper for clip competitions\n- socialhub [socialhub] ON stack:prisma+next+react+tailwind+typescript — This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-n\n- Viral Factory [viral_factory] off stack:next+react+tailwind+typescript — App minimalista para afiliados: **página → reels virais → template → baixar → postar**."
 }

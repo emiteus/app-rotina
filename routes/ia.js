@@ -1840,7 +1840,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Memória de projeto → project_memory_get / project_memory_set / project_memory_list
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
-- **CineRush:** venda Kirvano → pendente → provisionar. **Acesso manual** (sem venda) → cinerush_criar com email (+ nome/plano opcional). CineHub = painel Havok, mesmo produto. NÃO diga que criar "não existe" — existe via cinerush_criar. NÃO ofereça "registrar pendência" genérica.
+- **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
 - Attracione ações: attracione_coleta / attracione_backup / attracione_ranking
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
