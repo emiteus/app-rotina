@@ -185,16 +185,18 @@ async function processPhoneQueue(phone) {
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
     const resposta = out.resposta || 'Beleza. Em que posso ajudar?';
+    // Sempre texto primeiro — botões Evolution quebram no WA Web/multi-device
+    // e, se "ok" na API, o fallback nunca rodava (mensagem fantasma).
+    await sendText(phone, resposta);
     const pendingHitl = (out.acoes || []).find((a) => a && a.pending_approval);
-    if (pendingHitl && process.env.JARVIS_HITL_BUTTONS !== '0') {
+    // Opt-in: só manda botão se JARVIS_HITL_BUTTONS=1 (default off)
+    if (pendingHitl && process.env.JARVIS_HITL_BUTTONS === '1') {
       try {
         await sendApprovalButtons(phone, resposta, pendingHitl.approval_id);
-        return;
       } catch (btnErr) {
         console.error('[whatsapp] buttons:', btnErr.message);
       }
     }
-    await sendText(phone, resposta);
   } catch (err) {
     console.error('[whatsapp] jarvis:', err.message);
     try {

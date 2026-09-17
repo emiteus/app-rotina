@@ -22,7 +22,7 @@ Confira / preencha no serviço **app-rotina**:
 | `CINERUSH_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
 | `OPENAI_API_KEY` | Só se quiser Whisper no áudio |
 | `JARVIS_HITL=1` | Confirmação high-risk (default on) |
-| `JARVIS_HITL_BUTTONS=1` | Botões SIM/NÃO com id (fallback: `SIM <id>`) |
+| `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
 
 Redeploy após mudar env.
 
