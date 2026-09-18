@@ -42,7 +42,7 @@ Redeploy após mudar env.
 |------|---------|--------------------|------------|
 | low | `dev_railway_logs`, `dev_diagnose` | auto | auto |
 | medium / high | sync bancos, mutações financeiras | auto (WA HITL off) | SIM se ≥ threshold |
-| **critical** | `dev_railway_redeploy` | **sempre SIM** | **sempre SIM** |
+| **critical** | `dev_railway_redeploy`, `dev_railway_restart` | **sempre SIM** | **sempre SIM** |
 
 Critical ignora `JARVIS_HITL_WHATSAPP=0` — redeploy nunca roda sem confirmação (enquanto `JARVIS_HITL=1`).
 
@@ -58,6 +58,7 @@ Critical ignora `JARVIS_HITL_WHATSAPP=0` — redeploy nunca roda sem confirmaç�
 6. Assist web: pills → **OS** (dashboard; version 0.9.6+)  
 7. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool` / `provider` ≠ `local` em Q&A de projetos
 8. WA: `redeploy milhão` → pede **SIM** (critical); depois confirma service/env
+9. WA: `restart milhão` → pede **SIM**; reinicia sem rebuild
 
 ---
 

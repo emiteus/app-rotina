@@ -213,7 +213,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
     'dev_diagnose', 'dev_git_status', 'dev_read_file', 'dev_railway_logs',
-    'dev_railway_redeploy',
+    'dev_railway_redeploy', 'dev_railway_restart',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
@@ -377,6 +377,11 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           a.texto ||
             `Redeploy **${a.service || a.project}** (${a.environment || '?'}) via ${a.mode || 'railway'}.`
         );
+      } else if (a.tipo === 'dev_railway_restart') {
+        partes.push(
+          a.texto ||
+            `Restart **${a.service || a.project}** (${a.environment || '?'}) via ${a.mode || 'railway'}.`
+        );
       } else if (a.tipo === 'research_web_search') {
         // Não polui WA com "Busca ok" — o resumo vem do report ou do brief
       } else if (a.tipo === 'research_fetch_url') {
@@ -464,6 +469,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     );
     const diagnoseOk = finOk.find((a) => a.tipo === 'dev_diagnose' && a.texto);
     const redeployOk = finOk.find((a) => a.tipo === 'dev_railway_redeploy' && a.texto);
+    const restartOk = finOk.find((a) => a.tipo === 'dev_railway_restart' && a.texto);
     const searchHits = finOk
       .filter((a) => a.tipo === 'research_web_search' && (a.results || []).length)
       .flatMap((a) => a.results || []);
@@ -473,6 +479,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     let out;
     if (reportOk) {
       out = String(reportOk.texto).trim();
+    } else if (restartOk) {
+      out = String(restartOk.texto).trim();
     } else if (redeployOk) {
       out = String(redeployOk.texto).trim();
     } else if (diagnoseOk || logsOk) {
@@ -1663,12 +1671,23 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
-  // Redeploy Railway (critical → HITL SIM obrigatório)
+  // Restart Railway (sem rebuild) — critical → HITL
+  if (
+    !acoes.some((a) => a && (a.tipo === 'dev_railway_restart' || a.tipo === 'dev_railway_redeploy')) &&
+    (/\b(restart|reinicia(r)?)\b/i.test(msg) && !/\bre\s*-?deploy|redeploy/i.test(msg))
+  ) {
+    let project = 'approtina';
+    if (/milh/i.test(msg)) project = 'projeto_milhao';
+    else if (/cinerush|cine\s*rush/i.test(msg)) project = 'cinerush';
+    else if (/socialhub|teushub/i.test(msg)) project = 'socialhub';
+    else if (/attracione|attra/i.test(msg)) project = 'attracione';
+    acoes.push({ tipo: 'dev_railway_restart', project });
+  }
+
+  // Redeploy Railway (rebuild) — critical → HITL
   if (
     !acoes.some((a) => a && a.tipo === 'dev_railway_redeploy') &&
-    /\b(re\s*-?deploy|redeploy|reinicia(r)?\s+(o\s+)?(deploy|railway|container|service))\b/i.test(
-      msg
-    )
+    /\b(re\s*-?deploy|redeploy)\b/i.test(msg)
   ) {
     let project = 'approtina';
     if (/milh/i.test(msg)) project = 'projeto_milhao';

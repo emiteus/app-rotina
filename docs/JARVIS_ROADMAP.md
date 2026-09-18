@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.10  
+**Version:** 0.9.11  
 **Date:** 2026-09-18
 
 ## Norte
@@ -18,22 +18,23 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 - Mission Mode polish (pings compactos + ultima_falha)
 - **Orchestrator v1:** `agents/orchestrator.js` escolhe Dev/Research/Finance/Ops/Rotina + hint multi-braço
 - **Write #1:** `dev_railway_redeploy` (`critical` — HITL sempre, inclusive WA)
+- **Write #2:** `dev_railway_restart` (`critical` — sem rebuild)
 
 ## Etapa atual
 
-Smoke redeploy no WA:
+Smoke restart no WA:
 
 ```
-redeploy milhão
+restart milhão
 ```
 
-→ deve pedir **SIM** antes de chamar Railway. Depois: `diagnostica o milhão` / logs.
+→ pede **SIM**, depois confirma service/env/deployment.
 
 ## Próximo
 
-1. Smoke `dev_railway_redeploy` + SIM  
-2. Mais write tools (restart service, env bump) com mesma regra critical  
-3. Vision v2 / proatividade  
+1. Smoke `dev_railway_restart`  
+2. Proatividade: alerta WA em deploy fail  
+3. Vision v2  
 
 ## Not started
 
