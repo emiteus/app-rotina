@@ -98,12 +98,20 @@ function respostaClaimMutacao(texto) {
     'feito|fiz|gerei|gerado|liberei|liberado|provision(?:ei|ado)?|salvei|guardei|anotei|' +
     'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|' +
     'paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|' +
-    'corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi|enfileirei';
+    'corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi|enfileirei|' +
+    'rodando|rodei|disparando';
   const limpo = String(texto || '').replace(
     new RegExp(`\\b(?:n[aã]o|nunca|ainda\\s+n[aã]o)\\s+(?:${verbs})\\b`, 'gi'),
     ' '
   );
   return new RegExp(`\\b(?:${verbs})\\b`, 'i').test(limpo);
+}
+
+/** Pergunta analítica / contagem — não deve virar "não alterei nada". */
+function respostaPareceAnalise(texto) {
+  return /\b(analis|encontrei|verific|olhei|no extrato|no banco|despesas?|gastos?|saldo|quantos?|qtd|postamos|postei|reels?|views?|v[ií]deos?|ranking|painel|consta|hoje|attracione|competi)\b/i.test(
+    String(texto || '')
+  );
 }
 
 function formatAcaoFalhas(fails) {
@@ -241,7 +249,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push('Fiz backup manual do Attracione.');
       } else if (a.tipo === 'attracione_ranking') {
         const linhas = (a.top || []).slice(0, 10)
-          .map((t) => `${t.pos}º ${t.nome} — **${Number(t.views || 0).toLocaleString('pt-BR')}** views`)
+          .map((t) => `${t.pos}º ${t.nome} — **${Number(t.views || 0).toLocaleString('pt-BR')}** views` +
+            (t.videos != null ? ` / **${t.videos}** vídeos` : ''))
           .join('\n');
         partes.push(linhas
           ? `Ranking **${a.competicao || 'Attracione'}**:\n${linhas}`
@@ -301,8 +310,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const partes = narrarOks(finOk);
     const base = String(resposta || '').trim();
     let out;
-    if (base && base.length > 40 && !claim) out = `${base}\n\n${partes.join(' ')}`;
-    else out = partes.join(' ');
+    // Sempre preserva análise/contagem; append da tool (coleta etc.)
+    if (base && base.length > 40) {
+      out = `${base}\n\n${partes.join(' ')}`.trim();
+    } else {
+      out = partes.join(' ') || base;
+    }
     if (failText) out = `${out}\n\n${failText}`;
     return hitl ? `${out}\n\n${hitl}` : out;
   }
@@ -312,6 +325,15 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   }
 
   if (fails.length) {
+    // Se tinha análise útil + falha de side-effect, mantém os dois
+    const base = String(resposta || '').trim();
+    if (base && base.length > 40 && respostaPareceAnalise(base) && !claim) {
+      return `${base}\n\n${failText}`;
+    }
+    if (base && base.length > 40 && respostaPareceAnalise(base)) {
+      // Claim de coleta sem sucesso: responde a contagem e a falha
+      return `${base}\n\n${failText}`;
+    }
     return failText;
   }
 
@@ -324,9 +346,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     ) {
       return resposta;
     }
-    const pareceAnalise = /\b(analis|encontrei|verific|olhei|no extrato|no banco|despesas?|gastos?|saldo)\b/i
-      .test(String(resposta || ''));
-    if (pareceAnalise) return resposta;
+    // Contagem/leitura: não apaga a resposta com "não alterei"
+    if (respostaPareceAnalise(resposta)) return resposta;
     return 'Ainda **não alterei** nada — a ação não chegou a rodar. Pode repetir o pedido?';
   }
 
@@ -1082,6 +1103,92 @@ async function executarAcoes(acoes, userId, opts = {}) {
 
 
 /** Se a IA esquecer de emitir acao, inferimos pedidos claros de rename/fundir. */
+/** Resposta local pra "quantos reels eu e o Erik postamos hj" — sem LLM/coleta. */
+function formatarAttracioneReelsHoje(mensagem, snap) {
+  const msg = String(mensagem || '');
+  const perguntaContagem =
+    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
+    /\b(reel|reels|v[ií]deo|videos|corte)\b/i.test(msg);
+  if (!perguntaContagem) return null;
+  if (/\b(colet[ae]|raspa|atualizar\s+(dados|views)|roda\s+coleta)\b/i.test(msg)) return null;
+
+  const at = snap?.projetos?.attracione;
+  if (!at || at.conectado === false) {
+    return 'Attracione **off** no hub agora — não consigo ler o painel. Confere ATTRACIONE_URL/SCRAPER_TOKEN.';
+  }
+
+  const norm = (s) =>
+    String(s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+  const hoje = at.hoje;
+  const lista = Array.isArray(hoje?.por_pessoa) ? hoje.por_pessoa : [];
+  const alvos = [];
+  if (/\berik\b/i.test(msg)) alvos.push('erik');
+  if (/\b(eu|mateus|emiteus)\b/i.test(msg)) alvos.push('mateus', 'emiteus');
+  // default: Mateus + Erik quando fala "eu e o Erik" / "nós"
+  if (!alvos.length || /\beu\s+e\b|\bn[oó]s\b/i.test(msg)) {
+    alvos.push('mateus', 'emiteus', 'erik');
+  }
+  const uniqAlvos = [...new Set(alvos)];
+
+  const matchPessoa = (nome) => {
+    const n = norm(nome);
+    return uniqAlvos.some((a) => n.includes(a) || a.includes(n.split(' ')[0]));
+  };
+
+  let linhas = lista.filter((p) => matchPessoa(p.nome));
+  // Se pediu Erik/eu e não achou nome, mostra total do dia + top
+  const data = hoje?.data || 'hoje';
+
+  if (!hoje) {
+    const top = (at.ranking?.top || []).slice(0, 5);
+    const topTxt = top
+      .map(
+        (t) =>
+          `${t.pos}º ${t.nome}: **${Number(t.videos || 0)}** vídeos / ${Number(t.views || 0).toLocaleString('pt-BR')} views`
+      )
+      .join('\n');
+    return (
+      `No Attracione ainda **não veio o recorte de hoje** no pacote` +
+      (at.ranking?.competicao ? ` (comp **${at.ranking.competicao}**)` : '') +
+      `. Ranking da comp:\n${topTxt || '(vazio)'}\n` +
+      `Se quiser, manda **roda a coleta do Attracione** pra atualizar.`
+    );
+  }
+
+  if (!linhas.length && lista.length) {
+    // fallback: lista toda do dia
+    linhas = lista.slice(0, 8);
+  }
+
+  if (!linhas.length) {
+    return (
+      `No Attracione (**${data}**) constam **0 vídeos** publicados hoje` +
+      (hoje.total_videos != null ? ` (total painel: **${hoje.total_videos}**)` : '') +
+      `. Se postaram e não aparece, manda **roda a coleta do Attracione**.`
+    );
+  }
+
+  const partes = linhas.map(
+    (p) =>
+      `**${p.nome}**: **${Number(p.videos || 0)}** vídeo(s)` +
+      (p.views != null ? ` · ${Number(p.views || 0).toLocaleString('pt-BR')} views` : '')
+  );
+  const soma = linhas.reduce((s, p) => s + Number(p.videos || 0), 0);
+  return (
+    `Attracione **${data}** — vocês: **${soma}** vídeo(s) no total.\n` +
+    partes.join('\n') +
+    (hoje.total_videos != null && hoje.total_videos !== soma
+      ? `\n_(painel geral do dia: **${hoje.total_videos}** vídeos)_`
+      : '')
+  );
+}
+
 function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   const acoes = Array.isArray(acoesParsed) ? acoesParsed.filter(Boolean) : [];
   const msg = String(mensagem || '').replace(/\s+/g, ' ').trim();
@@ -1089,6 +1196,18 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
 
   // Não inventa ação em "desfaz"
   if (/\b(desfaz|desfaça|desfaca|undo|voltar atrás|voltar atras)\b/i.test(msg)) return acoes;
+
+  // Contagem de reels/views ≠ coleta. Só coleta se pedir explicitamente.
+  const perguntaContagem =
+    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
+    /\b(reel|reels|v[ií]deo|videos|corte|views?|visualiz)/i.test(msg);
+  const pedeColeta =
+    /\b(colet[ae]|raspa|atualizar\s+(dados|views|ranking)|puxa(r)?\s+(views?|coleta)|roda\s+coleta)\b/i.test(
+      msg
+    );
+  if (perguntaContagem && !pedeColeta) {
+    return acoes.filter((a) => a && a.tipo !== 'attracione_coleta');
+  }
 
   const cats = (snap && snap.financeiro && snap.financeiro.categorias) || [];
   const norm = (s) => String(s || '').toLowerCase()
@@ -1709,6 +1828,22 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       .test(mensagem.trim());
 
     const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
+
+    // Atalho: "quantos reels eu e o Erik postamos hj" → Attracione.hoje (sem LLM, sem coleta)
+    const respAttracione = formatarAttracioneReelsHoje(mensagem, snap);
+    if (respAttracione) {
+      await salvarMensagem(conversaId, 'assistant', respAttracione, uid);
+      return {
+        resposta: respAttracione,
+        acoes: [],
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
+
     // Acesso manual CineRush: atalho local (com ou sem email)
     if (acoesRapidas.length === 1 && acoesRapidas[0].tipo === 'cinerush_criar') {
       if (!acoesRapidas[0].email) {
@@ -1848,6 +1983,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
 - Attracione: ranking atual em projetos.attracione.ranking (views+vídeos); **hoje** em projetos.attracione.hoje.por_pessoa (vídeos publicados no dia). Comps passadas → attracione_ranking com n.
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
+- **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com projetos.attracione.hoje (Mateus/Erik). NÃO emita attracione_coleta a menos que peçam "coletar/atualizar/raspar". Se hoje estiver vazio/zerado, diga o número e ofereça coleta — não dispare sozinho.
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
