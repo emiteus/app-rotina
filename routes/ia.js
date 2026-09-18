@@ -21,7 +21,7 @@ const {
   getCachedAssistSnap
 } = require('../lib/jarvis/snapshot-cache');
 const { runToolBatch } = require('../lib/jarvis/tools');
-const { getToolCatalog, listToolNames } = require('../lib/jarvis/tools/registry');
+const { getToolCatalog, listToolNames, toolsPromptBlock } = require('../lib/jarvis/tools/registry');
 const { packContext } = require('../lib/jarvis/context/pack');
 
 
@@ -1114,264 +1114,9 @@ async function executarAcoes(acoes, userId, opts = {}) {
 }
 
 
-/** Se a IA esquecer de emitir acao, inferimos pedidos claros de rename/fundir. */
-/** Atalho: "fechamento projeto milhão" / "como foi o milhão ontem" */
-function formatarProjetoMilhaoFechamento(mensagem, snap) {
-  const msg = String(mensagem || '');
-  const citaMilhao = /\b(milh[aã]o|projeto\s*milh[aã]o)\b/i.test(msg);
-  if (!citaMilhao) return null;
-  // Qualquer pergunta sobre o milhão → fechamento (status operacional)
-  const pm = snap?.projetos?.projeto_milhao;
-  if (!pm || pm.conectado === false) {
-    return (
-      'Projeto Milhão **off** no hub — preciso de `PROJETO_MILHAO_URL` (HTTP :4410 do Docker) ' +
-      'ou `PROJETO_MILHAO_DATA_DIR` com os `dia-*.json`.'
-    );
-  }
-  const f = pm.fechamento;
-  if (!f) {
-    return 'Projeto Milhão conectado, mas sem bloco de fechamento no snapshot.';
-  }
-  if (f.arquivo_existe === false && !(f.por_pessoa && f.por_pessoa.length)) {
-    return (
-      `Sem dados do fechamento **${f.data_br || f.ymd || 'ontem'}**. ` +
-      `O cron 02h grava \`dia-*.json\` no volume do Docker — confere se o monitor rodou.`
-    );
-  }
-  if (f.texto) return String(f.texto).replace(/\*/g, '**');
-  const linhas = (f.por_pessoa || []).map(
-    (p) =>
-      `${p.meta_ok ? '✅' : '⚠️'} **${p.nome}**: **${p.posts}/${p.meta || 30}**` +
-      (p.faltam ? ` (faltam ${p.faltam})` : '') +
-      (p.views_ok ? ` · ${Number(p.views || 0).toLocaleString('pt-BR')} views` : '')
-  );
-  return (
-    `Projeto Milhão — fechamento **${f.data_br || f.ymd}**\n` +
-    `Meta: **${f.meta_por_pessoa || 30}**/pessoa\n` +
-    linhas.join('\n') +
-    (f.ambos_na_meta
-      ? '\n🔥 Dia no verde — os dois bateram a meta.'
-      : `\n📉 ${f.na_meta || 0}/${f.total_pessoas || 2} na meta.`)
-  );
-}
-
-/** Resposta local pra posts do SocialHub/TeuHub hoje. */
-function formatarSocialhubPostsHoje(mensagem, snap) {
-  const msg = String(mensagem || '');
-  const perguntaContagem =
-    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
-    /\b(reel|reels|v[ií]deo|videos|post|posts)\b/i.test(msg);
-  const citaSh = /\b(teushub|teus\s*hub|socialhub|social\s*hub)\b/i.test(msg);
-  if (!perguntaContagem || !citaSh) return null;
-
-  const sh = snap?.projetos?.socialhub;
-  if (!sh || sh.conectado === false) {
-    return (
-      'SocialHub/TeuHub **off** no hub — não leio posts de hoje. ' +
-      'Confere SOCIALHUB_URL/OPS_KEY. (Attracione = competição; CineRush Editor = IG em massa.)'
-    );
-  }
-
-  const hoje = sh.hoje;
-  if (!hoje) {
-    return (
-      'SocialHub conectado, mas **ainda sem bloco de hoje** no snapshot. ' +
-      'Manda **atualiza o cache** e tenta de novo.'
-    );
-  }
-
-  const data = hoje.data || 'hoje';
-  const porConta = Array.isArray(hoje.por_conta) ? hoje.por_conta : [];
-  if (!porConta.length) {
-    return `No TeuHub/SocialHub (**${data}**) constam **${hoje.total || 0}** post(s) publicados.`;
-  }
-  const partes = porConta.map(
-    (c) =>
-      `**${c.platform || '?'}** / ${c.account || '?'}: **${Number(c.posts || 0)}**`
-  );
-  return (
-    `TeuHub/SocialHub **${data}** — **${Number(hoje.total || 0)}** post(s) publicados.\n` +
-    partes.join('\n') +
-    `\n_(Attracione = competição de cortes; CineRush Editor = IG em massa.)_`
-  );
-}
-
-/** Resposta local pra posts IG do CineRush Editor hoje. */
-function formatarCinerushPostsHoje(mensagem, snap) {
-  const msg = String(mensagem || '');
-  const perguntaContagem =
-    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
-    /\b(reel|reels|v[ií]deo|videos|post|posts|corte)\b/i.test(msg);
-  if (!perguntaContagem) return null;
-  const citaCinerush = /\b(cinerush|cine\s*rush|editor)\b/i.test(msg);
-  if (!citaCinerush) return null;
-
-  const ed = snap?.projetos?.cinerush_editor;
-  if (!ed || ed.conectado === false) {
-    return (
-      'CineRush Editor **off** no hub — não leio posts IG de hoje. ' +
-      'Confere CINERUSH_EDITOR_URL/OPS_KEY. (CineRush TV = IPTV; posts de reels = Editor.)'
-    );
-  }
-
-  const hoje = ed.hoje;
-  if (!hoje || hoje.erro) {
-    const q = ed.queue
-      ? ` Fila agora: queued **${ed.queue.queued ?? '?'}** / running **${ed.queue.running ?? '?'}**.`
-      : '';
-    return (
-      `CineRush Editor conectado, mas **ainda não veio o contador de posts de hoje**` +
-      (hoje?.erro ? ` (${hoje.erro})` : '') +
-      `.${q} Depois do deploy do /api/ops/stats isso aparece.`
-    );
-  }
-
-  const lista = Array.isArray(hoje.por_pessoa) ? hoje.por_pessoa : [];
-  const data = hoje.data || 'hoje';
-  if (!lista.length) {
-    return `No CineRush Editor (**${data}**) constam **${hoje.total || 0}** post(s) IG publicados.`;
-  }
-  const partes = lista.map(
-    (p) => `**${p.nome || p.email}**: **${Number(p.videos || 0)}** post(s)`
-  );
-  return (
-    `CineRush Editor **${data}** — **${Number(hoje.total || 0)}** post(s) IG publicados.\n` +
-    partes.join('\n') +
-    `\n_(CineRush TV = IPTV/assinantes; Attracione = competição de cortes.)_`
-  );
-}
-
-/** Ambíguo "quantos videos postei hj" sem projeto → mostra Attracione + CineRush. */
-function formatarContagemVideosAmbiguo(mensagem, snap) {
-  const msg = String(mensagem || '');
-  const perguntaContagem =
-    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
-    /\b(reel|reels|v[ií]deo|videos|post)\b/i.test(msg);
-  if (!perguntaContagem) return null;
-  if (/\b(cinerush|cine\s*rush|attracione|attra|competi|erik|teushub|socialhub)\b/i.test(msg)) {
-    return null;
-  }
-
-  const at = snap?.projetos?.attracione;
-  const ed = snap?.projetos?.cinerush_editor;
-  const linhas = [];
-
-  if (ed?.conectado && ed.hoje) {
-    linhas.push(
-      `**CineRush Editor** (IG): **${Number(ed.hoje.total || 0)}** post(s)` +
-        (ed.hoje.data ? ` em ${ed.hoje.data}` : '')
-    );
-  } else if (ed?.conectado) {
-    linhas.push('**CineRush Editor**: conectado, sem contador de hoje ainda');
-  } else {
-    linhas.push('**CineRush Editor**: off');
-  }
-
-  if (at?.conectado && at.hoje) {
-    linhas.push(
-      `**Attracione** (comp): **${Number(at.hoje.total_videos || 0)}** vídeo(s)` +
-        (at.hoje.data ? ` em ${at.hoje.data}` : '')
-    );
-  } else if (at?.conectado) {
-    linhas.push('**Attracione**: conectado, sem recorte de hoje');
-  } else {
-    linhas.push('**Attracione**: off');
-  }
-
-  return (
-    `Hoje, em duas frentes:\n${linhas.join('\n')}\n` +
-    `Especifica **CineRush** ou **Attracione** se quiser o detalhe.`
-  );
-}
-
-/** Resposta local pra "quantos reels eu e o Erik postamos hj" — sem LLM/coleta. */
-function formatarAttracioneReelsHoje(mensagem, snap) {
-  const msg = String(mensagem || '');
-  const perguntaContagem =
-    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
-    /\b(reel|reels|v[ií]deo|videos|corte)\b/i.test(msg);
-  if (!perguntaContagem) return null;
-  if (/\b(colet[ae]|raspa|atualizar\s+(dados|views)|roda\s+coleta)\b/i.test(msg)) return null;
-  // NÃO engolir CineRush / SocialHub / TeuHub
-  if (/\b(cinerush|cine\s*rush|editor|teushub|socialhub|social\s*hub)\b/i.test(msg)) return null;
-
-  const at = snap?.projetos?.attracione;
-  if (!at || at.conectado === false) {
-    return 'Attracione **off** no hub agora — não consigo ler o painel. Confere ATTRACIONE_URL/SCRAPER_TOKEN.';
-  }
-
-  const norm = (s) =>
-    String(s || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
-
-  const hoje = at.hoje;
-  const lista = Array.isArray(hoje?.por_pessoa) ? hoje.por_pessoa : [];
-  const alvos = [];
-  if (/\berik\b/i.test(msg)) alvos.push('erik');
-  if (/\b(eu|mateus|emiteus)\b/i.test(msg)) alvos.push('mateus', 'emiteus');
-  // default: Mateus + Erik quando fala "eu e o Erik" / "nós"
-  if (!alvos.length || /\beu\s+e\b|\bn[oó]s\b/i.test(msg)) {
-    alvos.push('mateus', 'emiteus', 'erik');
-  }
-  const uniqAlvos = [...new Set(alvos)];
-
-  const matchPessoa = (nome) => {
-    const n = norm(nome);
-    return uniqAlvos.some((a) => n.includes(a) || a.includes(n.split(' ')[0]));
-  };
-
-  let linhas = lista.filter((p) => matchPessoa(p.nome));
-  // Se pediu Erik/eu e não achou nome, mostra total do dia + top
-  const data = hoje?.data || 'hoje';
-
-  if (!hoje) {
-    const top = (at.ranking?.top || []).slice(0, 5);
-    const topTxt = top
-      .map(
-        (t) =>
-          `${t.pos}º ${t.nome}: **${Number(t.videos || 0)}** vídeos / ${Number(t.views || 0).toLocaleString('pt-BR')} views`
-      )
-      .join('\n');
-    return (
-      `No Attracione ainda **não veio o recorte de hoje** no pacote` +
-      (at.ranking?.competicao ? ` (comp **${at.ranking.competicao}**)` : '') +
-      `. Ranking da comp:\n${topTxt || '(vazio)'}\n` +
-      `Se quiser, manda **roda a coleta do Attracione** pra atualizar.`
-    );
-  }
-
-  if (!linhas.length && lista.length) {
-    // fallback: lista toda do dia
-    linhas = lista.slice(0, 8);
-  }
-
-  if (!linhas.length) {
-    return (
-      `No Attracione (**${data}**) constam **0 vídeos** publicados hoje` +
-      (hoje.total_videos != null ? ` (total painel: **${hoje.total_videos}**)` : '') +
-      `. Se postaram e não aparece, manda **roda a coleta do Attracione**.`
-    );
-  }
-
-  const partes = linhas.map(
-    (p) =>
-      `**${p.nome}**: **${Number(p.videos || 0)}** vídeo(s)` +
-      (p.views != null ? ` · ${Number(p.views || 0).toLocaleString('pt-BR')} views` : '')
-  );
-  const soma = linhas.reduce((s, p) => s + Number(p.videos || 0), 0);
-  return (
-    `Attracione **${data}** — vocês: **${soma}** vídeo(s) no total.\n` +
-    partes.join('\n') +
-    (hoje.total_videos != null && hoje.total_videos !== soma
-      ? `\n_(painel geral do dia: **${hoje.total_videos}** vídeos)_`
-      : '')
-  );
-}
-
+/** Contagens/status de projetos: LLM + pack.projetos (sem formatar* local).
+ * inferirAcoes: financeiro + guards (coleta ≠ contagem).
+ */
 function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   const acoes = Array.isArray(acoesParsed) ? acoesParsed.filter(Boolean) : [];
   const msg = String(mensagem || '').replace(/\s+/g, ' ').trim();
@@ -1390,17 +1135,6 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     );
   if (perguntaContagem && !pedeColeta) {
     return acoes.filter((a) => a && a.tipo !== 'attracione_coleta');
-  }
-
-  // Cache stale pós-coleta / pedido explícito
-  if (
-    /\b(atualiza(r)?|limpa(r)?|refresh)\s+(o\s+)?(cache|snapshot)s?\b|\bsnapshot_refresh\b/i.test(
-      msg
-    )
-  ) {
-    if (!acoes.some((a) => a && a.tipo === 'snapshot_refresh')) {
-      acoes.push({ tipo: 'snapshot_refresh' });
-    }
   }
 
   const cats = (snap && snap.financeiro && snap.financeiro.categorias) || [];
@@ -2033,73 +1767,6 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
 
-    // Atalhos locais de contagem (sem LLM)
-    const respMilhao = formatarProjetoMilhaoFechamento(mensagem, snap);
-    if (respMilhao) {
-      await salvarMensagem(conversaId, 'assistant', respMilhao, uid);
-      return {
-        resposta: respMilhao,
-        acoes: [],
-        snapshot: snap,
-        provider: 'local',
-        usage: null,
-        conversa_id: conversaId,
-        agent: agent.id
-      };
-    }
-    const respSh = formatarSocialhubPostsHoje(mensagem, snap);
-    if (respSh) {
-      await salvarMensagem(conversaId, 'assistant', respSh, uid);
-      return {
-        resposta: respSh,
-        acoes: [],
-        snapshot: snap,
-        provider: 'local',
-        usage: null,
-        conversa_id: conversaId,
-        agent: agent.id
-      };
-    }
-    const respCine = formatarCinerushPostsHoje(mensagem, snap);
-    if (respCine) {
-      await salvarMensagem(conversaId, 'assistant', respCine, uid);
-      return {
-        resposta: respCine,
-        acoes: [],
-        snapshot: snap,
-        provider: 'local',
-        usage: null,
-        conversa_id: conversaId,
-        agent: agent.id
-      };
-    }
-    const respAmbig = formatarContagemVideosAmbiguo(mensagem, snap);
-    if (respAmbig) {
-      await salvarMensagem(conversaId, 'assistant', respAmbig, uid);
-      return {
-        resposta: respAmbig,
-        acoes: [],
-        snapshot: snap,
-        provider: 'local',
-        usage: null,
-        conversa_id: conversaId,
-        agent: agent.id
-      };
-    }
-    const respAttracione = formatarAttracioneReelsHoje(mensagem, snap);
-    if (respAttracione) {
-      await salvarMensagem(conversaId, 'assistant', respAttracione, uid);
-      return {
-        resposta: respAttracione,
-        acoes: [],
-        snapshot: snap,
-        provider: 'local',
-        usage: null,
-        conversa_id: conversaId,
-        agent: agent.id
-      };
-    }
-
     // Acesso manual CineRush: atalho local (com ou sem email)
     if (acoesRapidas.length === 1 && acoesRapidas[0].tipo === 'cinerush_criar') {
       if (!acoesRapidas[0].email) {
@@ -2131,10 +1798,10 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
     }
     const TIPOS_FAST = new Set([
       // fundir_categorias / deletar etc. ficam fora — HITL (risk high)
+      // Ops de projeto: LLM + toolsPromptBlock (não fast-path)
       'recategorizar', 'renomear_categoria', 'criar_categoria',
       'confirmar_despesa', 'confirmar_receita', 'criar_receita',
-      'marcar_das', 'marcar_habito', 'depositar_meta',
-      'snapshot_refresh'
+      'marcar_das', 'marcar_habito', 'depositar_meta'
     ]);
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
       const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey });
@@ -2255,58 +1922,25 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 Responda APENAS um JSON válido completo:
 {"resposta":"texto em markdown simples (máx 120 palavras). Use **negrito** em números-chave.","acoes":[]}
 
-Tipos de ação:
-- {"tipo":"criar_despesa","titulo":"...","valor_esperado":123.45,"dia_vencimento":15,"categoria":"contas_fixas|moradia|outros"}
-- {"tipo":"confirmar_despesa","titulo":"Netflix"} ou {"tipo":"confirmar_despesa","id":"..."}
-- {"tipo":"confirmar_receita","titulo":"Laranjeira"} ou {"tipo":"confirmar_receita","chave":"laranjeira","valor":1000}
-- {"tipo":"criar_receita","titulo":"Attracione","valor":4000,"chave":"cortes","recebido_em":"YYYY-MM-DD"}
-- {"tipo":"criar_tarefa","titulo":"...","prioridade":"alta|media|baixa","data_reset":"YYYY-MM-DD"}
-- {"tipo":"concluir_tarefa","titulo":"..."} ou {"tipo":"concluir_tarefa","id":"..."}
-- {"tipo":"criar_meta","nome":"...","valor_total":1000,"prazo":"YYYY-MM-DD"|null}
-- {"tipo":"depositar_meta","nome":"Viagem","valor":200}
-- {"tipo":"marcar_habito","titulo":"Academia"}
-- {"tipo":"criar_evento","titulo":"...","data":"YYYY-MM-DD","hora":"HH:MM"|null}
-- {"tipo":"criar_alarme","hora":"07:30","mensagem":"..."}
-- {"tipo":"criar_transacao","tipo_tx":"entrada|saida","valor":50,"descricao":"...","data":"YYYY-MM-DD","categoria":"outros"}
-- {"tipo":"deletar_transacao","ids":["uuid"]} ou com "filtros"
-- {"tipo":"corrigir_data_tx","data":"YYYY-MM-DD","ids":["uuid"]} ou com "filtros"
-- {"tipo":"marcar_das","ym":"2026-08","pago":true,"valor":null}
-- {"tipo":"reconciliar_despesas","ym":"2026-09"}
-- {"tipo":"sincronizar_bancos"}
-- {"tipo":"criar_categoria","categoria_label":"..."}
-- {"tipo":"renomear_categoria","de":"...","categoria_label":"..."}
-- {"tipo":"fundir_categorias","de":["a","b"],"categoria_label":"..."}
-- {"tipo":"recategorizar","categoria_label":"...","ids":["uuid"]} ou "filtros"
-- {"tipo":"cinerush_buscar","search":"email ou nome","status":"pendente|email_enviado"|null}
-- {"tipo":"cinerush_provisionar","id":"uuid"} ou {"tipo":"cinerush_provisionar","search":"email"}
-- {"tipo":"cinerush_criar","email":"a@b.com","nome":"João","plano":"mensal"} — cria acesso Havok+DB
-- {"tipo":"cinerush_reenviar_email","id":"uuid"} ou {"tipo":"cinerush_reenviar_email","search":"email"}
-- {"tipo":"cutflix_status"}
-- {"tipo":"projeto_milhao_fechamento","ymd":"YYYY-MM-DD"|null}
-- {"tipo":"chatwoot_listar","status":"open|pending"}
-- {"tipo":"chatwoot_resolver","id":123}
-- {"tipo":"chatwoot_atribuir","id":123}
-- {"tipo":"attracione_coleta","plataforma":"tiktok|kwai"|null}
-- {"tipo":"attracione_backup"}
-- {"tipo":"attracione_ranking","n":"7"}
-- {"tipo":"socialhub_posts","status":"SCHEDULED|PUBLISHED|FAILED"|null}
-- {"tipo":"socialhub_agendar","caption":"...","socialAccountIds":["id"],"scheduledAt":"ISO"}
-- {"tipo":"socialhub_publicar_agendados"}
-- {"tipo":"snapshot_refresh"}
-- {"tipo":"clipper_criar","durationSeconds":30,"note":"..."}
-- {"tipo":"clipper_retry","id":"groupId"}
-- {"tipo":"cinerush_editor_process","url":"https://youtube.com/...","manual_headline":"...","clip_duration":60}
-- {"tipo":"cinerush_editor_batch","items":[{"url":"...","manual_headline":"A"},{"url":"...","manual_headline":"B"}]}
-- {"tipo":"cinerush_editor_job_status","job_id":"..."} ou {"tipo":"cinerush_editor_job_status","batch_id":"..."}
-- {"tipo":"project_memory_get","project":"cutflix|cinerush|…"}
-- {"tipo":"project_memory_set","project":"cutflix","stack":"…","objetivo":"…","status":"…","nota":"…","decisao":"…","ultima_falha":"…","link":"https://…"}
-- {"tipo":"project_memory_list"}
-- {"tipo":"project_info","project":"attracione|cinerush|framerush|all"}
+Tipos de ação (fonte única TOOL_DEFS — leia a description; emita {"tipo":"…"} + args necessários):
+${toolsPromptBlock()}
+
+Args típicos de finanças (quando a description for curta):
+- criar_despesa: titulo, valor_esperado, dia_vencimento, categoria
+- confirmar_despesa / confirmar_receita: titulo ou id/chave
+- criar_receita: titulo, valor, chave?, recebido_em?
+- recategorizar: categoria_label + ids[] ou filtros
+- cinerush_criar: email (obrigatório), nome?, plano?
+- cinerush_editor_process: url, manual_headline?, clip_duration?
+- project_memory_set: project + stack|objetivo|status|nota|decisao|ultima_falha|link
+- project_info: project id ou "all"
+- projeto_milhao_fechamento: ymd? (default ontem)
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - Análise sem alterar: responda com acoes:[].
+- Contagens de projetos: leia pack.projetos.*.hoje / fechamento — acoes:[] (não invente tool).
 - No máximo 1 emoji. Valores em R$.`;
 
     let texto;

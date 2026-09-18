@@ -2,7 +2,9 @@
 
 **OS home:** `R:\Projetos\Jarvis` (fonte de verdade).  
 **Host:** App Rotina (`Approtina/app-rotina`) — sync com `npm run sync:host`.  
-Código no deploy: **v0.9.5+**. Abaixo só o que depende de você / ambiente / produto externo.
+Código no deploy: **v0.9.6+**. Abaixo só o que depende de você / ambiente / produto externo.
+
+**Norte:** conexão real (snapshot + tools + LLM). Sem atalhos de resposta por projeto.
 
 
 ---
@@ -38,10 +40,10 @@ Redeploy após mudar env.
 1. WA: `oi` → resposta curta  
 2. WA (número fora da whitelist) → aviso de whitelist (não silêncio)  
 3. WA: `quais módulos` → lista registry  
-4. WA: `quantos posts no teushub hoje` → SocialHub.hoje  
-5. WA: após coleta Attracione → `atualiza o cache` / snapshot fresco  
-6. Assist web: pills → **OS** (dashboard; version 0.9.5+)  
-7. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool`
+4. WA: `quantos posts no teushub hoje` → LLM lê `projetos.socialhub.hoje` (não atalho local)  
+5. WA: após coleta Attracione → `atualiza o cache` / `snapshot_refresh` via tool  
+6. Assist web: pills → **OS** (dashboard; version 0.9.6+)  
+7. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool` / `provider` ≠ `local` em Q&A de projetos
 
 ---
 
