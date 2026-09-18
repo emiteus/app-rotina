@@ -251,12 +251,23 @@ router.post('/evolution', async (req, res) => {
   res.status(200).json({ ok: true });
 
   try {
-    if (!evolutionReady()) return;
+    if (!evolutionReady()) {
+      console.error('[whatsapp] evolution off — webhook ignorado');
+      return;
+    }
     const msgs = parseEvolutionPayload(req.body || {});
     for (const m of msgs) {
       if (m.fromMe || m.isGroup) continue;
       if (!isPhoneMappedOrAllowed(m.phone)) {
         console.log('[whatsapp] ignorado (fora da whitelist/mapa):', m.phone);
+        try {
+          await sendText(
+            m.phone,
+            'Esse número ainda não está na whitelist do Jarvis. Me avisa no PC pra liberar.'
+          );
+        } catch (e) {
+          console.error('[whatsapp] reply whitelist:', e.message);
+        }
         continue;
       }
       enqueueMessage(m.phone, m.text, m.media || null);

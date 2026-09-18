@@ -144,7 +144,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
-    'cutflix_status', 'projeto_milhao_fechamento'
+    'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -261,6 +261,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Agendei post no SocialHub (**${a.id || 'ok'}**).`);
       } else if (a.tipo === 'socialhub_publicar_agendados') {
         partes.push(`Disparei publicação dos agendados no SocialHub (${a.processed != null ? a.processed + ' processados' : 'ok'}).`);
+      } else if (a.tipo === 'snapshot_refresh') {
+        partes.push('Limpei o cache de snapshots — próximo pacote vem fresco.');
       } else if (a.tipo === 'clipper_criar') {
         partes.push(`Criei clip no Clipper (**${a.id || 'ok'}**).`);
       } else if (a.tipo === 'clipper_retry') {
@@ -1153,6 +1155,47 @@ function formatarProjetoMilhaoFechamento(mensagem, snap) {
   );
 }
 
+/** Resposta local pra posts do SocialHub/TeuHub hoje. */
+function formatarSocialhubPostsHoje(mensagem, snap) {
+  const msg = String(mensagem || '');
+  const perguntaContagem =
+    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
+    /\b(reel|reels|v[ií]deo|videos|post|posts)\b/i.test(msg);
+  const citaSh = /\b(teushub|teus\s*hub|socialhub|social\s*hub)\b/i.test(msg);
+  if (!perguntaContagem || !citaSh) return null;
+
+  const sh = snap?.projetos?.socialhub;
+  if (!sh || sh.conectado === false) {
+    return (
+      'SocialHub/TeuHub **off** no hub — não leio posts de hoje. ' +
+      'Confere SOCIALHUB_URL/OPS_KEY. (Attracione = competição; CineRush Editor = IG em massa.)'
+    );
+  }
+
+  const hoje = sh.hoje;
+  if (!hoje) {
+    return (
+      'SocialHub conectado, mas **ainda sem bloco de hoje** no snapshot. ' +
+      'Manda **atualiza o cache** e tenta de novo.'
+    );
+  }
+
+  const data = hoje.data || 'hoje';
+  const porConta = Array.isArray(hoje.por_conta) ? hoje.por_conta : [];
+  if (!porConta.length) {
+    return `No TeuHub/SocialHub (**${data}**) constam **${hoje.total || 0}** post(s) publicados.`;
+  }
+  const partes = porConta.map(
+    (c) =>
+      `**${c.platform || '?'}** / ${c.account || '?'}: **${Number(c.posts || 0)}**`
+  );
+  return (
+    `TeuHub/SocialHub **${data}** — **${Number(hoje.total || 0)}** post(s) publicados.\n` +
+    partes.join('\n') +
+    `\n_(Attracione = competição de cortes; CineRush Editor = IG em massa.)_`
+  );
+}
+
 /** Resposta local pra posts IG do CineRush Editor hoje. */
 function formatarCinerushPostsHoje(mensagem, snap) {
   const msg = String(mensagem || '');
@@ -1347,6 +1390,17 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     );
   if (perguntaContagem && !pedeColeta) {
     return acoes.filter((a) => a && a.tipo !== 'attracione_coleta');
+  }
+
+  // Cache stale pós-coleta / pedido explícito
+  if (
+    /\b(atualiza(r)?|limpa(r)?|refresh)\s+(o\s+)?(cache|snapshot)s?\b|\bsnapshot_refresh\b/i.test(
+      msg
+    )
+  ) {
+    if (!acoes.some((a) => a && a.tipo === 'snapshot_refresh')) {
+      acoes.push({ tipo: 'snapshot_refresh' });
+    }
   }
 
   const cats = (snap && snap.financeiro && snap.financeiro.categorias) || [];
@@ -1993,6 +2047,19 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
         agent: agent.id
       };
     }
+    const respSh = formatarSocialhubPostsHoje(mensagem, snap);
+    if (respSh) {
+      await salvarMensagem(conversaId, 'assistant', respSh, uid);
+      return {
+        resposta: respSh,
+        acoes: [],
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
     const respCine = formatarCinerushPostsHoje(mensagem, snap);
     if (respCine) {
       await salvarMensagem(conversaId, 'assistant', respCine, uid);
@@ -2066,7 +2133,8 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       // fundir_categorias / deletar etc. ficam fora — HITL (risk high)
       'recategorizar', 'renomear_categoria', 'criar_categoria',
       'confirmar_despesa', 'confirmar_receita', 'criar_receita',
-      'marcar_das', 'marcar_habito', 'depositar_meta'
+      'marcar_das', 'marcar_habito', 'depositar_meta',
+      'snapshot_refresh'
     ]);
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
       const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey });
@@ -2173,9 +2241,10 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
 - Attracione: ranking atual em projetos.attracione.ranking (views+vídeos); **hoje** em projetos.attracione.hoje.por_pessoa (vídeos publicados no dia). Comps passadas → attracione_ranking com n.
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
-- **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
+- **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. "no TeuHub/SocialHub" → projetos.socialhub.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
 - CineRush Editor: fila em projetos.cinerush_editor.queue; posts IG de hoje em projetos.cinerush_editor.hoje; processa por URL (ops). Sem owner_* não debita créditos de user.
-- SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
+- SocialHub: posts de hoje em projetos.socialhub.hoje; tools socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
+- Pós-coleta / ranking stale → snapshot_refresh ("atualiza o cache")
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
 - CineRush TV dados: use projetos.cinerush. receita_mes = mês civil; receita_30d = rolling 30d (quando vier). "vendas esse mês" → receita_mes; "últimos 30 dias" → receita_30d (se null, diga que só tem o mês e o intervalo periodo.from–to). Faturamento = bruto Kirvano.
@@ -2223,6 +2292,7 @@ Tipos de ação:
 - {"tipo":"socialhub_posts","status":"SCHEDULED|PUBLISHED|FAILED"|null}
 - {"tipo":"socialhub_agendar","caption":"...","socialAccountIds":["id"],"scheduledAt":"ISO"}
 - {"tipo":"socialhub_publicar_agendados"}
+- {"tipo":"snapshot_refresh"}
 - {"tipo":"clipper_criar","durationSeconds":30,"note":"..."}
 - {"tipo":"clipper_retry","id":"groupId"}
 - {"tipo":"cinerush_editor_process","url":"https://youtube.com/...","manual_headline":"...","clip_duration":60}

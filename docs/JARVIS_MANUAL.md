@@ -2,7 +2,7 @@
 
 **OS home:** `R:\Projetos\Jarvis` (fonte de verdade).  
 **Host:** App Rotina (`Approtina/app-rotina`) — sync com `npm run sync:host`.  
-Código no deploy: **v0.8.3+**. Abaixo só o que depende de você / ambiente / produto externo.
+Código no deploy: **v0.9.5+**. Abaixo só o que depende de você / ambiente / produto externo.
 
 
 ---
@@ -19,7 +19,9 @@ Confira / preencha no serviço **app-rotina**:
 | `WHATSAPP_ALLOWED_PHONES` | Whitelist (DDI 55…) |
 | `WHATSAPP_PHONE_USERS` | Opcional multi-user `5584…:teus,5584…:outro` |
 | `EVOLUTION_*` | WA |
-| `CINERUSH_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
+| `CINERUSH_*` / `CINERUSH_EDITOR_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
+| `PROJETO_MILHAO_URL` | HTTP ops do Milhão (ex. `http://…:4410` via túnel/rede) |
+| `CUTFLIX_API_URL` | Health Cutflix (opcional) |
 | `OPENAI_API_KEY` | Só se quiser Whisper no áudio |
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on) |
 | `JARVIS_HITL_WHATSAPP=1` | Opt-in: também pede SIM no WhatsApp (default **off**) |
@@ -27,16 +29,19 @@ Confira / preencha no serviço **app-rotina**:
 
 Redeploy após mudar env.
 
+**Milhão:** container local + URL alcançável do Railway. Sem `PROJETO_MILHAO_URL`, o snapshot fica off mesmo com Docker no PC.
+
 ---
 
 ## 2. Smoke test (5 min)
 
 1. WA: `oi` → resposta curta  
-2. WA: `quais módulos` → lista registry  
-3. WA: ação high-risk (ex. provisionar / recategorizar) → **SIM `<id>`** / **NÃO `<id>`** (botão ou texto)  
-4. WA: `missão: sincronizar bancos e reconciliar` → `executa missão`  
-5. Assist web: abrir chat → pills → **OS** (dashboard)  
-6. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool`
+2. WA (número fora da whitelist) → aviso de whitelist (não silêncio)  
+3. WA: `quais módulos` → lista registry  
+4. WA: `quantos posts no teushub hoje` → SocialHub.hoje  
+5. WA: após coleta Attracione → `atualiza o cache` / snapshot fresco  
+6. Assist web: pills → **OS** (dashboard; version 0.9.5+)  
+7. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool`
 
 ---
 
@@ -45,6 +50,7 @@ Redeploy após mudar env.
 | Item | Por quê | O que fazer |
 |------|---------|-------------|
 | **Editor de vídeo CineRush em massa** | ✅ ligado (`cinerush_editor_*`) | Confere `CINERUSH_EDITOR_URL` + `CINERUSH_EDITOR_OPS_KEY` |
+| **Projeto Milhão** | Precisa rede Railway→PC/túnel | Sobe Docker + seta `PROJETO_MILHAO_URL` |
 | **Validar botões Evolution** | Depende da build da Evolution | Testa HITL; se botão não aparecer, texto SIM/NÃO já funciona |
 | **Whisper** | Precisa da sua key OpenAI | Seta `OPENAI_API_KEY` se quiser fallback de áudio |
 | **Multi-user WA** | Precisa logins reais | `WHATSAPP_PHONE_USERS=fone:login` |
@@ -61,6 +67,8 @@ cancela missão
 agente ops: status cinerush
 /finance quanto gastei
 lembra que …
+atualiza o cache
+quantos posts no teushub hoje
 SIM a1b2c3d4 / NÃO a1b2c3d4
 ```
 
