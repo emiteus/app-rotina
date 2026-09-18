@@ -23,7 +23,8 @@ Confira / preencha no serviço **app-rotina**:
 | `EVOLUTION_*` | WA |
 | `CINERUSH_*` / `CINERUSH_EDITOR_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
 | `PROJETO_MILHAO_URL` | HTTP ops do Milhão em produção (`https://projeto-milhao-production.up.railway.app`) |
-| `PROJETO_MILHAO_OPS_KEY` | Mesma key do serviço projeto-milhao no Railway |
+| `GITHUB_TOKEN` | Dev agent: ler repos privados / rate limit |
+| `RAILWAY_TOKEN` | Dev agent: logs/status de deploys |
 
 Redeploy após mudar env.
 

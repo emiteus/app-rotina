@@ -1,37 +1,37 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.7  
+**Version:** 0.9.8  
 **Date:** 2026-09-18
 
 ## Norte
 
 Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + plano **30/60/90**.
 
-### Princípio (v0.9.6+)
+### Princípio
 
-**Conexão real > atalhos NL.**  
-Caminho canônico: `catalog → connector → snapshot → pack → TOOL_DEFS → LLM`.
+**Conexão real > atalhos NL.**
 
 ## Done (código)
 
-- Phases 1–11 + memória + honesty + ecossistema wired
-- Conexão real (v0.9.6): tools no prompt, sem `formatar*` de projeto
-- Projeto Milhão 24/7 no Railway
-- **Mission Mode wrap (v0.9.7):** progresso N/M, steps `kind`, auto-continue após SIM, `ultima_falha` no planner/retry, proactive em missão falha, probe `--smoke-mission`
+- Fundação 1–30 + missões wrap (v0.9.7)
+- Milhão 24/7 Railway
+- **Dev/Ops Agent (v0.9.8):** tools `dev_diagnose` / `dev_git_status` / `dev_read_file` / `dev_railway_logs` + agente `dev` + missões de diagnóstico
 
-## Etapa atual do plano
+## Etapa atual
 
-**Wrap dias 1–30 → item 7 parcial (missões).**  
-Próxima etapa do Gap Map: **escolher trilho 31–60** (Research Agent **ou** Dev/Ops Agent) — um só.
+**Dias 31–60 trilho B — Dev Agent v1 (read-only).**  
+Aceite WA: `agente dev: diagnostica o milhão` ou `missão: diagnostica o projeto milhão`.
 
-## Manual (você)
+Opcional no Railway (app-rotina): `GITHUB_TOKEN`, `RAILWAY_TOKEN`.
 
-Ver **[JARVIS_MANUAL.md](./JARVIS_MANUAL.md)**.  
-Smoke missão: `railway run node scripts/jarvis-wa-probe.js --smoke-mission`
+## Próximo
 
-## Not started / blocked
+1. Smoke Dev no WA + tokens se quiser logs/git remoto  
+2. Mission Mode polish contínuo  
+3. Dia 61+: orchestrator / Research como 2º braço  
 
-- Clipper — off até túnel  
-- Research/Dev agents — dia 31–60  
-- Orchestrator / Vision v2 / permission matrix doc — dia 61–90  
-- Creative / Voice TTS — pós-90  
+## Not started
+
+- Research Agent (web)  
+- Write/deploy tools (sempre APPROVAL)  
+- Vision v2 / TTS / Creative  

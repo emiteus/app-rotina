@@ -117,20 +117,21 @@ Objetivo: Orchestrator delega; você só dá a missão.
 
 ## 6. Próxima ação (esta semana)
 
-1. ~~Memória de projetos~~ **DONE** (v0.8.4).
-2. ~~Ops honesty + CineRush criar≠provision + registry truth + Cutflix health~~ **DONE** (v0.8.5).
-3. ~~Melhorar missions (batch, retries, HITL auto-continue, ultima_falha)~~ **DONE** (v0.9.7).
-4. Smoke: `railway run node scripts/jarvis-wa-probe.js --smoke-mission`
-5. **Escolher trilho 31–60:** Research Agent **ou** Dev/Ops Agent (um só).
-6. (Opcional) `CUTFLIX_API_URL` no Railway pra Cutflix ON.
+1. ~~Memória de projetos~~ **DONE**
+2. ~~Ops honesty + Cutflix health~~ **DONE**
+3. ~~Missions wrap~~ **DONE** (v0.9.7)
+4. ~~Trilho 31–60: Dev/Ops Agent read-only~~ **DONE** (v0.9.8) — tools `dev_*`
+5. Smoke: `agente dev: diagnostica o milhão` / `missão: diagnostica o projeto milhão`
+6. (Opcional) `GITHUB_TOKEN` + `RAILWAY_TOKEN` no app-rotina
+7. (Opcional) `CUTFLIX_API_URL`
 ---
 
 ## 7. Definition of Done — “OS 3.0 mínimo”
 
 - [x] Memória de projeto responde fatos gravados (stack/status/notas) — “semana passada” ainda depende de episodic/time  
-- [ ] ≥1 agent com tools próprias (não só persona)  
+- [x] ≥1 agent com tools próprias (não só persona) — **Dev** `dev_*` (v0.9.8)  
 - [ ] ≥1 missão multi-sistema sem mentir sucesso  
 - [ ] Permission matrix publicada e respeitada  
-- [ ] WA continua só como canal  
+- [x] WA continua só como canal  
 
 *Enquanto isso não fechar, somos um **hub operacional excelente**, não o JARVIS do filme — e está ok.*

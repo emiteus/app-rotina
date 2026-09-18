@@ -144,7 +144,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
-    'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh'
+    'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
+    'dev_diagnose', 'dev_git_status', 'dev_read_file', 'dev_railway_logs'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -263,6 +264,26 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Disparei publicação dos agendados no SocialHub (${a.processed != null ? a.processed + ' processados' : 'ok'}).`);
       } else if (a.tipo === 'snapshot_refresh') {
         partes.push('Limpei o cache de snapshots — próximo pacote vem fresco.');
+      } else if (a.tipo === 'dev_diagnose') {
+        partes.push(
+          `Diagnóstico **${a.project || '?'}**: ` +
+            (a.registry
+              ? `registry ${a.registry.conectado ? 'ON' : 'off'}`
+              : 'sem registry') +
+            (a.memoria?.ultima_falha ? `; última falha: ${a.memoria.ultima_falha}` : '')
+        );
+      } else if (a.tipo === 'dev_git_status') {
+        partes.push(
+          `Git **${a.project}** (${a.fonte}): ` +
+            (a.branch ? `branch ${a.branch}` : a.default_branch || 'ok')
+        );
+      } else if (a.tipo === 'dev_read_file') {
+        partes.push(`Li \`${a.path}\` em **${a.project}** (${a.fonte}).`);
+      } else if (a.tipo === 'dev_railway_logs') {
+        partes.push(
+          `Logs Railway **${a.service || a.project}**` +
+            (a.deploymentStatus ? ` [${a.deploymentStatus}]` : '')
+        );
       } else if (a.tipo === 'clipper_criar') {
         partes.push(`Criei clip no Clipper (**${a.id || 'ok'}**).`);
       } else if (a.tipo === 'clipper_retry') {
