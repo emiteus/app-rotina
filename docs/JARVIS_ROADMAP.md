@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.12  
+**Version:** 0.9.13  
 **Date:** 2026-09-18
 
 ## Norte
@@ -14,21 +14,26 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 ## Done (código)
 
 - Fundação + missões + Milhão Railway
-- Dev Agent + Research Agent (respostas curtas)
-- Mission Mode polish (pings compactos + ultima_falha)
-- **Orchestrator v1**
-- **Write #1–2:** `dev_railway_redeploy` + `dev_railway_restart` (critical HITL)
-- **Proativo:** Railway FAIL/CRASH → ping WA (cron 15min, dedupe, sem auto-ação)
+- Dev / Research / Orchestrator
+- Write Railway redeploy + restart (critical HITL)
+- Proativo Railway FAIL/CRASH (cron 15min)
+- **Vision v2:** screenshot/PDF → achados estruturados (`multimodal/ingress.js`)
 
 ## Etapa atual
 
-Espera deploy do app-rotina. Smoke opcional: forçar fail num service de staging **ou** `POST /api/ia/proactive/sweep` e olhar notes `railway_deploy_fail`.
+Smoke Vision no WA:
+
+```
+(manda print de erro sem legenda)
+(manda PDF curto)
+(manda print + "o que está errado?")
+```
 
 ## Próximo
 
-1. Smoke railway-watch (ou confiar no cron em prod)  
-2. Vision v2 — PDF/screenshot → achados  
-3. Segundo alerta proativo (fila editor / crédito Havok — já parcial no sweep)
+1. Smoke Vision v2  
+2. Segundo alerta proativo (já parcial: Havok/Attracione no sweep)  
+3. Creative / TTS (backlog)
 
 ## Not started
 

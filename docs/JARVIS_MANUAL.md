@@ -33,6 +33,8 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
 | `JARVIS_PROACTIVE_WA=0` | Desliga pings proativos no WhatsApp |
 | `JARVIS_RAILWAY_WATCH=0` | Desliga watch de deploy FAIL/CRASH (default **on** se tem `RAILWAY_TOKEN`) |
+| `JARVIS_VISION_MODEL` | Modelo Gemini Vision (default `gemini-2.5-flash`) |
+| `JARVIS_VISION_MAX_BYTES` | Limite do anexo (default 12MB) |
 
 Redeploy após mudar env.
 
@@ -61,6 +63,8 @@ Critical ignora `JARVIS_HITL_WHATSAPP=0` — redeploy nunca roda sem confirmaç�
 7. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool` / `provider` ≠ `local` em Q&A de projetos
 8. WA: `redeploy milhão` → pede **SIM** (critical); depois confirma service/env
 9. WA: `restart milhão` → pede **SIM**; reinicia sem rebuild
+10. WA: manda print de erro (sem legenda) → achados Vision v2 (*Screenshot* + bullets)
+11. WA: PDF curto ou print com legenda `o que está errado?` → achados + resposta curta
 
 ---
 
