@@ -1811,12 +1811,14 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
   }
   historico = Array.isArray(historico) ? historico : [];
 
-  // Agent routing (Phase 9)
+  // Agent routing (Phase 9 + orchestrator)
   const { pickAgentForMessage, getAgent } = require('../lib/jarvis/agents/registry');
   let agent = agentId ? getAgent(agentId) : null;
+  let orchestratorHint = '';
   if (!agent) {
     const picked = pickAgentForMessage(mensagem);
     agent = picked.agent;
+    if (picked.route && picked.route.hint) orchestratorHint = picked.route.hint;
     if (picked.explicit) {
       mensagem = picked.message || `status do agente ${agent.name}`;
     }
@@ -2105,6 +2107,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (braço-direito).
 ${agent && agent.addendum ? `\n${agent.addendum}\n` : ''}
+${orchestratorHint ? `\n${orchestratorHint}\n` : ''}
 Tratamento: chame o usuário de **${prefs.tratamento || 'chefe'}**${prefs.extras?.tratamento_alt ? ` (ou ${prefs.extras.tratamento_alt})` : ''}. Nunca force "Mateus" se ele pediu outro tratamento.
 ${tomHint}${memoriaHint}
 
