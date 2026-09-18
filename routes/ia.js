@@ -213,6 +213,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
     'dev_diagnose', 'dev_git_status', 'dev_read_file', 'dev_railway_logs',
+    'dev_railway_redeploy',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
@@ -371,6 +372,11 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           const body = logs.join('\n').slice(0, 3500);
           partes.push(`${head}\n\`\`\`\n${body}\n\`\`\``);
         }
+      } else if (a.tipo === 'dev_railway_redeploy') {
+        partes.push(
+          a.texto ||
+            `Redeploy **${a.service || a.project}** (${a.environment || '?'}) via ${a.mode || 'railway'}.`
+        );
       } else if (a.tipo === 'research_web_search') {
         // Não polui WA com "Busca ok" — o resumo vem do report ou do brief
       } else if (a.tipo === 'research_fetch_url') {
@@ -457,6 +463,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       (a) => a.tipo === 'research_write_report' && a.texto
     );
     const diagnoseOk = finOk.find((a) => a.tipo === 'dev_diagnose' && a.texto);
+    const redeployOk = finOk.find((a) => a.tipo === 'dev_railway_redeploy' && a.texto);
     const searchHits = finOk
       .filter((a) => a.tipo === 'research_web_search' && (a.results || []).length)
       .flatMap((a) => a.results || []);
@@ -466,6 +473,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     let out;
     if (reportOk) {
       out = String(reportOk.texto).trim();
+    } else if (redeployOk) {
+      out = String(redeployOk.texto).trim();
     } else if (diagnoseOk || logsOk) {
       // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
       const bits = [];
@@ -1652,6 +1661,21 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     if (/\b(log|railway|infra|container|deploy|completo|full)\b/i.test(msg)) {
       acoes.push({ tipo: 'dev_railway_logs', project });
     }
+  }
+
+  // Redeploy Railway (critical → HITL SIM obrigatório)
+  if (
+    !acoes.some((a) => a && a.tipo === 'dev_railway_redeploy') &&
+    /\b(re\s*-?deploy|redeploy|reinicia(r)?\s+(o\s+)?(deploy|railway|container|service))\b/i.test(
+      msg
+    )
+  ) {
+    let project = 'approtina';
+    if (/milh/i.test(msg)) project = 'projeto_milhao';
+    else if (/cinerush|cine\s*rush/i.test(msg)) project = 'cinerush';
+    else if (/socialhub|teushub/i.test(msg)) project = 'socialhub';
+    else if (/attracione|attra/i.test(msg)) project = 'attracione';
+    acoes.push({ tipo: 'dev_railway_redeploy', project });
   }
 
   // Garante report após busca (LLM às vezes só emite search → "Busca ok" sem resultado)

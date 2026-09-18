@@ -24,21 +24,27 @@ Confira / preencha no serviço **app-rotina**:
 | `CINERUSH_*` / `CINERUSH_EDITOR_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
 | `PROJETO_MILHAO_URL` | HTTP ops do Milhão em produção (`https://projeto-milhao-production.up.railway.app`) |
 | `GITHUB_TOKEN` | Dev agent: ler repos privados / rate limit |
-| `RAILWAY_TOKEN` | Dev agent: logs/status de deploys |
+| `RAILWAY_TOKEN` | Dev agent: logs + **redeploy** (Account token) |
 | `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` | Research: busca web (senão DuckDuckGo) |
 | `RESEARCH_FETCH_ALLOWLIST` | Research: hosts permitidos (comma); ou `RESEARCH_FETCH_OPEN=1` |
-
-Redeploy após mudar env.
-
-**Milhão:** serviço próprio no Railway (24/7). `IG_FONTE=embed` (datacenter — ~6 posts/página). Não depende do PC.
 | `OPENAI_API_KEY` | Só se quiser Whisper no áudio |
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on) |
-| `JARVIS_HITL_WHATSAPP=1` | Opt-in: também pede SIM no WhatsApp (default **off**) |
+| `JARVIS_HITL_WHATSAPP=1` | Opt-in: high/medium no WhatsApp (default **off**) |
 | `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
 
 Redeploy após mudar env.
 
-**Milhão:** container local + URL alcançável do Railway. Sem `PROJETO_MILHAO_URL`, o snapshot fica off mesmo com Docker no PC.
+**Milhão:** serviço próprio no Railway (24/7). `IG_FONTE=embed` (datacenter — ~6 posts/página). Não depende do PC.
+
+### Matriz de risco (tools)
+
+| Risk | Exemplo | WhatsApp (default) | Assist web |
+|------|---------|--------------------|------------|
+| low | `dev_railway_logs`, `dev_diagnose` | auto | auto |
+| medium / high | sync bancos, mutações financeiras | auto (WA HITL off) | SIM se ≥ threshold |
+| **critical** | `dev_railway_redeploy` | **sempre SIM** | **sempre SIM** |
+
+Critical ignora `JARVIS_HITL_WHATSAPP=0` — redeploy nunca roda sem confirmação (enquanto `JARVIS_HITL=1`).
 
 ---
 
@@ -51,6 +57,7 @@ Redeploy após mudar env.
 5. WA: após coleta Attracione → `atualiza o cache` / `snapshot_refresh` via tool  
 6. Assist web: pills → **OS** (dashboard; version 0.9.6+)  
 7. Railway logs: `jarvis.turn` / `jarvis.ai` / `jarvis.tool` / `provider` ≠ `local` em Q&A de projetos
+8. WA: `redeploy milhão` → pede **SIM** (critical); depois confirma service/env
 
 ---
 

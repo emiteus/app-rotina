@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.9  
+**Version:** 0.9.10  
 **Date:** 2026-09-18
 
 ## Norte
@@ -17,21 +17,22 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 - Dev Agent + Research Agent (respostas curtas)
 - Mission Mode polish (pings compactos + ultima_falha)
 - **Orchestrator v1:** `agents/orchestrator.js` escolhe Dev/Research/Finance/Ops/Rotina + hint multi-braço
+- **Write #1:** `dev_railway_redeploy` (`critical` — HITL sempre, inclusive WA)
 
 ## Etapa atual
 
-Smoke orchestrator no WA (sem prefixo `agente X:`):
+Smoke redeploy no WA:
 
 ```
-diagnostica o milhão
-pesquisa monitores 240hz custo benefício
-sincronizar bancos e reconciliar
+redeploy milhão
 ```
+
+→ deve pedir **SIM** antes de chamar Railway. Depois: `diagnostica o milhão` / logs.
 
 ## Próximo
 
-1. Smoke orchestrator  
-2. Write/deploy tools (sempre APPROVAL)  
+1. Smoke `dev_railway_redeploy` + SIM  
+2. Mais write tools (restart service, env bump) com mesma regra critical  
 3. Vision v2 / proatividade  
 
 ## Not started
