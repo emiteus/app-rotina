@@ -334,11 +334,11 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push('Limpei o cache de snapshots — próximo pacote vem fresco.');
       } else if (a.tipo === 'dev_diagnose') {
         partes.push(
-          `Diagnóstico **${a.project || '?'}**: ` +
-            (a.registry
-              ? `registry ${a.registry.conectado ? 'ON' : 'off'}`
-              : 'sem registry') +
-            (a.memoria?.ultima_falha ? `; última falha: ${a.memoria.ultima_falha}` : '')
+          a.texto ||
+            `Diagnóstico **${a.project || '?'}**: ` +
+              (a.registry
+                ? `registry ${a.registry.conectado ? 'ON' : 'off'}`
+                : 'sem registry')
         );
       } else if (a.tipo === 'dev_git_status') {
         partes.push(
@@ -448,6 +448,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const reportOk = finOk.find(
       (a) => a.tipo === 'research_write_report' && a.texto
     );
+    const diagnoseOk = finOk.find((a) => a.tipo === 'dev_diagnose' && a.texto);
     const searchHits = finOk
       .filter((a) => a.tipo === 'research_web_search' && (a.results || []).length)
       .flatMap((a) => a.results || []);
@@ -457,12 +458,17 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     let out;
     if (reportOk) {
       out = String(reportOk.texto).trim();
+    } else if (diagnoseOk || logsOk) {
+      // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
+      const bits = [];
+      if (diagnoseOk) bits.push(String(diagnoseOk.texto).trim());
+      const logPart = partes.filter((p) => /Logs Railway/i.test(p)).join('\n\n');
+      if (logPart) bits.push(logPart);
+      const gitPart = partes.filter((p) => /^Git \*\*/i.test(p)).join('\n');
+      if (gitPart) bits.push(gitPart);
+      out = bits.join('\n\n') || partes.join('\n\n');
     } else if (searchHits.length) {
-      // Busca sem report: já devolve o resumo (nunca "Busca ok" sozinho)
       out = briefFromResearchHits(searchHits, searchQuery);
-    } else if (logsOk) {
-      const dump = partes.filter((p) => /Logs Railway/i.test(p)).join('\n\n');
-      out = dump || partes.join('\n\n');
     } else if (base && base.length > 40) {
       out = `${base}\n\n${partes.join(' ')}`.trim();
     } else {
@@ -1614,6 +1620,26 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
           com_fontes: detailed || undefined
         });
       }
+    }
+  }
+
+  // Dev diagnose: sempre devolve resumo; com "log/railway" inclui logs
+  if (
+    !acoes.some((a) => a && a.tipo === 'dev_diagnose') &&
+    /\b(diagn[oó]stic|diagnostica|debug)\b/i.test(msg)
+  ) {
+    let project = 'approtina';
+    if (/milh/i.test(msg)) project = 'projeto_milhao';
+    else if (/cinerush|cine\s*rush/i.test(msg)) project = 'cinerush';
+    else if (/socialhub|teushub/i.test(msg)) project = 'socialhub';
+    else if (/attracione|attra/i.test(msg)) project = 'attracione';
+    else if (/jarvis/i.test(msg)) project = 'jarvis';
+    acoes.push({ tipo: 'dev_diagnose', project });
+    if (
+      /\b(log|railway|infra|container|deploy)\b/i.test(msg) ||
+      /completo|completo|completo/i.test(msg)
+    ) {
+      acoes.push({ tipo: 'dev_railway_logs', project });
     }
   }
 
