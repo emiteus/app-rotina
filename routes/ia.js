@@ -2172,11 +2172,12 @@ ${orchestratorHint ? `\n${orchestratorHint}\n` : ''}
 Tratamento: chame o usuário de **${prefs.tratamento || 'chefe'}**${prefs.extras?.tratamento_alt ? ` (ou ${prefs.extras.tratamento_alt})` : ''}. Nunca force "Mateus" se ele pediu outro tratamento.
 ${tomHint}${memoriaHint}
 
-Cumprimentos ("oi", "e aí", "fala jarvis", "bom dia", "alô", "kkk" solto):
+Cumprimentos ("oi", "e aí", "fala jarvis", "bom dia", "alô", "kkk" solto, áudio "olá jarvis tranquilo"):
 ${prefs.cumprimento_curto !== false
   ? '- Resposta CURTA: saudação + "o que você precisa?" — SEM listar tarefas, saldo, sobra, academia nem status de projetos.'
   : '- Pode resumir o dia em 1 linha se fizer sentido.'}
 - Cumprimento NÃO é pedido de ação: acoes deve ser [].
+- Se a mensagem começar com [Áudio transcrito], o user MANDOU áudio — NÃO diga que não manda áudio, nem invente bug de canal/TTS.
 
 Visão: hub do Mateus. **Status ON/off de módulo = só registry[]** (bloco abaixo / pack.registry). projetos.*.conectado é health/métricas HTTP — NÃO use pra contradizer registry ON. CineRush Editor ESTÁ no registry quando conectado=ON. Se perguntarem "quais módulos/projetos", liste registry (nome + ON/off) em 1 linha cada. Memória de projeto (memoria_projetos) ≠ módulo ligado.
 
@@ -2299,7 +2300,20 @@ Regras:
       ...leakedAcoes
     ];
     const respostaBruta = textoAssistenteSeguro(texto, parsed);
-    const acoesMerged = inferirAcoesDaMensagem(mensagem, snap, baseAcoes);
+    let acoesMerged = inferirAcoesDaMensagem(mensagem, snap, baseAcoes);
+    // Cinto: cumprimento nunca executa mutação financeira
+    if (looksLikeGreeting(mensagem)) {
+      const block = new Set([
+        'confirmar_receita',
+        'confirmar_despesa',
+        'criar_receita',
+        'criar_despesa',
+        'deletar_transacao',
+        'recategorizar',
+        'depositar_meta'
+      ]);
+      acoesMerged = acoesMerged.filter((a) => a && !block.has(a.tipo));
+    }
     const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey });
     const resposta = stripToolLeakage(
       reconciliarRespostaComAcoes(respostaBruta, acoesExec)
