@@ -280,10 +280,21 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       } else if (a.tipo === 'dev_read_file') {
         partes.push(`Li \`${a.path}\` em **${a.project}** (${a.fonte}).`);
       } else if (a.tipo === 'dev_railway_logs') {
-        partes.push(
+        const head =
           `Logs Railway **${a.service || a.project}**` +
-            (a.deploymentStatus ? ` [${a.deploymentStatus}]` : '')
-        );
+          (a.deploymentStatus ? ` [${a.deploymentStatus}]` : '');
+        const logs = (a.lines || []).slice(-35);
+        if (!logs.length) {
+          partes.push(
+            head +
+              (a.note
+                ? `\n${a.note}`
+                : '\n_(API sem linhas — abre o dashboard Railway se precisar do stream)_')
+          );
+        } else {
+          const body = logs.join('\n').slice(0, 3500);
+          partes.push(`${head}\n\`\`\`\n${body}\n\`\`\``);
+        }
       } else if (a.tipo === 'clipper_criar') {
         partes.push(`Criei clip no Clipper (**${a.id || 'ok'}**).`);
       } else if (a.tipo === 'clipper_retry') {
