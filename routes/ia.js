@@ -1604,7 +1604,7 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
         .trim()
         .slice(0, 200);
       if (query.length >= 4) {
-        const detailed = /\b(fontes|links|detalh|completo|com\s+fonte)\b/i.test(msg);
+        const detailed = /\b(fontes|links|completo|com\s+fonte)\b/i.test(msg);
         acoes.push({ tipo: 'research_web_search', query, limit: detailed ? 8 : 6 });
         acoes.push({
           tipo: 'research_write_report',
@@ -1636,7 +1636,7 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       const q = String(
         researchSearches[0].query || researchSearches[0].q || msg
       ).slice(0, 80);
-      const detailed = /\b(fontes|links|detalh|completo|profunda|aprofund)\b/i.test(msg);
+      const detailed = /\b(fontes|links|completo|com\s+fonte)\b/i.test(msg);
       acoes.push({
         tipo: 'research_write_report',
         title: q,
