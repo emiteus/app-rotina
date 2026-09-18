@@ -364,20 +364,11 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           partes.push(`${head}\n\`\`\`\n${body}\n\`\`\``);
         }
       } else if (a.tipo === 'research_web_search') {
-        // Curto: se houver relatório no mesmo turno, narrarOks do report basta
-        const n = (a.results || []).length;
-        partes.push(n ? `Busca ok (**${n}** fontes).` : `Busca **${a.query}** sem hits.`);
+        // Não polui WA com "Busca ok" — o resumo vem do report ou do brief
       } else if (a.tipo === 'research_fetch_url') {
-        const preview = String(a.text || '').slice(0, 280);
-        partes.push(
-          `Li **${a.title || a.url}**` + (preview ? `: ${preview}${a.truncated ? '…' : ''}` : '.')
-        );
+        // silencioso no modo curto; detalhe só no report
       } else if (a.tipo === 'research_write_report') {
-        partes.push(
-          a.texto
-            ? String(a.texto).replace(/\*/g, '*')
-            : `Relatório **${a.title || '?'}** ok.`
-        );
+        if (a.texto) partes.push(String(a.texto));
       } else if (a.tipo === 'clipper_criar') {
         partes.push(`Criei clip no Clipper (**${a.id || 'ok'}**).`);
       } else if (a.tipo === 'clipper_retry') {
@@ -432,6 +423,21 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
 
   const hitl = askHitl();
 
+  function briefFromResearchHits(hits, query) {
+    const top = (hits || []).filter((h) => h && (h.title || h.url)).slice(0, 5);
+    if (!top.length) {
+      return query
+        ? `Não achei resultado útil pra **${query}**. Tenta reformular?`
+        : 'Não achei resultado útil.';
+    }
+    const lines = top.map((h, i) => {
+      const sn = String(h.snippet || '').trim().slice(0, 80);
+      const t = String(h.title || 'fonte').replace(/\*/g, '').slice(0, 90);
+      return sn ? `• ${t} — ${sn}` : `• ${t}`;
+    });
+    return `*${String(query || 'Pesquisa').slice(0, 60)}*\n\n${lines.join('\n')}\n\n_Quer fontes ou mais detalhe?_`;
+  }
+
   // Fail-first: nunca esconde falha atrás de sucesso parcial ou texto do LLM
   if (finOk.length) {
     const partes = narrarOks(finOk);
@@ -442,32 +448,22 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const reportOk = finOk.find(
       (a) => a.tipo === 'research_write_report' && a.texto
     );
-    const searchOk = finOk.find(
-      (a) => a.tipo === 'research_web_search' && (a.results || []).length
-    );
+    const searchHits = finOk
+      .filter((a) => a.tipo === 'research_web_search' && (a.results || []).length)
+      .flatMap((a) => a.results || []);
+    const searchQuery =
+      (finOk.find((a) => a.tipo === 'research_web_search' && a.query) || {}).query ||
+      null;
     let out;
-    // Logs / research dump: não deixa o LLM contradizer o payload
     if (reportOk) {
-      // Só o relatório curto — sem dump da busca
-      const onlyReport = partes.filter((p) =>
-        /^\*|Relatório|Quer fontes/i.test(p) || (reportOk.texto && p.includes(String(reportOk.title || '').slice(0, 12)))
-      );
-      out = (onlyReport.length ? onlyReport : partes.filter((p) => !/^Busca ok/i.test(p)))
-        .join('\n\n')
-        .trim();
-    } else if (logsOk || searchOk) {
-      const dump = partes
-        .filter((p) =>
-          /Logs Railway|Busca \*\*|Fetch \*\*|^## /i.test(p)
-        )
-        .join('\n\n');
-      const intro =
-        base && !/vazi|sem\s+sa[ií]da|n[aã]o\s+devolveu|sem\s+linhas|sem\s+result/i.test(base)
-          ? base
-          : '';
-      out = [intro, dump || partes.join('\n\n')].filter(Boolean).join('\n\n').trim();
+      out = String(reportOk.texto).trim();
+    } else if (searchHits.length) {
+      // Busca sem report: já devolve o resumo (nunca "Busca ok" sozinho)
+      out = briefFromResearchHits(searchHits, searchQuery);
+    } else if (logsOk) {
+      const dump = partes.filter((p) => /Logs Railway/i.test(p)).join('\n\n');
+      out = dump || partes.join('\n\n');
     } else if (base && base.length > 40) {
-      // Sempre preserva análise/contagem; append da tool (coleta etc.)
       out = `${base}\n\n${partes.join(' ')}`.trim();
     } else {
       out = partes.join(' ') || base;
@@ -1618,6 +1614,35 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
           com_fontes: detailed || undefined
         });
       }
+    }
+  }
+
+  // Garante report após busca (LLM às vezes só emite search → "Busca ok" sem resultado)
+  const researchSearches = acoes.filter((a) => a && a.tipo === 'research_web_search');
+  if (researchSearches.length) {
+    const seenQ = new Set();
+    for (let i = acoes.length - 1; i >= 0; i--) {
+      if (!acoes[i] || acoes[i].tipo !== 'research_web_search') continue;
+      const key = String(acoes[i].query || acoes[i].q || '')
+        .toLowerCase()
+        .trim();
+      if (!key || seenQ.has(key)) {
+        acoes.splice(i, 1);
+        continue;
+      }
+      seenQ.add(key);
+    }
+    if (!acoes.some((a) => a && a.tipo === 'research_write_report')) {
+      const q = String(
+        researchSearches[0].query || researchSearches[0].q || msg
+      ).slice(0, 80);
+      const detailed = /\b(fontes|links|detalh|completo|profunda|aprofund)\b/i.test(msg);
+      acoes.push({
+        tipo: 'research_write_report',
+        title: q,
+        detailed: detailed || undefined,
+        com_fontes: detailed || undefined
+      });
     }
   }
 
