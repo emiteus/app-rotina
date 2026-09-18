@@ -144,7 +144,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
-    'cutflix_status'
+    'cutflix_status', 'projeto_milhao_fechamento'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -298,6 +298,16 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
             ? `Cutflix API **ON**${a.status ? ` (${a.status})` : ''}.`
             : `Cutflix **off**${a.erro || a.motivo ? `: ${a.erro || a.motivo}` : ''}.`
         );
+      } else if (a.tipo === 'projeto_milhao_fechamento') {
+        if (a.texto) partes.push(String(a.texto).replace(/\*/g, '**'));
+        else {
+          const linhas = (a.por_pessoa || [])
+            .map((p) => `${p.meta_ok ? '✅' : '⚠️'} **${p.nome}** ${p.posts}/${p.meta || 30}`)
+            .join('\n');
+          partes.push(
+            `Fechamento Projeto Milhão **${a.data_br || a.ymd}**:\n${linhas || '(sem dados)'}`
+          );
+        }
       }
     }
     return partes;
@@ -1103,6 +1113,46 @@ async function executarAcoes(acoes, userId, opts = {}) {
 
 
 /** Se a IA esquecer de emitir acao, inferimos pedidos claros de rename/fundir. */
+/** Atalho: "fechamento projeto milhão" / "como foi o milhão ontem" */
+function formatarProjetoMilhaoFechamento(mensagem, snap) {
+  const msg = String(mensagem || '');
+  const citaMilhao = /\b(milh[aã]o|projeto\s*milh[aã]o)\b/i.test(msg);
+  if (!citaMilhao) return null;
+  // Qualquer pergunta sobre o milhão → fechamento (status operacional)
+  const pm = snap?.projetos?.projeto_milhao;
+  if (!pm || pm.conectado === false) {
+    return (
+      'Projeto Milhão **off** no hub — preciso de `PROJETO_MILHAO_URL` (HTTP :4410 do Docker) ' +
+      'ou `PROJETO_MILHAO_DATA_DIR` com os `dia-*.json`.'
+    );
+  }
+  const f = pm.fechamento;
+  if (!f) {
+    return 'Projeto Milhão conectado, mas sem bloco de fechamento no snapshot.';
+  }
+  if (f.arquivo_existe === false && !(f.por_pessoa && f.por_pessoa.length)) {
+    return (
+      `Sem dados do fechamento **${f.data_br || f.ymd || 'ontem'}**. ` +
+      `O cron 02h grava \`dia-*.json\` no volume do Docker — confere se o monitor rodou.`
+    );
+  }
+  if (f.texto) return String(f.texto).replace(/\*/g, '**');
+  const linhas = (f.por_pessoa || []).map(
+    (p) =>
+      `${p.meta_ok ? '✅' : '⚠️'} **${p.nome}**: **${p.posts}/${p.meta || 30}**` +
+      (p.faltam ? ` (faltam ${p.faltam})` : '') +
+      (p.views_ok ? ` · ${Number(p.views || 0).toLocaleString('pt-BR')} views` : '')
+  );
+  return (
+    `Projeto Milhão — fechamento **${f.data_br || f.ymd}**\n` +
+    `Meta: **${f.meta_por_pessoa || 30}**/pessoa\n` +
+    linhas.join('\n') +
+    (f.ambos_na_meta
+      ? '\n🔥 Dia no verde — os dois bateram a meta.'
+      : `\n📉 ${f.na_meta || 0}/${f.total_pessoas || 2} na meta.`)
+  );
+}
+
 /** Resposta local pra posts IG do CineRush Editor hoje. */
 function formatarCinerushPostsHoje(mensagem, snap) {
   const msg = String(mensagem || '');
@@ -1930,6 +1980,19 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
     const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
 
     // Atalhos locais de contagem (sem LLM)
+    const respMilhao = formatarProjetoMilhaoFechamento(mensagem, snap);
+    if (respMilhao) {
+      await salvarMensagem(conversaId, 'assistant', respMilhao, uid);
+      return {
+        resposta: respMilhao,
+        acoes: [],
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
     const respCine = formatarCinerushPostsHoje(mensagem, snap);
     if (respCine) {
       await salvarMensagem(conversaId, 'assistant', respCine, uid);
@@ -2104,6 +2167,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - categorias → criar/renomear/fundir/recategorizar
 - Memória de projeto → project_memory_get / project_memory_set / project_memory_list
 - Ficha do ecossistema → project_info (project: "attracione"|… ou "all")
+- Projeto Milhão: fechamento em projetos.projeto_milhao.fechamento (Mateus/Erik, meta 30). Tool projeto_milhao_fechamento. "como foi o fechamento do milhão ontem" → esse bloco (NÃO diga que não tem dados se o snapshot veio).
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
@@ -2149,6 +2213,7 @@ Tipos de ação:
 - {"tipo":"cinerush_criar","email":"a@b.com","nome":"João","plano":"mensal"} — cria acesso Havok+DB
 - {"tipo":"cinerush_reenviar_email","id":"uuid"} ou {"tipo":"cinerush_reenviar_email","search":"email"}
 - {"tipo":"cutflix_status"}
+- {"tipo":"projeto_milhao_fechamento","ymd":"YYYY-MM-DD"|null}
 - {"tipo":"chatwoot_listar","status":"open|pending"}
 - {"tipo":"chatwoot_resolver","id":123}
 - {"tipo":"chatwoot_atribuir","id":123}
