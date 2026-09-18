@@ -1635,10 +1635,7 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     else if (/attracione|attra/i.test(msg)) project = 'attracione';
     else if (/jarvis/i.test(msg)) project = 'jarvis';
     acoes.push({ tipo: 'dev_diagnose', project });
-    if (
-      /\b(log|railway|infra|container|deploy)\b/i.test(msg) ||
-      /completo|completo|completo/i.test(msg)
-    ) {
+    if (/\b(log|railway|infra|container|deploy|completo|full)\b/i.test(msg)) {
       acoes.push({ tipo: 'dev_railway_logs', project });
     }
   }
