@@ -457,11 +457,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     );
     let out;
     // Logs / research dump: não deixa o LLM contradizer o payload
-    if (logsOk || reportOk || searchOk) {
+    if (reportOk) {
+      // Relatório manda — descarta inventário do LLM (Notion/Motion etc.)
+      out = (partes.filter((p) => p && p.length > 20).join('\n\n') || partes.join('\n\n')).trim();
+    } else if (logsOk || searchOk) {
       const dump = partes
         .filter((p) =>
-          /Logs Railway|Busca \*\*|Fetch \*\*|^## /i.test(p) ||
-          (reportOk && p.includes(String(reportOk.title || '').slice(0, 20)))
+          /Logs Railway|Busca \*\*|Fetch \*\*|^## /i.test(p)
         )
         .join('\n\n');
       const intro =
