@@ -145,7 +145,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
-    'dev_diagnose', 'dev_git_status', 'dev_read_file', 'dev_railway_logs'
+    'dev_diagnose', 'dev_git_status', 'dev_read_file', 'dev_railway_logs',
+    'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -295,6 +296,31 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           const body = logs.join('\n').slice(0, 3500);
           partes.push(`${head}\n\`\`\`\n${body}\n\`\`\``);
         }
+      } else if (a.tipo === 'research_web_search') {
+        const hits = (a.results || []).slice(0, 6);
+        const linhas = hits
+          .map(
+            (r, i) =>
+              `${i + 1}. **${r.title || 'sem título'}**\n${r.url || ''}\n_${(r.snippet || '').slice(0, 160)}_`
+          )
+          .join('\n');
+        partes.push(
+          hits.length
+            ? `Busca **${a.query}** (${a.provider || '?'}):\n${linhas}`
+            : `Busca **${a.query}** sem hits.`
+        );
+      } else if (a.tipo === 'research_fetch_url') {
+        const preview = String(a.text || '').slice(0, 900);
+        partes.push(
+          `Fetch **${a.title || a.url}** (${a.chars || 0} chars)` +
+            (preview ? `:\n${preview}${a.truncated ? '…' : ''}` : '.')
+        );
+      } else if (a.tipo === 'research_write_report') {
+        partes.push(
+          a.texto
+            ? String(a.texto).replace(/\*/g, '**')
+            : `Relatório **${a.title || '?'}** ok.`
+        );
       } else if (a.tipo === 'clipper_criar') {
         partes.push(`Criei clip no Clipper (**${a.id || 'ok'}**).`);
       } else if (a.tipo === 'clipper_retry') {
@@ -356,13 +382,25 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const logsOk = finOk.find(
       (a) => a.tipo === 'dev_railway_logs' && (a.lines || []).length
     );
+    const reportOk = finOk.find(
+      (a) => a.tipo === 'research_write_report' && a.texto
+    );
+    const searchOk = finOk.find(
+      (a) => a.tipo === 'research_web_search' && (a.results || []).length
+    );
     let out;
-    // Logs reais: não deixa o LLM dizer "vazio" por cima do dump
-    if (logsOk) {
-      const dump = partes.filter((p) => /Logs Railway/i.test(p)).join('\n\n');
-      const intro = base && !/vazi|sem\s+sa[ií]da|n[aã]o\s+devolveu|sem\s+linhas/i.test(base)
-        ? base
-        : '';
+    // Logs / research dump: não deixa o LLM contradizer o payload
+    if (logsOk || reportOk || searchOk) {
+      const dump = partes
+        .filter((p) =>
+          /Logs Railway|Busca \*\*|Fetch \*\*|^## /i.test(p) ||
+          (reportOk && p.includes(String(reportOk.title || '').slice(0, 20)))
+        )
+        .join('\n\n');
+      const intro =
+        base && !/vazi|sem\s+sa[ií]da|n[aã]o\s+devolveu|sem\s+linhas|sem\s+result/i.test(base)
+          ? base
+          : '';
       out = [intro, dump || partes.join('\n\n')].filter(Boolean).join('\n\n').trim();
     } else if (base && base.length > 40) {
       // Sempre preserva análise/contagem; append da tool (coleta etc.)
