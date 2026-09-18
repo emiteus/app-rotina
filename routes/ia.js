@@ -2062,10 +2062,28 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       snapshotAssistente({ lite: true, userId: uid })
     );
 
-    const isGreeting = /^(oi|ol[áa]|e a[ií]|fala(\s+jarvis)?|bom dia|boa tarde|boa noite|al[oôô]|hey|hola|kkk+)\s*[!.?]*$/i
-      .test(mensagem.trim());
+    const { looksLikeGreeting } = require('../lib/jarvis/context/intent');
+    const isGreeting = looksLikeGreeting(mensagem);
 
-    const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
+    if (isGreeting) {
+      const quem = prefs.tratamento || 'chefe';
+      const resposta =
+        prefs.cumprimento_curto !== false
+          ? `Tranquilo, **${quem}**. O que você precisa?`
+          : `E aí, **${quem}**. Em que ajudo?`;
+      await salvarMensagem(conversaId, 'assistant', resposta, uid);
+      return {
+        resposta,
+        acoes: [],
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
+
+    const acoesRapidas = inferirAcoesDaMensagem(mensagem, snap, []);
 
     // Acesso manual CineRush: atalho local (com ou sem email)
     if (acoesRapidas.length === 1 && acoesRapidas[0].tipo === 'cinerush_criar') {
