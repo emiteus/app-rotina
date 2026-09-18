@@ -341,9 +341,17 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
                 : 'sem registry')
         );
       } else if (a.tipo === 'dev_git_status') {
+        const branch = a.branch || a.default_branch || '?';
+        const commits = Array.isArray(a.commits)
+          ? a.commits
+              .slice(0, 3)
+              .map((c) => `  · ${c.sha || c.oid || ''} ${(c.message || c.commit?.message || '').split('\n')[0]}`.trim())
+              .filter(Boolean)
+              .join('\n')
+          : '';
         partes.push(
-          `Git **${a.project}** (${a.fonte}): ` +
-            (a.branch ? `branch ${a.branch}` : a.default_branch || 'ok')
+          `Git **${a.project}** (${a.fonte || '?'}): \`${branch}\`` +
+            (commits ? `\n${commits}` : '')
         );
       } else if (a.tipo === 'dev_read_file') {
         partes.push(`Li \`${a.path}\` em **${a.project}** (${a.fonte}).`);
@@ -464,9 +472,15 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       if (diagnoseOk) bits.push(String(diagnoseOk.texto).trim());
       const logPart = partes.filter((p) => /Logs Railway/i.test(p)).join('\n\n');
       if (logPart) bits.push(logPart);
-      const gitPart = partes.filter((p) => /^Git \*\*/i.test(p)).join('\n');
+      const gitPart = partes.filter((p) => /^Git \*\*/i.test(p) || /^Git \*/i.test(p)).join('\n');
       if (gitPart) bits.push(gitPart);
-      out = bits.join('\n\n') || partes.join('\n\n');
+      const dump = bits.join('\n\n') || partes.join('\n\n');
+      // Missão já trouxe progresso — anexa o dump, não apaga o board
+      if (/Missão\s+\*|Passo\s+\d+\//i.test(base)) {
+        out = `${base}\n\n${dump}`.trim();
+      } else {
+        out = dump;
+      }
     } else if (searchHits.length) {
       out = briefFromResearchHits(searchHits, searchQuery);
     } else if (base && base.length > 40) {
