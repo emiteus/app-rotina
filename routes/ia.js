@@ -1781,6 +1781,16 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
           if (!String(resposta || '').trim()) {
             resposta = 'Pronto — executei o que estava pendente.';
           }
+          // Continua missão se estava waiting_approval
+          try {
+            const { resumeMissionAfterApproval } = require('../lib/jarvis/missions/planner');
+            const resumed = await resumeMissionAfterApproval(uid, hitl.acoes || []);
+            if (resumed && resumed.text) {
+              resposta = `${resposta}\n\n${resumed.text}`;
+            }
+          } catch (e) {
+            console.error('[ia] mission resume after HITL:', e.message);
+          }
         }
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
@@ -2104,7 +2114,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
-- CineRush TV dados: use projetos.cinerush (receita_mes, vendas_ontem, chart_7d, créditos, suporte). "vendas esse mês" → mês atual; se pedirem "últimos 30 dias" e só tiver mês, diga o intervalo sem inventar 30d. Faturamento = bruto Kirvano.
+- CineRush TV dados: use projetos.cinerush. receita_mes = mês civil; receita_30d = rolling 30d (quando vier). "vendas esse mês" → receita_mes; "últimos 30 dias" → receita_30d (se null, diga que só tem o mês e o intervalo periodo.from–to). Faturamento = bruto Kirvano.
 - "Roda" / "sincroniza" sem contexto de banco: NÃO dispare sincronizar_bancos. Só se pedir banco/extrato/financeiro explicitamente.
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
 - NUNCA diga "Feito" / "liberei" / "criei" se a tool retornou ok:false.

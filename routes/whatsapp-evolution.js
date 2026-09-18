@@ -157,6 +157,14 @@ async function processPhoneQueue(phone) {
   const resolved = await resolveUserIdForPhone(phone);
   if (!resolved?.userId) {
     console.error('[whatsapp] sem user para phone:', phone);
+    try {
+      await sendText(
+        phone,
+        'Chefe, teu número ainda não está mapeado no Jarvis (`WHATSAPP_PHONE_USERS`). Me avisa no PC pra eu plugar.'
+      );
+    } catch (e) {
+      console.error('[whatsapp] send unmapped reply:', e.message);
+    }
     return;
   }
   const uid = resolved.userId;
@@ -200,7 +208,11 @@ async function processPhoneQueue(phone) {
   } catch (err) {
     console.error('[whatsapp] jarvis:', err.message);
     try {
-      await sendText(phone, 'Tive um problema aqui. Tenta de novo em instantes.');
+      const budgetMsg =
+        err.status === 429 || /or[cç]amento di[aá]rio/i.test(String(err.message || ''))
+          ? `Orçamento diário do Jarvis esgotou: ${err.message}`
+          : 'Tive um problema aqui. Tenta de novo em instantes.';
+      await sendText(phone, budgetMsg);
     } catch (e2) {
       console.error('[whatsapp] send error reply:', e2.message);
     }
