@@ -22,8 +22,12 @@ Confira / preencha no serviço **app-rotina**:
 | `WHATSAPP_PHONE_USERS` | Opcional multi-user `5584…:teus,5584…:outro` |
 | `EVOLUTION_*` | WA |
 | `CINERUSH_*` / `CINERUSH_EDITOR_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
-| `PROJETO_MILHAO_URL` | HTTP ops do Milhão (ex. `http://…:4410` via túnel/rede) |
-| `CUTFLIX_API_URL` | Health Cutflix (opcional) |
+| `PROJETO_MILHAO_URL` | HTTP ops do Milhão em produção (`https://projeto-milhao-production.up.railway.app`) |
+| `PROJETO_MILHAO_OPS_KEY` | Mesma key do serviço projeto-milhao no Railway |
+
+Redeploy após mudar env.
+
+**Milhão:** serviço próprio no Railway (24/7). `IG_FONTE=embed` (datacenter — ~6 posts/página). Não depende do PC.
 | `OPENAI_API_KEY` | Só se quiser Whisper no áudio |
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on) |
 | `JARVIS_HITL_WHATSAPP=1` | Opt-in: também pede SIM no WhatsApp (default **off**) |

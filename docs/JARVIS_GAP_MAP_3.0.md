@@ -119,9 +119,10 @@ Objetivo: Orchestrator delega; você só dá a missão.
 
 1. ~~Memória de projetos~~ **DONE** (v0.8.4).
 2. ~~Ops honesty + CineRush criar≠provision + registry truth + Cutflix health~~ **DONE** (v0.8.5).
-3. Melhorar **missions** (batch, retries, UI) e **proactive** + **budget**.
-4. Smoke contínuo com `railway run node scripts/jarvis-wa-probe.js "…"`.
-5. (Opcional) `CUTFLIX_API_URL` no Railway pra Cutflix ON.
+3. ~~Melhorar missions (batch, retries, HITL auto-continue, ultima_falha)~~ **DONE** (v0.9.7).
+4. Smoke: `railway run node scripts/jarvis-wa-probe.js --smoke-mission`
+5. **Escolher trilho 31–60:** Research Agent **ou** Dev/Ops Agent (um só).
+6. (Opcional) `CUTFLIX_API_URL` no Railway pra Cutflix ON.
 ---
 
 ## 7. Definition of Done — “OS 3.0 mínimo”

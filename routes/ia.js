@@ -1619,12 +1619,28 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
           if (!String(resposta || '').trim()) {
             resposta = 'Pronto — executei o que estava pendente.';
           }
-          // Continua missão se estava waiting_approval
+          // Continua missão se estava waiting_approval (e auto-avança se canAdvance)
           try {
-            const { resumeMissionAfterApproval } = require('../lib/jarvis/missions/planner');
+            const {
+              resumeMissionAfterApproval,
+              runMissionBatch
+            } = require('../lib/jarvis/missions/planner');
             const resumed = await resumeMissionAfterApproval(uid, hitl.acoes || []);
             if (resumed && resumed.text) {
               resposta = `${resposta}\n\n${resumed.text}`;
+            }
+            if (resumed && resumed.canAdvance && resumed.mission) {
+              const cont = await runMissionBatch(
+                uid,
+                (acoes) => executarAcoes(acoes, uid, { channel: channelKey }),
+                { missionId: resumed.mission.id }
+              );
+              if (cont && cont.resposta) {
+                resposta = `${resposta}\n\n${cont.resposta}`;
+              }
+              if (cont && cont.acoes && cont.acoes.length) {
+                hitl.acoes = [...(hitl.acoes || []), ...cont.acoes];
+              }
             }
           } catch (e) {
             console.error('[ia] mission resume after HITL:', e.message);

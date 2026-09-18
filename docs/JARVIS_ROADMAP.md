@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.6  
+**Version:** 0.9.7  
 **Date:** 2026-09-18
 
 ## Norte
@@ -10,36 +10,28 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 ### Princípio (v0.9.6+)
 
 **Conexão real > atalhos NL.**  
-Caminho canônico: `catalog → connector → snapshot → pack → TOOL_DEFS → LLM`.  
-Não empilhar `formatar*` / regex de resposta pra projeto. Guardas de honesty (ex. contagem≠coleta) ok; FAQ de comandos não.
+Caminho canônico: `catalog → connector → snapshot → pack → TOOL_DEFS → LLM`.
 
 ## Done (código)
 
-- Phases 1–11 (Core → polish)
-- HITL canal-bound; WA sem confirmação por default
-- Host bridge + probe WA
-- Memória de projetos + briefs ecossistema
-- Ops honesty + CineRush criar≠provision + Cutflix health
-- Attracione/Editor/SocialHub `hoje` no **snapshot** (contrato estável)
-- Cache bypass pós-coleta + `snapshot_refresh` (tool, não atalho de resposta)
-- `toolsPromptBlock()` — descriptions das tools no prompt (fonte única)
-- Pack sempre inclui wired set (incl. cutflix)
-- Removidos early-returns `formatar*` de projeto no host
+- Phases 1–11 + memória + honesty + ecossistema wired
+- Conexão real (v0.9.6): tools no prompt, sem `formatar*` de projeto
+- Projeto Milhão 24/7 no Railway
+- **Mission Mode wrap (v0.9.7):** progresso N/M, steps `kind`, auto-continue após SIM, `ultima_falha` no planner/retry, proactive em missão falha, probe `--smoke-mission`
 
-## Próximo (conexão)
+## Etapa atual do plano
 
-1. Reachability: `PROJETO_MILHAO_URL` / Clipper túnel (env, não código)
-2. Smoke WA honesty sem `provider: local` em Q&A de projetos
-3. Cutflix ops quando API admin existir
-4. Research agent (dia 31–60)
+**Wrap dias 1–30 → item 7 parcial (missões).**  
+Próxima etapa do Gap Map: **escolher trilho 31–60** (Research Agent **ou** Dev/Ops Agent) — um só.
 
 ## Manual (você)
 
 Ver **[JARVIS_MANUAL.md](./JARVIS_MANUAL.md)**.  
-Envs: `CUTFLIX_API_URL`, `PROJETO_MILHAO_URL` (túnel → `:4410`).
+Smoke missão: `railway run node scripts/jarvis-wa-probe.js --smoke-mission`
 
 ## Not started / blocked
 
 - Clipper — off até túnel  
-- Research/Dev agents — dia 60  
+- Research/Dev agents — dia 31–60  
+- Orchestrator / Vision v2 / permission matrix doc — dia 61–90  
 - Creative / Voice TTS — pós-90  

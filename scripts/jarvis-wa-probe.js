@@ -3,6 +3,7 @@
  * Uso:
  *   railway run node scripts/jarvis-wa-probe.js "oi"
  *   railway run node scripts/jarvis-wa-probe.js --smoke
+ *   railway run node scripts/jarvis-wa-probe.js --smoke-mission
  *
  * Lê a resposta no Postgres (assist_mensagens) e imprime aqui.
  */
@@ -132,7 +133,8 @@ async function probeOnce(pool, phone, text) {
 async function main() {
   const args = process.argv.slice(2);
   const smoke = args.includes('--smoke');
-  const texts = args.filter((a) => a !== '--smoke');
+  const smokeMission = args.includes('--smoke-mission');
+  const texts = args.filter((a) => a !== '--smoke' && a !== '--smoke-mission');
 
   const phone = process.env.JARVIS_PROBE_PHONE || firstAllowedPhone();
   if (!phone) throw new Error('Sem WHATSAPP_ALLOWED_PHONES / JARVIS_PROBE_PHONE');
@@ -153,7 +155,24 @@ async function main() {
   );
 
   try {
-    if (smoke) {
+    if (smokeMission) {
+      // Low-risk: criar missão + status + cancelar (sem high-risk tools)
+      const create = await probeOnce(
+        pool,
+        phone,
+        'missão: atualiza o cache de snapshots do hub'
+      );
+      const createOk =
+        create && /missão\s+criada|missão\s+\*\*/i.test(String(create.content || ''));
+      console.log('assert create →', createOk ? 'PASS' : 'FAIL');
+      await sleep(2000);
+      const st = await probeOnce(pool, phone, 'status missão');
+      const stOk = st && /progresso\s+\*\*\d+\/\d+\*\*/i.test(String(st.content || ''));
+      console.log('assert status progresso →', stOk ? 'PASS' : 'FAIL');
+      await sleep(1500);
+      await probeOnce(pool, phone, 'cancela missão');
+      if (!createOk || !stOk) process.exitCode = 2;
+    } else if (smoke) {
       await probeOnce(pool, phone, 'oi');
       await sleep(2000);
       await probeOnce(
@@ -168,6 +187,7 @@ async function main() {
       }
     } else {
       console.log('Uso: railway run node scripts/jarvis-wa-probe.js --smoke');
+      console.log('  ou: railway run node scripts/jarvis-wa-probe.js --smoke-mission');
       console.log('  ou: railway run node scripts/jarvis-wa-probe.js "sua msg"');
     }
   } finally {
