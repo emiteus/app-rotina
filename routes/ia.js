@@ -1103,6 +1103,94 @@ async function executarAcoes(acoes, userId, opts = {}) {
 
 
 /** Se a IA esquecer de emitir acao, inferimos pedidos claros de rename/fundir. */
+/** Resposta local pra posts IG do CineRush Editor hoje. */
+function formatarCinerushPostsHoje(mensagem, snap) {
+  const msg = String(mensagem || '');
+  const perguntaContagem =
+    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
+    /\b(reel|reels|v[ií]deo|videos|post|posts|corte)\b/i.test(msg);
+  if (!perguntaContagem) return null;
+  const citaCinerush = /\b(cinerush|cine\s*rush|editor)\b/i.test(msg);
+  if (!citaCinerush) return null;
+
+  const ed = snap?.projetos?.cinerush_editor;
+  if (!ed || ed.conectado === false) {
+    return (
+      'CineRush Editor **off** no hub — não leio posts IG de hoje. ' +
+      'Confere CINERUSH_EDITOR_URL/OPS_KEY. (CineRush TV = IPTV; posts de reels = Editor.)'
+    );
+  }
+
+  const hoje = ed.hoje;
+  if (!hoje || hoje.erro) {
+    const q = ed.queue
+      ? ` Fila agora: queued **${ed.queue.queued ?? '?'}** / running **${ed.queue.running ?? '?'}**.`
+      : '';
+    return (
+      `CineRush Editor conectado, mas **ainda não veio o contador de posts de hoje**` +
+      (hoje?.erro ? ` (${hoje.erro})` : '') +
+      `.${q} Depois do deploy do /api/ops/stats isso aparece.`
+    );
+  }
+
+  const lista = Array.isArray(hoje.por_pessoa) ? hoje.por_pessoa : [];
+  const data = hoje.data || 'hoje';
+  if (!lista.length) {
+    return `No CineRush Editor (**${data}**) constam **${hoje.total || 0}** post(s) IG publicados.`;
+  }
+  const partes = lista.map(
+    (p) => `**${p.nome || p.email}**: **${Number(p.videos || 0)}** post(s)`
+  );
+  return (
+    `CineRush Editor **${data}** — **${Number(hoje.total || 0)}** post(s) IG publicados.\n` +
+    partes.join('\n') +
+    `\n_(CineRush TV = IPTV/assinantes; Attracione = competição de cortes.)_`
+  );
+}
+
+/** Ambíguo "quantos videos postei hj" sem projeto → mostra Attracione + CineRush. */
+function formatarContagemVideosAmbiguo(mensagem, snap) {
+  const msg = String(mensagem || '');
+  const perguntaContagem =
+    /\b(quantos?|qtd|quantidade|quantas?)\b/i.test(msg) &&
+    /\b(reel|reels|v[ií]deo|videos|post)\b/i.test(msg);
+  if (!perguntaContagem) return null;
+  if (/\b(cinerush|cine\s*rush|attracione|attra|competi|erik|teushub|socialhub)\b/i.test(msg)) {
+    return null;
+  }
+
+  const at = snap?.projetos?.attracione;
+  const ed = snap?.projetos?.cinerush_editor;
+  const linhas = [];
+
+  if (ed?.conectado && ed.hoje) {
+    linhas.push(
+      `**CineRush Editor** (IG): **${Number(ed.hoje.total || 0)}** post(s)` +
+        (ed.hoje.data ? ` em ${ed.hoje.data}` : '')
+    );
+  } else if (ed?.conectado) {
+    linhas.push('**CineRush Editor**: conectado, sem contador de hoje ainda');
+  } else {
+    linhas.push('**CineRush Editor**: off');
+  }
+
+  if (at?.conectado && at.hoje) {
+    linhas.push(
+      `**Attracione** (comp): **${Number(at.hoje.total_videos || 0)}** vídeo(s)` +
+        (at.hoje.data ? ` em ${at.hoje.data}` : '')
+    );
+  } else if (at?.conectado) {
+    linhas.push('**Attracione**: conectado, sem recorte de hoje');
+  } else {
+    linhas.push('**Attracione**: off');
+  }
+
+  return (
+    `Hoje, em duas frentes:\n${linhas.join('\n')}\n` +
+    `Especifica **CineRush** ou **Attracione** se quiser o detalhe.`
+  );
+}
+
 /** Resposta local pra "quantos reels eu e o Erik postamos hj" — sem LLM/coleta. */
 function formatarAttracioneReelsHoje(mensagem, snap) {
   const msg = String(mensagem || '');
@@ -1111,6 +1199,8 @@ function formatarAttracioneReelsHoje(mensagem, snap) {
     /\b(reel|reels|v[ií]deo|videos|corte)\b/i.test(msg);
   if (!perguntaContagem) return null;
   if (/\b(colet[ae]|raspa|atualizar\s+(dados|views)|roda\s+coleta)\b/i.test(msg)) return null;
+  // NÃO engolir CineRush / SocialHub / TeuHub
+  if (/\b(cinerush|cine\s*rush|editor|teushub|socialhub|social\s*hub)\b/i.test(msg)) return null;
 
   const at = snap?.projetos?.attracione;
   if (!at || at.conectado === false) {
@@ -1829,7 +1919,33 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const acoesRapidas = isGreeting ? [] : inferirAcoesDaMensagem(mensagem, snap, []);
 
-    // Atalho: "quantos reels eu e o Erik postamos hj" → Attracione.hoje (sem LLM, sem coleta)
+    // Atalhos locais de contagem (sem LLM)
+    const respCine = formatarCinerushPostsHoje(mensagem, snap);
+    if (respCine) {
+      await salvarMensagem(conversaId, 'assistant', respCine, uid);
+      return {
+        resposta: respCine,
+        acoes: [],
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
+    const respAmbig = formatarContagemVideosAmbiguo(mensagem, snap);
+    if (respAmbig) {
+      await salvarMensagem(conversaId, 'assistant', respAmbig, uid);
+      return {
+        resposta: respAmbig,
+        acoes: [],
+        snapshot: snap,
+        provider: 'local',
+        usage: null,
+        conversa_id: conversaId,
+        agent: agent.id
+      };
+    }
     const respAttracione = formatarAttracioneReelsHoje(mensagem, snap);
     if (respAttracione) {
       await salvarMensagem(conversaId, 'assistant', respAttracione, uid);
@@ -1983,12 +2099,12 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
 - Attracione: ranking atual em projetos.attracione.ranking (views+vídeos); **hoje** em projetos.attracione.hoje.por_pessoa (vídeos publicados no dia). Comps passadas → attracione_ranking com n.
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
-- **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com projetos.attracione.hoje (Mateus/Erik). NÃO emita attracione_coleta a menos que peçam "coletar/atualizar/raspar". Se hoje estiver vazio/zerado, diga o número e ofereça coleta — não dispare sozinho.
+- **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
+- CineRush Editor: fila em projetos.cinerush_editor.queue; posts IG de hoje em projetos.cinerush_editor.hoje; processa por URL (ops). Sem owner_* não debita créditos de user.
 - SocialHub: socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
 - Clipper: clipper_criar / clipper_retry
-- CineRush Editor: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
-- CineRush TV: use projetos.cinerush (receita_mes, vendas_ontem, chart_7d, créditos, suporte). "vendas esse mês" → receita_mes/vendas do snapshot do MÊS atual; se pedirem "últimos 30 dias" e só tiver mês, diga o intervalo que tem (ex. 01/09–hoje) sem inventar 30d. Faturamento no resumo é bruto Kirvano.
-- CineRush Editor: fila em projetos.cinerush_editor.queue; processa por URL (ops). Sem owner_* não debita créditos de user.
+- CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
+- CineRush TV dados: use projetos.cinerush (receita_mes, vendas_ontem, chart_7d, créditos, suporte). "vendas esse mês" → mês atual; se pedirem "últimos 30 dias" e só tiver mês, diga o intervalo sem inventar 30d. Faturamento = bruto Kirvano.
 - "Roda" / "sincroniza" sem contexto de banco: NÃO dispare sincronizar_bancos. Só se pedir banco/extrato/financeiro explicitamente.
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
 - NUNCA diga "Feito" / "liberei" / "criei" se a tool retornou ok:false.
