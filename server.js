@@ -515,6 +515,28 @@ sched('*/15 * * * *', runCron('jarvis-railway-watch', async () => {
   await notifyOwnerWhatsApp(text);
 }));
 
+// Ops: Editor fila / Havok / Attracione — a cada 30min
+sched('*/30 * * * *', runCron('jarvis-ops-watch', async () => {
+  if (process.env.JARVIS_OPS_WATCH === '0') return;
+  const { get } = require('./lib/db');
+  const { OWNER_LOGIN } = require('./lib/plano-owner');
+  const owner = await get(
+    `SELECT id FROM usuarios WHERE lower(login) = $1 AND ativo = true`,
+    [OWNER_LOGIN]
+  );
+  if (!owner?.id) return;
+  const {
+    checkOpsHealth,
+    formatProactiveNotes,
+    notifyOwnerWhatsApp
+  } = require('./lib/jarvis/events/bus');
+  const notes = await checkOpsHealth(owner.id);
+  if (!notes.length) return;
+  const text = formatProactiveNotes(notes);
+  if (!text) return;
+  await notifyOwnerWhatsApp(text);
+}));
+
 // Enviar mensagem Telegram
 function enviarTelegram(mensagem) {
   const token = process.env.TELEGRAM_BOT_TOKEN;

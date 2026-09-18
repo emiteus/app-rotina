@@ -35,6 +35,10 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_RAILWAY_WATCH=0` | Desliga watch de deploy FAIL/CRASH (default **on** se tem `RAILWAY_TOKEN`) |
 | `JARVIS_VISION_MODEL` | Modelo Gemini Vision (default `gemini-2.5-flash`) |
 | `JARVIS_VISION_MAX_BYTES` | Limite do anexo (default 12MB) |
+| `JARVIS_OPS_WATCH=0` | Desliga watch Editor/Havok/Attracione (default on) |
+| `JARVIS_EDITOR_QUEUE_WARN` | Fila Editor waiting ≥ N → alerta (default 8) |
+| `JARVIS_HAVOK_CREDITS_WARN` | Créditos Havok < N → alerta (default 50) |
+| `JARVIS_CINERUSH_PEND_WARN` | Pendentes provision ≥ N → alerta (default 3) |
 
 Redeploy após mudar env.
 
@@ -42,13 +46,16 @@ Redeploy após mudar env.
 
 ### Matriz de risco (tools)
 
-| Risk | Exemplo | WhatsApp (default) | Assist web |
-|------|---------|--------------------|------------|
-| low | `dev_railway_logs`, `dev_diagnose` | auto | auto |
-| medium / high | sync bancos, mutações financeiras | auto (WA HITL off) | SIM se ≥ threshold |
-| **critical** | `dev_railway_redeploy`, `dev_railway_restart` | **sempre SIM** | **sempre SIM** |
+| Classe | Risk | Canal WA (default) | Assist web | Exemplos |
+|--------|------|--------------------|------------|----------|
+| **AUTO** | low | executa | executa | `dev_diagnose`, `dev_railway_logs`, `cinerush_buscar`, `research_*`, leitura |
+| **AUTO*** | medium / high | executa (HITL WA off) | SIM se ≥ `JARVIS_APPROVAL_THRESHOLD` (default high) | sync bancos, mutações financeiras medium; `cinerush_criar`, `attracione_coleta` (high) |
+| **APPROVAL** | critical | **sempre SIM** | **sempre SIM** | `dev_railway_redeploy`, `dev_railway_restart` |
+| **BLOCKED** | qualquer | non-owner → erro `só owner` | idem | tools `ownerOnly` (dev_*, research_*, várias ops) |
 
-Critical ignora `JARVIS_HITL_WHATSAPP=0` — redeploy nunca roda sem confirmação (enquanto `JARVIS_HITL=1`).
+Critical ignora `JARVIS_HITL_WHATSAPP=0`. `JARVIS_HITL=0` desliga HITL global (não recomendado).
+
+Proativo (**nunca** auto-CRITICAL): Railway FAIL 15min · Ops (Editor/Havok/Attracione) 30min · sweep geral 3h.
 
 ---
 
