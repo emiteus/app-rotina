@@ -10,7 +10,10 @@ const {
   sendText,
   sendApprovalButtons,
   evolutionReady,
-  textoParaWhatsApp
+  textoParaWhatsApp,
+  stripToolLeakage,
+  startTypingIndicator,
+  sendPresence
 } = require('../lib/evolution');
 const { extractMediaMeta } = require('../lib/jarvis/multimodal/ingress');
 const {
@@ -171,6 +174,7 @@ async function processPhoneQueue(phone) {
 
   const sessao = await getOrCreateSessao(phone, uid);
 
+  const stopTyping = startTypingIndicator(phone);
   try {
     const { runJarvisTurn } = require('../lib/jarvis');
     const out = await runJarvisTurn({
@@ -185,10 +189,8 @@ async function processPhoneQueue(phone) {
           ? null
           : async (msg) => {
               try {
-                const clean = String(msg || '')
-                  .replace(/<function_calls?>[\s\S]*?<\/function_calls?>/gi, '')
-                  .replace(/\binvoke\s+[\w_]+\s+with\b[^\n]*/gi, '')
-                  .trim();
+                await sendPresence(phone, 'composing', 8000);
+                const clean = stripToolLeakage(String(msg || ''));
                 if (!clean || clean.length < 8) return;
                 await sendText(phone, `⏳ ${clean.slice(0, 800)}`);
               } catch (e) {
@@ -198,6 +200,7 @@ async function processPhoneQueue(phone) {
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
     const resposta = stripToolLeakage(out.resposta || 'Beleza. Em que posso ajudar?');
+    stopTyping();
     // Sempre texto primeiro — botões Evolution quebram no WA Web/multi-device
     // e, se "ok" na API, o fallback nunca rodava (mensagem fantasma).
     await sendText(phone, resposta);
@@ -211,6 +214,7 @@ async function processPhoneQueue(phone) {
       }
     }
   } catch (err) {
+    stopTyping();
     console.error('[whatsapp] jarvis:', err.message);
     try {
       const budgetMsg =
