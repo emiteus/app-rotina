@@ -364,28 +364,18 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           partes.push(`${head}\n\`\`\`\n${body}\n\`\`\``);
         }
       } else if (a.tipo === 'research_web_search') {
-        const hits = (a.results || []).slice(0, 6);
-        const linhas = hits
-          .map(
-            (r, i) =>
-              `${i + 1}. **${r.title || 'sem título'}**\n${r.url || ''}\n_${(r.snippet || '').slice(0, 160)}_`
-          )
-          .join('\n');
-        partes.push(
-          hits.length
-            ? `Busca **${a.query}** (${a.provider || '?'}):\n${linhas}`
-            : `Busca **${a.query}** sem hits.`
-        );
+        // Curto: se houver relatório no mesmo turno, narrarOks do report basta
+        const n = (a.results || []).length;
+        partes.push(n ? `Busca ok (**${n}** fontes).` : `Busca **${a.query}** sem hits.`);
       } else if (a.tipo === 'research_fetch_url') {
-        const preview = String(a.text || '').slice(0, 900);
+        const preview = String(a.text || '').slice(0, 280);
         partes.push(
-          `Fetch **${a.title || a.url}** (${a.chars || 0} chars)` +
-            (preview ? `:\n${preview}${a.truncated ? '…' : ''}` : '.')
+          `Li **${a.title || a.url}**` + (preview ? `: ${preview}${a.truncated ? '…' : ''}` : '.')
         );
       } else if (a.tipo === 'research_write_report') {
         partes.push(
           a.texto
-            ? String(a.texto).replace(/\*/g, '**')
+            ? String(a.texto).replace(/\*/g, '*')
             : `Relatório **${a.title || '?'}** ok.`
         );
       } else if (a.tipo === 'clipper_criar') {
@@ -458,8 +448,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     let out;
     // Logs / research dump: não deixa o LLM contradizer o payload
     if (reportOk) {
-      // Relatório manda — descarta inventário do LLM (Notion/Motion etc.)
-      out = (partes.filter((p) => p && p.length > 20).join('\n\n') || partes.join('\n\n')).trim();
+      // Só o relatório curto — sem dump da busca
+      const onlyReport = partes.filter((p) =>
+        /^\*|Relatório|Quer fontes/i.test(p) || (reportOk.texto && p.includes(String(reportOk.title || '').slice(0, 12)))
+      );
+      out = (onlyReport.length ? onlyReport : partes.filter((p) => !/^Busca ok/i.test(p)))
+        .join('\n\n')
+        .trim();
     } else if (logsOk || searchOk) {
       const dump = partes
         .filter((p) =>
@@ -1613,11 +1608,14 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
         .trim()
         .slice(0, 200);
       if (query.length >= 4) {
-        acoes.push({ tipo: 'research_web_search', query, limit: 8 });
+        const detailed = /\b(fontes|links|detalh|completo|com\s+fonte)\b/i.test(msg);
+        acoes.push({ tipo: 'research_web_search', query, limit: detailed ? 8 : 6 });
         acoes.push({
           tipo: 'research_write_report',
           title: `Pesquisa: ${query.slice(0, 80)}`,
-          project: /rotina|approtina/i.test(msg) ? 'approtina' : undefined
+          project: /rotina|approtina/i.test(msg) ? 'approtina' : undefined,
+          detailed: detailed || undefined,
+          com_fontes: detailed || undefined
         });
       }
     }
@@ -2135,7 +2133,7 @@ Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
 - NUNCA emita XML, <function_calls>, <invoke>, tool_call ou "invoke X with" — só JSON {"resposta","acoes"}.
 - NUNCA diga que fez se não emitir a ação em "acoes".
-- Research: research_web_search → (opcional) research_fetch_url → research_write_report. findings/sources do report DEVEM vir das tools, não inventados.
+- Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
 - Análise sem alterar: responda com acoes:[].
 - Contagens de projetos: leia pack.projetos.*.hoje / fechamento — acoes:[] (não invente tool).
 - No máximo 1 emoji. Valores em R$.`;
