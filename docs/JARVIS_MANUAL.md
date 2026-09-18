@@ -31,6 +31,8 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on) |
 | `JARVIS_HITL_WHATSAPP=1` | Opt-in: high/medium no WhatsApp (default **off**) |
 | `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
+| `JARVIS_PROACTIVE_WA=0` | Desliga pings proativos no WhatsApp |
+| `JARVIS_RAILWAY_WATCH=0` | Desliga watch de deploy FAIL/CRASH (default **on** se tem `RAILWAY_TOKEN`) |
 
 Redeploy após mudar env.
 

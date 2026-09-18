@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.11  
+**Version:** 0.9.12  
 **Date:** 2026-09-18
 
 ## Norte
@@ -16,25 +16,19 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 - Fundação + missões + Milhão Railway
 - Dev Agent + Research Agent (respostas curtas)
 - Mission Mode polish (pings compactos + ultima_falha)
-- **Orchestrator v1:** `agents/orchestrator.js` escolhe Dev/Research/Finance/Ops/Rotina + hint multi-braço
-- **Write #1:** `dev_railway_redeploy` (`critical` — HITL sempre, inclusive WA)
-- **Write #2:** `dev_railway_restart` (`critical` — sem rebuild)
+- **Orchestrator v1**
+- **Write #1–2:** `dev_railway_redeploy` + `dev_railway_restart` (critical HITL)
+- **Proativo:** Railway FAIL/CRASH → ping WA (cron 15min, dedupe, sem auto-ação)
 
 ## Etapa atual
 
-Smoke restart no WA:
-
-```
-restart milhão
-```
-
-→ pede **SIM**, depois confirma service/env/deployment.
+Espera deploy do app-rotina. Smoke opcional: forçar fail num service de staging **ou** `POST /api/ia/proactive/sweep` e olhar notes `railway_deploy_fail`.
 
 ## Próximo
 
-1. Smoke `dev_railway_restart`  
-2. Proatividade: alerta WA em deploy fail  
-3. Vision v2  
+1. Smoke railway-watch (ou confiar no cron em prod)  
+2. Vision v2 — PDF/screenshot → achados  
+3. Segundo alerta proativo (fila editor / crédito Havok — já parcial no sweep)
 
 ## Not started
 

@@ -493,6 +493,28 @@ sched('0 */3 * * *', runCron('jarvis-proactive', async () => {
   await notifyOwnerWhatsApp(text);
 }));
 
+// Railway deploy FAIL/CRASH — mais frequente, dedupe por deployment id
+sched('*/15 * * * *', runCron('jarvis-railway-watch', async () => {
+  if (process.env.JARVIS_RAILWAY_WATCH === '0') return;
+  const { get } = require('./lib/db');
+  const { OWNER_LOGIN } = require('./lib/plano-owner');
+  const owner = await get(
+    `SELECT id FROM usuarios WHERE lower(login) = $1 AND ativo = true`,
+    [OWNER_LOGIN]
+  );
+  if (!owner?.id) return;
+  const {
+    checkRailwayDeployHealth,
+    formatProactiveNotes,
+    notifyOwnerWhatsApp
+  } = require('./lib/jarvis/events/bus');
+  const notes = await checkRailwayDeployHealth(owner.id);
+  if (!notes.length) return;
+  const text = formatProactiveNotes(notes);
+  if (!text) return;
+  await notifyOwnerWhatsApp(text);
+}));
+
 // Enviar mensagem Telegram
 function enviarTelegram(mensagem) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
