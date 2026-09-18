@@ -185,14 +185,19 @@ async function processPhoneQueue(phone) {
           ? null
           : async (msg) => {
               try {
-                await sendText(phone, `⏳ ${String(msg || '').slice(0, 800)}`);
+                const clean = String(msg || '')
+                  .replace(/<function_calls?>[\s\S]*?<\/function_calls?>/gi, '')
+                  .replace(/\binvoke\s+[\w_]+\s+with\b[^\n]*/gi, '')
+                  .trim();
+                if (!clean || clean.length < 8) return;
+                await sendText(phone, `⏳ ${clean.slice(0, 800)}`);
               } catch (e) {
                 console.error('[whatsapp] progress ping:', e.message);
               }
             }
     });
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
-    const resposta = out.resposta || 'Beleza. Em que posso ajudar?';
+    const resposta = stripToolLeakage(out.resposta || 'Beleza. Em que posso ajudar?');
     // Sempre texto primeiro — botões Evolution quebram no WA Web/multi-device
     // e, se "ok" na API, o fallback nunca rodava (mensagem fantasma).
     await sendText(phone, resposta);

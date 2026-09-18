@@ -35,6 +35,72 @@ function limparJsonIA(txt) {
     .trim();
 }
 
+/** Remove XML/tool-call leakage que modelos às vezes misturam na resposta. */
+function stripToolLeakage(texto) {
+  let s = String(texto || '');
+  s = s.replace(/```(?:xml|tool|function)?\s*[\s\S]*?```/gi, ' ');
+  s = s.replace(/<function_calls?>[\s\S]*?<\/function_calls?>/gi, ' ');
+  s = s.replace(/<\/?function_calls?>/gi, ' ');
+  s = s.replace(/<tool_call[\s\S]*?<\/tool_call>/gi, ' ');
+  s = s.replace(/<invoke\b[^>]*>[\s\S]*?<\/invoke>/gi, ' ');
+  s = s.replace(/<\/?parameter\b[^>]*>/gi, ' ');
+  s = s.replace(/^\s*invoke\s+\w[\w_]*\s+with\b[\s\S]*?(?=\n\n|\n[A-ZÁÉÍÓÚ]|$)/gim, ' ');
+  s = s.replace(/\binvoke\s+(?:tool\s+)?[\w_]+\s+with\b[^\n]*/gi, ' ');
+  s = s.replace(/\n{3,}/g, '\n\n').trim();
+  return s;
+}
+
+/**
+ * Converte leakage estilo Cursor/Anthropic em acoes Jarvis.
+ * Suporta <invoke name="…"> / <parameter> e "invoke tipo with key is value".
+ */
+function extrairAcoesDeFunctionCalls(texto) {
+  const s = String(texto || '');
+  const acoes = [];
+  const xmlInvokes = [...s.matchAll(/<invoke\b[^>]*\bname=["']([^"']+)["'][^>]*>([\s\S]*?)<\/invoke>/gi)];
+  for (const m of xmlInvokes) {
+    const tipo = String(m[1] || '').trim();
+    if (!tipo) continue;
+    const acao = { tipo };
+    for (const p of m[2].matchAll(
+      /<parameter\b[^>]*\bname=["']([^"']+)["'][^>]*>([\s\S]*?)<\/parameter>/gi
+    )) {
+      const key = String(p[1] || '').trim();
+      let val = String(p[2] || '').trim();
+      try {
+        val = JSON.parse(val);
+      } catch (_) {
+        /* keep string */
+      }
+      if (key) acao[key] = val;
+    }
+    acoes.push(acao);
+  }
+  if (acoes.length) return acoes;
+
+  const lineInvokes = [
+    ...s.matchAll(
+      /\binvoke\s+(?:tool\s+)?([\w]+)\s+with\s+([\s\S]*?)(?=\binvoke\s+|$)/gi
+    )
+  ];
+  for (const m of lineInvokes) {
+    const tipo = String(m[1] || '').trim();
+    if (!tipo || !/^(research_|dev_|project_|attracione_|cinerush_|socialhub_|clipper_|cutflix_|snapshot_)/.test(tipo)) {
+      continue;
+    }
+    const acao = { tipo };
+    const body = m[2] || '';
+    for (const kv of body.matchAll(/\b([a-z_][a-z0-9_]*)\s+is\s+([^\n]+?)(?=\s+[a-z_][a-z0-9_]*\s+is\s+|$)/gi)) {
+      const key = kv[1];
+      let val = String(kv[2] || '').trim().replace(/[,;.]+$/, '');
+      if (/^\d+$/.test(val)) val = Number(val);
+      acao[key] = val;
+    }
+    acoes.push(acao);
+  }
+  return acoes;
+}
+
 function extrairCampoResposta(s) {
   const m = s.match(/"resposta"\s*:\s*"((?:\\.|[^"\\])*)"/);
   if (m) {
@@ -82,13 +148,14 @@ function parseJSON(txt) {
 
 function textoAssistenteSeguro(textoBruto, parsed) {
   if (parsed && parsed.resposta != null) {
-    const r = String(parsed.resposta).trim();
+    const r = stripToolLeakage(String(parsed.resposta).trim());
     if (r && !/^\s*\{/.test(r)) return r;
   }
   const s = limparJsonIA(textoBruto);
   const extraido = extrairCampoResposta(s);
-  if (extraido) return extraido;
-  if (s && !/^\s*\{/.test(s)) return s;
+  if (extraido) return stripToolLeakage(extraido);
+  const limpo = stripToolLeakage(s);
+  if (limpo && !/^\s*\{/.test(limpo)) return limpo;
   return 'Beleza — me conta mais um detalhe pra eu agir.';
 }
 
@@ -1524,6 +1591,36 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
+  // Research: se pediu pesquisa e a LLM não emitiu tool (ou só vazou XML), força busca
+  if (
+    !acoes.some(
+      (a) =>
+        a.tipo === 'research_web_search' ||
+        a.tipo === 'research_fetch_url' ||
+        a.tipo === 'research_write_report'
+    )
+  ) {
+    if (
+      /\b(pesquis|pesquisa|research|concorrent|benchmark)\b/i.test(msg) ||
+      /\bbusc[ae]\s+(pra\s+mim|na\s+web|sobre)\b/i.test(msg)
+    ) {
+      const query = msg
+        .replace(/^(jarvis|agente\s+\w+)\s*/i, '')
+        .replace(/\b(pesquisa|pesquis[ae]|research|pra\s+mim|pfv|por\s+favor)\b/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 200);
+      if (query.length >= 4) {
+        acoes.push({ tipo: 'research_web_search', query, limit: 8 });
+        acoes.push({
+          tipo: 'research_write_report',
+          title: `Pesquisa: ${query.slice(0, 80)}`,
+          project: /rotina|approtina/i.test(msg) ? 'approtina' : undefined
+        });
+      }
+    }
+  }
+
   return acoes;
 }
 
@@ -2034,7 +2131,9 @@ Args típicos de finanças (quando a description for curta):
 
 Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
+- NUNCA emita XML, <function_calls>, <invoke>, tool_call ou "invoke X with" — só JSON {"resposta","acoes"}.
 - NUNCA diga que fez se não emitir a ação em "acoes".
+- Research: research_web_search → (opcional) research_fetch_url → research_write_report. findings/sources do report DEVEM vir das tools, não inventados.
 - Análise sem alterar: responda com acoes:[].
 - Contagens de projetos: leia pack.projetos.*.hoje / fechamento — acoes:[] (não invente tool).
 - No máximo 1 emoji. Valores em R$.`;
@@ -2068,10 +2167,17 @@ Regras:
     let parsed = null;
     try { parsed = parseJSON(texto); } catch (e) { parsed = null; }
 
+    const leakedAcoes = extrairAcoesDeFunctionCalls(texto);
+    const baseAcoes = [
+      ...((parsed && parsed.acoes) || []),
+      ...leakedAcoes
+    ];
     const respostaBruta = textoAssistenteSeguro(texto, parsed);
-    const acoesMerged = inferirAcoesDaMensagem(mensagem, snap, parsed && parsed.acoes);
+    const acoesMerged = inferirAcoesDaMensagem(mensagem, snap, baseAcoes);
     const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey });
-    const resposta = reconciliarRespostaComAcoes(respostaBruta, acoesExec);
+    const resposta = stripToolLeakage(
+      reconciliarRespostaComAcoes(respostaBruta, acoesExec)
+    );
     await salvarMensagem(conversaId, 'assistant', resposta, uid);
 
     return {
