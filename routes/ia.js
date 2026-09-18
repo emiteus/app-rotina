@@ -226,7 +226,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const tipos = [...new Set(pending.map((p) => p.tipo))].join(', ');
     return (
       `⚠️ Ainda preciso da sua confirmação (**${id}**): **${tipos}**.\n` +
-      `Responde **SIM** (ou **SIM ${id}**) pra executar, **NÃO** pra cancelar.`
+      `Responde **SIM**, **${id}** ou **SIM ${id}** pra executar, **NÃO** pra cancelar.`
     );
   }
 
