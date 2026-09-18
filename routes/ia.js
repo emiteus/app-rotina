@@ -1835,7 +1835,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
               const cont = await runMissionBatch(
                 uid,
                 (acoes) => executarAcoes(acoes, uid, { channel: channelKey }),
-                { missionId: resumed.mission.id }
+                { missionId: resumed.mission.id, onProgress }
               );
               if (cont && cont.resposta) {
                 resposta = `${resposta}\n\n${cont.resposta}`;

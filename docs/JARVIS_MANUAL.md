@@ -25,6 +25,8 @@ Confira / preencha no serviço **app-rotina**:
 | `PROJETO_MILHAO_URL` | HTTP ops do Milhão em produção (`https://projeto-milhao-production.up.railway.app`) |
 | `GITHUB_TOKEN` | Dev agent: ler repos privados / rate limit |
 | `RAILWAY_TOKEN` | Dev agent: logs/status de deploys |
+| `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` | Research: busca web (senão DuckDuckGo) |
+| `RESEARCH_FETCH_ALLOWLIST` | Research: hosts permitidos (comma); ou `RESEARCH_FETCH_OPEN=1` |
 
 Redeploy após mudar env.
 
@@ -70,8 +72,12 @@ Redeploy após mudar env.
 missão: …
 próximo passo
 executa missão
+status missão
+retry passo
 cancela missão
 agente ops: status cinerush
+agente research: pesquisa …
+agente dev: diagnostica o milhão
 /finance quanto gastei
 lembra que …
 atualiza o cache
@@ -79,6 +85,8 @@ quantos posts no teushub hoje
 SIM a1b2c3d4 / NÃO a1b2c3d4
 ```
 
+Missões: `executa missão` manda pings curtos (`Passo 2/4 · ok`); board completo em `status missão`.  
+`JARVIS_MISSION_PROGRESS=0` desliga pings no WA.
 API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`
 
 ---

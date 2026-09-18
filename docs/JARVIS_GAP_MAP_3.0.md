@@ -121,16 +121,17 @@ Objetivo: Orchestrator delega; você só dá a missão.
 2. ~~Ops honesty + Cutflix health~~ **DONE**
 3. ~~Missions wrap~~ **DONE** (v0.9.7)
 4. ~~Trilho 31–60: Dev/Ops Agent read-only~~ **DONE** (v0.9.8) — tools `dev_*`
-5. Smoke: `agente dev: diagnostica o milhão` / `missão: diagnostica o projeto milhão`
-6. (Opcional) `GITHUB_TOKEN` + `RAILWAY_TOKEN` no app-rotina
-7. (Opcional) `CUTFLIX_API_URL`
+5. ~~Smoke Research no WA~~ (curto + fontes sob demanda)
+6. ~~Mission Mode polish~~ — progresso compacto + ultima_falha + HITL onProgress
+7. Smoke: `missão: diagnostica o milhão` → `executa missão`
+8. Dia 61+: orchestrator
 ---
 
 ## 7. Definition of Done — “OS 3.0 mínimo”
 
 - [x] Memória de projeto responde fatos gravados (stack/status/notas) — “semana passada” ainda depende de episodic/time  
-- [x] ≥1 agent com tools próprias (não só persona) — **Dev** `dev_*` (v0.9.8)  
-- [ ] ≥1 missão multi-sistema sem mentir sucesso  
+- [x] ≥1 agent com tools próprias (não só persona) — **Dev** + **Research**  
+- [x] ≥1 missão multi-sistema sem mentir sucesso — Mission Mode polish (smoke WA)  
 - [ ] Permission matrix publicada e respeitada  
 - [x] WA continua só como canal  
 

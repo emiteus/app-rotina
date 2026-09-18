@@ -15,22 +15,30 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 
 - Fundação 1–30 + missões wrap (v0.9.7)
 - Milhão 24/7 Railway
-- **Dev/Ops Agent (v0.9.8):** tools `dev_diagnose` / `dev_git_status` / `dev_read_file` / `dev_railway_logs` + agente `dev`
-- **Research Agent (v0.9.9):** tools `research_web_search` / `research_fetch_url` / `research_write_report` + agente `research`
+- **Dev/Ops Agent (v0.9.8):** tools `dev_*` + agente `dev`
+- **Research Agent (v0.9.9):** tools `research_*` + agente `research` (respostas curtas no WA)
+- **Mission Mode polish:** progresso compacto no WA, steps tipados, `ultima_falha` no advance/retry, HITL resume com `onProgress`
 
 ## Etapa atual
 
-**Smoke Research no WA — PASS parcial** (sem XML, URLs reais).  
-Follow-up: snippets/enrich + relatório sem inventário LLM.
+**Mission Mode polish** — smoke WA:
+
+```
+missão: diagnostica o milhão
+status missão
+executa missão
+```
+
+Espera: pings `Passo k/n · ok · \`dev_diagnose\`` (não board spam); board só no fim / status.
 
 ## Próximo
 
-1. ~~Smoke Research no WA~~ PASS parcial → polish snippets  
-2. Mission Mode polish (steps tipados + memória de falha)  
-3. Dia 61+: orchestrator (escolhe Dev vs Research por intent)
+1. Smoke missão no WA  
+2. Dia 61+: orchestrator (escolhe Dev vs Research por intent)  
+3. Write/deploy tools (sempre APPROVAL)
 
 ## Not started
 
-- Write/deploy tools (sempre APPROVAL)  
 - Vision v2 / TTS / Creative  
 - Orchestrator multi-agent  
+- Coding agent full (patch+test+deploy)  
