@@ -27,7 +27,7 @@ Confira / preencha no serviço **app-rotina**:
 | `RAILWAY_TOKEN` | Dev agent: logs + **redeploy** (Account token) |
 | `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` | Research: busca web (senão DuckDuckGo) |
 | `RESEARCH_FETCH_ALLOWLIST` | Research: hosts permitidos (comma); ou `RESEARCH_FETCH_OPEN=1` |
-| `OPENAI_API_KEY` | Só se quiser Whisper no áudio |
+| `OPENAI_API_KEY` | Whisper STT + TTS outbound |
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on) |
 | `JARVIS_HITL_WHATSAPP=1` | Opt-in: high/medium no WhatsApp (default **off**) |
 | `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
@@ -39,6 +39,9 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_EDITOR_QUEUE_WARN` | Fila Editor waiting ≥ N → alerta (default 8) |
 | `JARVIS_HAVOK_CREDITS_WARN` | Créditos Havok < N → alerta (default 50) |
 | `JARVIS_CINERUSH_PEND_WARN` | Pendentes provision ≥ N → alerta (default 3) |
+| `JARVIS_TTS` | `off` (default) / `auto` (áudio-in ou “em áudio”) / `always` |
+| `JARVIS_TTS_VOICE` | Voz OpenAI (default `nova`) |
+| `JARVIS_TTS_MODEL` | Modelo TTS (default `tts-1`) |
 
 Redeploy após mudar env.
 
@@ -72,6 +75,7 @@ Proativo (**nunca** auto-CRITICAL): Railway FAIL 15min · Ops (Editor/Havok/Attr
 9. WA: `restart milhão` → pede **SIM**; reinicia sem rebuild
 10. WA: manda print de erro (sem legenda) → achados Vision v2 (*Screenshot* + bullets)
 11. WA: PDF curto ou print com legenda `o que está errado?` → achados + resposta curta
+12. WA (com `JARVIS_TTS=auto` + `OPENAI_API_KEY`): manda áudio → resposta texto + voice note
 
 ---
 
@@ -82,7 +86,7 @@ Proativo (**nunca** auto-CRITICAL): Railway FAIL 15min · Ops (Editor/Havok/Attr
 | **Editor de vídeo CineRush em massa** | ✅ ligado (`cinerush_editor_*`) | Confere `CINERUSH_EDITOR_URL` + `CINERUSH_EDITOR_OPS_KEY` |
 | **Projeto Milhão** | Precisa rede Railway→PC/túnel | Sobe Docker + seta `PROJETO_MILHAO_URL` |
 | **Validar botões Evolution** | Depende da build da Evolution | Testa HITL; se botão não aparecer, texto SIM/NÃO já funciona |
-| **Whisper** | Precisa da sua key OpenAI | Seta `OPENAI_API_KEY` se quiser fallback de áudio |
+| **Whisper / TTS** | Precisa OpenAI key | `OPENAI_API_KEY` + `JARVIS_TTS=auto` |
 | **Multi-user WA** | Precisa logins reais | `WHATSAPP_PHONE_USERS=fone:login` |
 
 ---

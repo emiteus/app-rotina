@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.14  
+**Version:** 0.9.15  
 **Date:** 2026-09-18
 
 ## Norte
@@ -13,25 +13,24 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 
 ## Done (código)
 
-- Fundação + missões + Milhão Railway
-- Dev / Research / Orchestrator
-- Write Railway redeploy + restart (critical HITL)
-- Proativo Railway FAIL/CRASH (15min)
-- Vision v2 (screenshot/PDF → achados)
-- **Ops watch:** Editor fila + Havok + Attracione (30min, dedupe)
-- **Permission matrix** documentada no Manual (AUTO / APPROVAL / BLOCKED)
+- Fundação + missões + hub (Dev/Research/Orchestrator)
+- Write Railway + HITL critical
+- Proativo Railway + Ops watch
+- Vision v2
+- Permission matrix
+- **TTS v1:** OpenAI speech → Evolution voice note (`JARVIS_TTS=auto|always`)
 
 ## Etapa atual
 
-Gap Map dias 61–90 (#9–12) fechado em código. Smoke Vision + confiar nos crons em prod.
+Setar no Railway: `JARVIS_TTS=auto` + `OPENAI_API_KEY`. Smoke: manda áudio no WA → texto + PTT.
 
 ## Próximo
 
-1. Smoke Vision / ops-watch em prod  
-2. Backlog consciente: Creative / TTS  
-3. Coding agent full (patch+test+deploy) — só quando pedir  
+1. Smoke TTS  
+2. Creative / image gen (backlog)  
+3. Coding agent full — só sob pedido  
 
 ## Not started
 
-- Creative / TTS  
+- Creative / image gen  
 - Coding agent full  

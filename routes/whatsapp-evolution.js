@@ -9,6 +9,7 @@ const {
   normalizeWaId,
   sendText,
   sendApprovalButtons,
+  sendWhatsAppAudio,
   evolutionReady,
   textoParaWhatsApp,
   stripToolLeakage,
@@ -16,6 +17,10 @@ const {
   sendPresence
 } = require('../lib/evolution');
 const { extractMediaMeta } = require('../lib/jarvis/multimodal/ingress');
+const {
+  shouldReplyWithVoice,
+  synthesizeSpeech
+} = require('../lib/jarvis/multimodal/tts');
 const {
   resolveUserIdForPhone,
   isPhoneMappedOrAllowed,
@@ -201,10 +206,29 @@ async function processPhoneQueue(phone) {
     if (out.conversa_id) await saveSessaoConversa(phone, out.conversa_id);
     const resposta = stripToolLeakage(out.resposta || 'Beleza. Em que posso ajudar?');
     stopTyping();
-    // Sempre texto primeiro — botões Evolution quebram no WA Web/multi-device
-    // e, se "ok" na API, o fallback nunca rodava (mensagem fantasma).
-    await sendText(phone, resposta);
     const pendingHitl = (out.acoes || []).find((a) => a && a.pending_approval);
+
+    const wantVoice = shouldReplyWithVoice({
+      userText: mensagem,
+      mediaKind: media?.kind || null,
+      resposta,
+      pendingHitl: !!pendingHitl
+    });
+
+    // Sempre texto (HITL / dumps / fallback). Voz opcional em cima.
+    await sendText(phone, resposta);
+
+    if (wantVoice) {
+      try {
+        const audio = await synthesizeSpeech(resposta);
+        if (audio?.base64) {
+          await sendWhatsAppAudio(phone, audio.base64, { delay: 800 });
+        }
+      } catch (ttsErr) {
+        console.error('[whatsapp] tts:', ttsErr.message);
+      }
+    }
+
     // Opt-in: só manda botão se JARVIS_HITL_BUTTONS=1 (default off)
     if (pendingHitl && process.env.JARVIS_HITL_BUTTONS === '1') {
       try {
