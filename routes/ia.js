@@ -353,9 +353,19 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   if (finOk.length) {
     const partes = narrarOks(finOk);
     const base = String(resposta || '').trim();
+    const logsOk = finOk.find(
+      (a) => a.tipo === 'dev_railway_logs' && (a.lines || []).length
+    );
     let out;
-    // Sempre preserva análise/contagem; append da tool (coleta etc.)
-    if (base && base.length > 40) {
+    // Logs reais: não deixa o LLM dizer "vazio" por cima do dump
+    if (logsOk) {
+      const dump = partes.filter((p) => /Logs Railway/i.test(p)).join('\n\n');
+      const intro = base && !/vazi|sem\s+sa[ií]da|n[aã]o\s+devolveu|sem\s+linhas/i.test(base)
+        ? base
+        : '';
+      out = [intro, dump || partes.join('\n\n')].filter(Boolean).join('\n\n').trim();
+    } else if (base && base.length > 40) {
+      // Sempre preserva análise/contagem; append da tool (coleta etc.)
       out = `${base}\n\n${partes.join(' ')}`.trim();
     } else {
       out = partes.join(' ') || base;
