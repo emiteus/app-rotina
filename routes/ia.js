@@ -1438,7 +1438,12 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       || msg.match(/\bconfirm[ao]\s+(?:receita|pagamento)\s+(?:d[aeo]\s+)?(.+)$/i);
     if (mRec) {
       const titulo = mRec[1].replace(/[.!?]+$/, '').trim();
-      if (titulo.length >= 2 && titulo.length <= 80) {
+      // Guarda: falha de STT / anexo nunca é receita
+      const bad =
+        /^(um|uma|o|a)\s+(áudio|audio|anexo|imagem|documento)\b/i.test(titulo) ||
+        /\b(áudio|audio|anexo|transcri|conteúdo|conteudo)\b/i.test(titulo) ||
+        /não consegui|indisponível|manda em texto/i.test(titulo);
+      if (!bad && titulo.length >= 2 && titulo.length <= 80) {
         const chaves = { laranjeira: 'laranjeira', tylty: 'tylty', lucastylty: 'tylty' };
         const chave = chaves[norm(titulo)] || null;
         acoes.push(chave ? { tipo: 'confirmar_receita', chave } : { tipo: 'confirmar_receita', titulo });

@@ -42,6 +42,7 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_TTS` | `off` (default) / `auto` (áudio-in ou “em áudio”) / `always` |
 | `JARVIS_TTS_VOICE` | Voz OpenAI (default `nova`) |
 | `JARVIS_TTS_MODEL` | Modelo TTS (default `tts-1`) |
+| `JARVIS_STT_MODEL` | Modelo Gemini pra áudio (default `gemini-2.0-flash`) |
 
 Redeploy após mudar env.
 
