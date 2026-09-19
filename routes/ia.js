@@ -359,7 +359,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       } else if (a.tipo === 'dev_git_diff') {
         partes.push(a.texto || `Diff **${a.project}**: ${a.stat || 'ok'}`);
       } else if (a.tipo === 'dev_read_file') {
-        partes.push(`Li \`${a.path}\` em **${a.project}** (${a.fonte}).`);
+        partes.push(
+          a.texto ||
+            (a.content
+              ? `*\`${a.project}/${a.path}\`* (${a.fonte})\n\`\`\`\n${String(a.content).slice(0, 3500)}\n\`\`\``
+              : `Li \`${a.path}\` em **${a.project}** (${a.fonte}).`)
+        );
       } else if (a.tipo === 'dev_propose_patch') {
         partes.push(a.texto || `Patch proposto \`${a.project}/${a.path}\``);
       } else if (a.tipo === 'dev_apply_patch_local') {
@@ -480,6 +485,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       (a) => a.tipo === 'research_write_report' && a.texto
     );
     const diagnoseOk = finOk.find((a) => a.tipo === 'dev_diagnose' && a.texto);
+    const readFileOk = finOk.find((a) => a.tipo === 'dev_read_file' && (a.texto || a.content));
     const redeployOk = finOk.find((a) => a.tipo === 'dev_railway_redeploy' && a.texto);
     const restartOk = finOk.find((a) => a.tipo === 'dev_railway_restart' && a.texto);
     const searchHits = finOk
@@ -498,6 +504,11 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     } else if (finOk.find((a) => a.tipo === 'creative_generate_image' && a.texto)) {
       out = String(
         finOk.find((a) => a.tipo === 'creative_generate_image' && a.texto).texto
+      ).trim();
+    } else if (readFileOk) {
+      out = String(
+        readFileOk.texto ||
+          `*\`${readFileOk.project}/${readFileOk.path}\`*\n\`\`\`\n${String(readFileOk.content).slice(0, 3500)}\n\`\`\``
       ).trim();
     } else if (diagnoseOk || logsOk) {
       // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
