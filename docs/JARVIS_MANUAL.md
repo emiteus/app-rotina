@@ -45,6 +45,7 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_STT_MODEL` | Modelo Gemini pra áudio (default `gemini-2.0-flash`) |
 | `JARVIS_CREATIVE=0` | Desliga geração de imagem |
 | `JARVIS_IMAGE_MODEL` | Modelo imagem (default `gemini-2.5-flash-image`) |
+| `JARVIS_IMAGE_RETRIES` | Tentativas por modelo em 429/503 (default `3`) |
 
 Redeploy após mudar env.
 
