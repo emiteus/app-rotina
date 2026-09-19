@@ -23,8 +23,9 @@ Confira / preencha no serviço **app-rotina**:
 | `EVOLUTION_*` | WA |
 | `CINERUSH_*` / `CINERUSH_EDITOR_*` / `ATTRACIONE_*` / `SOCIALHUB_*` / `CLIPPER_*` | Projetos |
 | `PROJETO_MILHAO_URL` | HTTP ops do Milhão em produção (`https://projeto-milhao-production.up.railway.app`) |
-| `GITHUB_TOKEN` | Dev agent: ler repos privados / rate limit |
+| `GITHUB_TOKEN` | Dev/coding: repos + **abrir PR** (scope `repo`) |
 | `RAILWAY_TOKEN` | Dev agent: logs + **redeploy** (Account token) |
+| `PROJETOS_ROOT` | Disco local pra `dev_apply_patch_local` / `dev_git_diff` (ex. `R:/Projetos`) |
 | `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` | Research: busca web (senão DuckDuckGo) |
 | `RESEARCH_FETCH_ALLOWLIST` | Research: hosts permitidos (comma); ou `RESEARCH_FETCH_OPEN=1` |
 | `OPENAI_API_KEY` | Whisper STT + TTS outbound |
@@ -59,7 +60,7 @@ Redeploy após mudar env.
 |--------|------|--------------------|------------|----------|
 | **AUTO** | low | executa | executa | `dev_diagnose`, `dev_railway_logs`, `cinerush_buscar`, `research_*`, leitura |
 | **AUTO*** | medium / high | executa (HITL WA off) | SIM se ≥ `JARVIS_APPROVAL_THRESHOLD` (default high) | sync bancos, mutações financeiras medium; `cinerush_criar`, `attracione_coleta` (high) |
-| **APPROVAL** | critical | **sempre SIM** | **sempre SIM** | `dev_railway_redeploy`, `dev_railway_restart` |
+| **APPROVAL** | critical | **sempre SIM** | **sempre SIM** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
 | **BLOCKED** | qualquer | non-owner → erro `só owner` | idem | tools `ownerOnly` (dev_*, research_*, várias ops) |
 
 Critical ignora `JARVIS_HITL_WHATSAPP=0`. `JARVIS_HITL=0` desliga HITL global (não recomendado).

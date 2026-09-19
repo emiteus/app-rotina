@@ -212,8 +212,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
-    'dev_diagnose', 'dev_git_status', 'dev_read_file', 'dev_railway_logs',
-    'dev_railway_redeploy', 'dev_railway_restart',
+    'dev_diagnose', 'dev_git_status', 'dev_git_diff', 'dev_read_file',
+    'dev_propose_patch', 'dev_apply_patch_local', 'dev_github_pr',
+    'dev_railway_logs', 'dev_railway_redeploy', 'dev_railway_restart',
     'creative_generate_image',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
@@ -355,8 +356,16 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           `Git **${a.project}** (${a.fonte || '?'}): \`${branch}\`` +
             (commits ? `\n${commits}` : '')
         );
+      } else if (a.tipo === 'dev_git_diff') {
+        partes.push(a.texto || `Diff **${a.project}**: ${a.stat || 'ok'}`);
       } else if (a.tipo === 'dev_read_file') {
         partes.push(`Li \`${a.path}\` em **${a.project}** (${a.fonte}).`);
+      } else if (a.tipo === 'dev_propose_patch') {
+        partes.push(a.texto || `Patch proposto \`${a.project}/${a.path}\``);
+      } else if (a.tipo === 'dev_apply_patch_local') {
+        partes.push(a.texto || `Patch local \`${a.project}/${a.path}\``);
+      } else if (a.tipo === 'dev_github_pr') {
+        partes.push(a.texto || `PR **#${a.pr_number}** ${a.pr_url || ''}`.trim());
       } else if (a.tipo === 'dev_railway_logs') {
         const head =
           `Logs Railway **${a.service || a.project}**` +
@@ -2306,6 +2315,7 @@ Regras:
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
 - Imagem/banner/arte: creative_generate_image com prompt descritivo (aspect 9:16 ou 16:9 se pedirem).
+- Patch/código: read_file → propose_patch → apply_patch_local OU github_pr (HITL). content = arquivo completo.
 - Análise sem alterar: responda com acoes:[].
 - Contagens de projetos: leia pack.projetos.*.hoje / fechamento — acoes:[] (não invente tool).
 - No máximo 1 emoji. Valores em R$.`;
