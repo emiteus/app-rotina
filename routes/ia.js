@@ -215,6 +215,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'dev_diagnose', 'dev_git_status', 'dev_git_diff', 'dev_read_file',
     'dev_propose_patch', 'dev_apply_patch_local', 'dev_github_pr', 'dev_run_tests',
     'dev_railway_logs', 'dev_railway_redeploy', 'dev_railway_restart',
+    'browser_open', 'browser_links',
     'creative_generate_image',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
@@ -378,6 +379,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
               ? `*Testes OK* \`${a.project}\` · \`${a.script}\``
               : `*Testes FALHARAM* \`${a.project}\` · \`${a.script}\``)
         );
+      } else if (a.tipo === 'browser_open' || a.tipo === 'browser_links') {
+        partes.push(a.texto || `Browser \`${a.url || '?'}\``);
       } else if (a.tipo === 'dev_railway_logs') {
         const head =
           `Logs Railway **${a.service || a.project}**` +
@@ -525,6 +528,10 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       out = String(finOk.find((a) => a.tipo === 'dev_github_pr' && a.texto).texto).trim();
     } else if (finOk.find((a) => a.tipo === 'dev_apply_patch_local' && a.texto)) {
       out = String(finOk.find((a) => a.tipo === 'dev_apply_patch_local' && a.texto).texto).trim();
+    } else if (finOk.find((a) => a.tipo === 'browser_open' && a.texto)) {
+      out = String(finOk.find((a) => a.tipo === 'browser_open' && a.texto).texto).trim();
+    } else if (finOk.find((a) => a.tipo === 'browser_links' && a.texto)) {
+      out = String(finOk.find((a) => a.tipo === 'browser_links' && a.texto).texto).trim();
     } else if (diagnoseOk || logsOk) {
       // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
       const bits = [];
@@ -1744,6 +1751,25 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     acoes.push({ tipo: 'dev_railway_redeploy', project });
   }
 
+  // Browser: abre/olha URL ou mensagem que é só URL
+  if (
+    !acoes.some((a) => a && (a.tipo === 'browser_open' || a.tipo === 'browser_links'))
+  ) {
+    const urlMatch = msg.match(/https?:\/\/[^\s<>"']+/i);
+    const wantsLinks = /\b(lista|liste|mostra)\s+(os\s+)?links\b/i.test(msg);
+    const wantsOpen =
+      /\b(abre|abrir|olha|olhe|visita|visite|navega|navegue|snapshot|o\s+que\s+tem)\b/i.test(
+        msg
+      ) || (/^https?:\/\/\S+$/i.test(msg.trim()) && msg.trim().length < 300);
+    if (urlMatch && (wantsOpen || wantsLinks)) {
+      const url = urlMatch[0].replace(/[.,);]+$/, '');
+      acoes.push({
+        tipo: wantsLinks ? 'browser_links' : 'browser_open',
+        url
+      });
+    }
+  }
+
   // Creative: gera/cria/desenha imagem|banner|arte
   if (
     !acoes.some((a) => a && a.tipo === 'creative_generate_image') &&
@@ -2341,6 +2367,7 @@ Regras:
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
 - Imagem/banner/arte: creative_generate_image com prompt descritivo (aspect 9:16 ou 16:9 se pedirem).
+- Página/URL: browser_open (snapshot) ou browser_links. Allowlist RESEARCH_FETCH_*.
 - Patch/código: read_file → propose_patch (path+content ou files[]) → apply_local OU github_pr (HITL).
 - Testes: dev_run_tests (script allowlist test/smoke/check/lint) se tiver disco.
 - Análise sem alterar: responda com acoes:[].
