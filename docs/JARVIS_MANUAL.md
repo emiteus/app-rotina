@@ -44,8 +44,10 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_TTS_MODEL` | Modelo TTS (default `tts-1`) |
 | `JARVIS_STT_MODEL` | Modelo Gemini pra áudio (default `gemini-2.0-flash`) |
 | `JARVIS_CREATIVE=0` | Desliga geração de imagem |
-| `JARVIS_IMAGE_MODEL` | Modelo imagem (default `gemini-2.5-flash-image`) |
-| `JARVIS_IMAGE_RETRIES` | Tentativas por modelo em 429/503 (default `3`) |
+| `JARVIS_IMAGE_MODEL` | Modelo imagem (default `gemini-2.5-flash-image`; fallbacks 3.1 flash-lite/image) |
+| `JARVIS_IMAGE_RETRIES` | Tentativas por modelo em 429/503 (default `2`) |
+
+**Imagem / Creative:** free tier Gemini costuma ter **limit 0** pra image gen → ativa billing no [AI Studio](https://aistudio.google.com/) no mesmo projeto da `GEMINI_API_KEY`.
 
 Redeploy após mudar env.
 
