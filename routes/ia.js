@@ -384,7 +384,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
             `Restart **${a.service || a.project}** (${a.environment || '?'}) via ${a.mode || 'railway'}.`
         );
       } else if (a.tipo === 'creative_generate_image') {
-        partes.push(a.texto || `Imagem gerada: _${String(a.prompt || '').slice(0, 80)}_`);
+        partes.push(a.texto || 'Pronto — imagem no chat.');
       } else if (a.tipo === 'research_web_search') {
         // Não polui WA com "Busca ok" — o resumo vem do report ou do brief
       } else if (a.tipo === 'research_fetch_url') {

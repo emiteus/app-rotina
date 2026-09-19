@@ -208,6 +208,9 @@ async function processPhoneQueue(phone) {
     const resposta = stripToolLeakage(out.resposta || 'Beleza. Em que posso ajudar?');
     stopTyping();
     const pendingHitl = (out.acoes || []).find((a) => a && a.pending_approval);
+    const imgOk = (out.acoes || []).find(
+      (a) => a && a.ok && a.tipo === 'creative_generate_image' && a.image_base64
+    );
 
     const wantVoice = shouldReplyWithVoice({
       userText: mensagem,
@@ -216,10 +219,38 @@ async function processPhoneQueue(phone) {
       pendingHitl: !!pendingHitl
     });
 
-    // Sempre texto (HITL / dumps / fallback). Voz opcional em cima.
-    await sendText(phone, resposta);
+    // Creative: imagem carrega a legenda — texto curto só se não for HITL
+    if (imgOk && !pendingHitl) {
+      const cap = String(imgOk.caption || imgOk.prompt || 'Jarvis').slice(0, 200);
+      try {
+        await sendWhatsAppImage(phone, imgOk.image_base64, {
+          mime: imgOk.mime || 'image/png',
+          caption: cap
+        });
+      } catch (imgErr) {
+        console.error('[whatsapp] image:', imgErr.message);
+        await sendText(phone, 'Gerei a imagem mas falhei no envio pelo WhatsApp — tenta de novo.');
+      }
+    } else {
+      await sendText(phone, resposta);
+      if (imgOk) {
+        try {
+          await sendWhatsAppImage(phone, imgOk.image_base64, {
+            mime: imgOk.mime || 'image/png',
+            caption: String(imgOk.caption || imgOk.prompt || 'Jarvis').slice(0, 200)
+          });
+        } catch (imgErr) {
+          console.error('[whatsapp] image:', imgErr.message);
+          try {
+            await sendText(phone, 'Gerei a imagem mas falhei no envio pelo WhatsApp — tenta de novo.');
+          } catch (_) {
+            /* ignore */
+          }
+        }
+      }
+    }
 
-    if (wantVoice) {
+    if (wantVoice && !imgOk) {
       try {
         const audio = await synthesizeSpeech(resposta);
         if (audio?.base64) {
@@ -227,25 +258,6 @@ async function processPhoneQueue(phone) {
         }
       } catch (ttsErr) {
         console.error('[whatsapp] tts:', ttsErr.message);
-      }
-    }
-
-    const imgOk = (out.acoes || []).find(
-      (a) => a && a.ok && a.tipo === 'creative_generate_image' && a.image_base64
-    );
-    if (imgOk) {
-      try {
-        await sendWhatsAppImage(phone, imgOk.image_base64, {
-          mime: imgOk.mime || 'image/png',
-          caption: imgOk.caption || imgOk.prompt || 'Jarvis'
-        });
-      } catch (imgErr) {
-        console.error('[whatsapp] image:', imgErr.message);
-        try {
-          await sendText(phone, 'Gerei a imagem mas falhei no envio pelo WhatsApp — tenta de novo.');
-        } catch (_) {
-          /* ignore */
-        }
       }
     }
 
