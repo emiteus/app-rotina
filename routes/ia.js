@@ -214,6 +214,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
     'dev_diagnose', 'dev_git_status', 'dev_git_diff', 'dev_read_file',
     'dev_propose_patch', 'dev_apply_patch_local', 'dev_github_pr', 'dev_run_tests',
+    'dev_deploy_checklist',
     'dev_railway_logs', 'dev_railway_redeploy', 'dev_railway_restart',
     'browser_open', 'browser_links',
     'creative_generate_image',
@@ -381,6 +382,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         );
       } else if (a.tipo === 'browser_open' || a.tipo === 'browser_links') {
         partes.push(a.texto || `Browser \`${a.url || '?'}\``);
+      } else if (a.tipo === 'dev_deploy_checklist') {
+        partes.push(a.texto || `Checklist deploy **${a.project}**`);
       } else if (a.tipo === 'dev_railway_logs') {
         const head =
           `Logs Railway **${a.service || a.project}**` +
@@ -532,6 +535,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       out = String(finOk.find((a) => a.tipo === 'browser_open' && a.texto).texto).trim();
     } else if (finOk.find((a) => a.tipo === 'browser_links' && a.texto)) {
       out = String(finOk.find((a) => a.tipo === 'browser_links' && a.texto).texto).trim();
+    } else if (finOk.find((a) => a.tipo === 'dev_deploy_checklist' && a.texto)) {
+      out = String(finOk.find((a) => a.tipo === 'dev_deploy_checklist' && a.texto).texto).trim();
     } else if (diagnoseOk || logsOk) {
       // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
       const bits = [];
@@ -1751,6 +1756,20 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     acoes.push({ tipo: 'dev_railway_redeploy', project });
   }
 
+  // Deploy checklist
+  if (
+    !acoes.some((a) => a && a.tipo === 'dev_deploy_checklist') &&
+    /\b(como\s+(fa[cç]o|fazer)\s+deploy|checklist\s+deploy|deploy\s+do\s+jarvis|depois\s+do\s+pr)\b/i.test(
+      msg
+    )
+  ) {
+    let project = 'approtina';
+    if (/milh/i.test(msg)) project = 'projeto_milhao';
+    else if (/jarvis/i.test(msg)) project = 'jarvis';
+    else if (/cinerush/i.test(msg)) project = 'cinerush';
+    acoes.push({ tipo: 'dev_deploy_checklist', project });
+  }
+
   // Browser: abre/olha URL ou mensagem que é só URL
   if (
     !acoes.some((a) => a && (a.tipo === 'browser_open' || a.tipo === 'browser_links'))
@@ -1967,6 +1986,15 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
     const picked = pickAgentForMessage(mensagem);
     agent = picked.agent;
     if (picked.route && picked.route.hint) orchestratorHint = picked.route.hint;
+    if (picked.route && picked.route.suggestMission) {
+      try {
+        const { formatRouteNudge } = require('../lib/jarvis/agents/orchestrator');
+        orchestratorHint =
+          (orchestratorHint || '') + formatRouteNudge(picked.route);
+      } catch (_) {
+        /* ignore */
+      }
+    }
     if (picked.explicit) {
       mensagem = picked.message || `status do agente ${agent.name}`;
     }

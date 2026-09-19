@@ -132,7 +132,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 - [x] Memória de projeto responde fatos gravados (stack/status/notas) — “semana passada” ainda depende de episodic/time  
 - [x] ≥1 agent com tools próprias (não só persona) — **Dev** + **Research**  
 - [x] ≥1 missão multi-sistema sem mentir sucesso — Mission Mode polish (smoke WA)  
-- [ ] Permission matrix publicada e respeitada  
+- [x] Permission matrix publicada e respeitada — Manual + `npm run check:tools` + `os-status.permissionMatrix`  
 - [x] WA continua só como canal  
 
 *Enquanto isso não fechar, somos um **hub operacional excelente**, não o JARVIS do filme — e está ok.*
