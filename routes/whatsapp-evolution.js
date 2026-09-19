@@ -10,6 +10,7 @@ const {
   sendText,
   sendApprovalButtons,
   sendWhatsAppAudio,
+  sendWhatsAppImage,
   evolutionReady,
   textoParaWhatsApp,
   stripToolLeakage,
@@ -226,6 +227,25 @@ async function processPhoneQueue(phone) {
         }
       } catch (ttsErr) {
         console.error('[whatsapp] tts:', ttsErr.message);
+      }
+    }
+
+    const imgOk = (out.acoes || []).find(
+      (a) => a && a.ok && a.tipo === 'creative_generate_image' && a.image_base64
+    );
+    if (imgOk) {
+      try {
+        await sendWhatsAppImage(phone, imgOk.image_base64, {
+          mime: imgOk.mime || 'image/png',
+          caption: imgOk.caption || imgOk.prompt || 'Jarvis'
+        });
+      } catch (imgErr) {
+        console.error('[whatsapp] image:', imgErr.message);
+        try {
+          await sendText(phone, 'Gerei a imagem mas falhei no envio pelo WhatsApp — tenta de novo.');
+        } catch (_) {
+          /* ignore */
+        }
       }
     }
 

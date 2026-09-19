@@ -43,6 +43,8 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_TTS_VOICE` | Voz OpenAI (default `nova`) |
 | `JARVIS_TTS_MODEL` | Modelo TTS (default `tts-1`) |
 | `JARVIS_STT_MODEL` | Modelo Gemini pra áudio (default `gemini-2.0-flash`) |
+| `JARVIS_CREATIVE=0` | Desliga geração de imagem |
+| `JARVIS_IMAGE_MODEL` | Modelo imagem (default `gemini-2.5-flash-image`) |
 
 Redeploy após mudar env.
 
@@ -77,6 +79,7 @@ Proativo (**nunca** auto-CRITICAL): Railway FAIL 15min · Ops (Editor/Havok/Attr
 10. WA: manda print de erro (sem legenda) → achados Vision v2 (*Screenshot* + bullets)
 11. WA: PDF curto ou print com legenda `o que está errado?` → achados + resposta curta
 12. WA (com `JARVIS_TTS=auto` + `OPENAI_API_KEY`): manda áudio → resposta texto + voice note
+13. WA: `gera imagem de um gato astronauta` → texto + foto no chat
 
 ---
 

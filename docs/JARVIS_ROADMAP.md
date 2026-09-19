@@ -1,7 +1,7 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.15  
-**Date:** 2026-09-18
+**Version:** 0.9.16  
+**Date:** 2026-09-19
 
 ## Norte
 
@@ -13,24 +13,23 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)** — gap por camada + pl
 
 ## Done (código)
 
-- Fundação + missões + hub (Dev/Research/Orchestrator)
-- Write Railway + HITL critical
-- Proativo Railway + Ops watch
-- Vision v2
-- Permission matrix
-- **TTS v1:** OpenAI speech → Evolution voice note (`JARVIS_TTS=auto|always`)
+- Hub completo (Dev/Research/Orchestrator/Vision/TTS/proativo)
+- **Creative v1:** `creative_generate_image` (Gemini Flash Image → WA)
 
 ## Etapa atual
 
-Setar no Railway: `JARVIS_TTS=auto` + `OPENAI_API_KEY`. Smoke: manda áudio no WA → texto + PTT.
+Smoke WA:
+
+```
+gera imagem de um robô jarvis no escritório
+gera banner 16:9 do projeto milhão estilo neon
+```
 
 ## Próximo
 
-1. Smoke TTS  
-2. Creative / image gen (backlog)  
-3. Coding agent full — só sob pedido  
+1. Smoke creative  
+2. Coding agent full — só sob pedido  
 
 ## Not started
 
-- Creative / image gen  
 - Coding agent full  

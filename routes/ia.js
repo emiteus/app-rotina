@@ -214,6 +214,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
     'dev_diagnose', 'dev_git_status', 'dev_read_file', 'dev_railway_logs',
     'dev_railway_redeploy', 'dev_railway_restart',
+    'creative_generate_image',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
@@ -382,6 +383,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           a.texto ||
             `Restart **${a.service || a.project}** (${a.environment || '?'}) via ${a.mode || 'railway'}.`
         );
+      } else if (a.tipo === 'creative_generate_image') {
+        partes.push(a.texto || `Imagem gerada: _${String(a.prompt || '').slice(0, 80)}_`);
       } else if (a.tipo === 'research_web_search') {
         // Não polui WA com "Busca ok" — o resumo vem do report ou do brief
       } else if (a.tipo === 'research_fetch_url') {
@@ -483,6 +486,10 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       out = String(restartOk.texto).trim();
     } else if (redeployOk) {
       out = String(redeployOk.texto).trim();
+    } else if (finOk.find((a) => a.tipo === 'creative_generate_image' && a.texto)) {
+      out = String(
+        finOk.find((a) => a.tipo === 'creative_generate_image' && a.texto).texto
+      ).trim();
     } else if (diagnoseOk || logsOk) {
       // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
       const bits = [];
@@ -1702,6 +1709,38 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     acoes.push({ tipo: 'dev_railway_redeploy', project });
   }
 
+  // Creative: gera/cria/desenha imagem|banner|arte
+  if (
+    !acoes.some((a) => a && a.tipo === 'creative_generate_image') &&
+    /\b(gera|gerar|cria|criar|desenha|faz)\b.{0,40}\b(imagem|foto|banner|arte|illustration|ilustra)/i.test(
+      msg
+    )
+  ) {
+    const prompt = msg
+      .replace(
+        /^(jarvis|agente\s+\w+)\s*/i,
+        ''
+      )
+      .replace(
+        /\b(gera|gerar|cria|criar|desenha|faz)\s+(uma?\s+)?(imagem|foto|banner|arte|illustration|ilustra[cç][aã]o)\s*(de|do|da|com|pra|para)?\s*/i,
+        ''
+      )
+      .replace(/\b(pfv|por\s+favor|pra\s+mim)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 400);
+    if (prompt.length >= 3) {
+      let aspect;
+      if (/\b(9:16|stories|story|vertical)\b/i.test(msg)) aspect = '9:16';
+      else if (/\b(16:9|banner|horizontal|wide)\b/i.test(msg)) aspect = '16:9';
+      acoes.push({
+        tipo: 'creative_generate_image',
+        prompt,
+        aspect: aspect || undefined
+      });
+    }
+  }
+
   // Garante report após busca (LLM às vezes só emite search → "Busca ok" sem resultado)
   const researchSearches = acoes.filter((a) => a && a.tipo === 'research_web_search');
   if (researchSearches.length) {
@@ -2266,6 +2305,7 @@ Regras:
 - NUNCA emita XML, <function_calls>, <invoke>, tool_call ou "invoke X with" — só JSON {"resposta","acoes"}.
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
+- Imagem/banner/arte: creative_generate_image com prompt descritivo (aspect 9:16 ou 16:9 se pedirem).
 - Análise sem alterar: responda com acoes:[].
 - Contagens de projetos: leia pack.projetos.*.hoje / fechamento — acoes:[] (não invente tool).
 - No máximo 1 emoji. Valores em R$.`;
