@@ -61,6 +61,7 @@ Redeploy após mudar env.
 | **AUTO** | low | executa | executa | `dev_diagnose`, `dev_railway_logs`, `cinerush_buscar`, `research_*`, leitura |
 | **AUTO*** | medium / high | executa (HITL WA off) | SIM se ≥ `JARVIS_APPROVAL_THRESHOLD` (default high) | sync bancos, mutações financeiras medium; `cinerush_criar`, `attracione_coleta` (high) |
 | **APPROVAL** | critical | **sempre SIM** | **sempre SIM** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
+| **AUTO*** | high | WA off (default) | SIM se ≥ threshold | `dev_run_tests` |
 | **BLOCKED** | qualquer | non-owner → erro `só owner` | idem | tools `ownerOnly` (dev_*, research_*, várias ops) |
 
 Critical ignora `JARVIS_HITL_WHATSAPP=0`. `JARVIS_HITL=0` desliga HITL global (não recomendado).

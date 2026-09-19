@@ -213,7 +213,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
     'dev_diagnose', 'dev_git_status', 'dev_git_diff', 'dev_read_file',
-    'dev_propose_patch', 'dev_apply_patch_local', 'dev_github_pr',
+    'dev_propose_patch', 'dev_apply_patch_local', 'dev_github_pr', 'dev_run_tests',
     'dev_railway_logs', 'dev_railway_redeploy', 'dev_railway_restart',
     'creative_generate_image',
     'research_web_search', 'research_fetch_url', 'research_write_report'
@@ -371,6 +371,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(a.texto || `Patch local \`${a.project}/${a.path}\``);
       } else if (a.tipo === 'dev_github_pr') {
         partes.push(a.texto || `PR **#${a.pr_number}** ${a.pr_url || ''}`.trim());
+      } else if (a.tipo === 'dev_run_tests') {
+        partes.push(
+          a.texto ||
+            (a.ok
+              ? `*Testes OK* \`${a.project}\` · \`${a.script}\``
+              : `*Testes FALHARAM* \`${a.project}\` · \`${a.script}\``)
+        );
       } else if (a.tipo === 'dev_railway_logs') {
         const head =
           `Logs Railway **${a.service || a.project}**` +
@@ -510,6 +517,14 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         readFileOk.texto ||
           `*\`${readFileOk.project}/${readFileOk.path}\`*\n\`\`\`\n${String(readFileOk.content).slice(0, 3500)}\n\`\`\``
       ).trim();
+    } else if (finOk.find((a) => a.tipo === 'dev_propose_patch' && a.texto)) {
+      out = String(finOk.find((a) => a.tipo === 'dev_propose_patch' && a.texto).texto).trim();
+    } else if (finOk.find((a) => a.tipo === 'dev_run_tests' && a.texto)) {
+      out = String(finOk.find((a) => a.tipo === 'dev_run_tests' && a.texto).texto).trim();
+    } else if (finOk.find((a) => a.tipo === 'dev_github_pr' && a.texto)) {
+      out = String(finOk.find((a) => a.tipo === 'dev_github_pr' && a.texto).texto).trim();
+    } else if (finOk.find((a) => a.tipo === 'dev_apply_patch_local' && a.texto)) {
+      out = String(finOk.find((a) => a.tipo === 'dev_apply_patch_local' && a.texto).texto).trim();
     } else if (diagnoseOk || logsOk) {
       // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
       const bits = [];
@@ -2326,7 +2341,8 @@ Regras:
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
 - Imagem/banner/arte: creative_generate_image com prompt descritivo (aspect 9:16 ou 16:9 se pedirem).
-- Patch/código: read_file → propose_patch → apply_patch_local OU github_pr (HITL). content = arquivo completo.
+- Patch/código: read_file → propose_patch (path+content ou files[]) → apply_local OU github_pr (HITL).
+- Testes: dev_run_tests (script allowlist test/smoke/check/lint) se tiver disco.
 - Análise sem alterar: responda com acoes:[].
 - Contagens de projetos: leia pack.projetos.*.hoje / fechamento — acoes:[] (não invente tool).
 - No máximo 1 emoji. Valores em R$.`;
