@@ -1627,15 +1627,12 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
-  // "já paguei Netflix" / "paguei a luz"
-  if (!acoes.some(a => a.tipo === 'confirmar_despesa')) {
-    const mPago = msg.match(/\b(?:j[aá]\s+)?paguei\s+(?:a\s+|o\s+)?(.+?)(?:\s+hoje|\s+ontem)?$/i)
-      || msg.match(/\bconfirm[ao]\s+(?:pagamento\s+(?:d[aeo]\s+)?)?(.+)$/i);
-    if (mPago) {
-      const titulo = mPago[1].replace(/[.!?]+$/, '').trim();
-      if (titulo.length >= 2 && titulo.length <= 80) {
-        acoes.push({ tipo: 'confirmar_despesa', titulo });
-      }
+  // "já paguei Netflix" / "confirma pagamento da luz" — NÃO "me confirma pfv"
+  if (!acoes.some((a) => a.tipo === 'confirmar_despesa')) {
+    const { extractConfirmExpenseTitle } = require('../lib/jarvis/nl/pt');
+    const titulo = extractConfirmExpenseTitle(msg);
+    if (titulo) {
+      acoes.push({ tipo: 'confirmar_despesa', titulo });
     }
   }
 
@@ -2486,6 +2483,8 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
 - Negação/pausa (“não vamos mais”, “pause”, “desliga”) ≠ pedido de criar. Não emita tool de criação; confirme o pedido e use memória/projeto se fizer sentido.
+- **Honestidade:** `project_memory_set` só registra decisão — NÃO diga que “pausou/desligou” automações reais no CineHub/backend a menos que exista tool/flag que faça isso de verdade. Diga: anotei; o kill switch real ainda depende do serviço.
+- "me confirma pfv" / "confirma quando estiver" ≠ confirmar_despesa. Só confirmar_despesa com "paguei X" ou "confirma pagamento …".
 - Attracione: ranking atual em projetos.attracione.ranking (views+vídeos); **hoje** em projetos.attracione.hoje.por_pessoa (vídeos publicados no dia). Comps passadas → attracione_ranking com n.
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
 - **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. "no TeuHub/SocialHub" → projetos.socialhub.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
@@ -2595,6 +2594,23 @@ Regras:
         'depositar_meta'
       ]);
       acoesMerged = acoesMerged.filter((a) => a && !block.has(a.tipo));
+    }
+    // Cinto: "me confirma" / pause-ops ≠ confirmar_despesa
+    {
+      const { hasConfirmPaymentIntent } = require('../lib/jarvis/nl/pt');
+      if (!hasConfirmPaymentIntent(mensagem)) {
+        const n = acoesMerged.length;
+        acoesMerged = acoesMerged.filter((a) => a && a.tipo !== 'confirmar_despesa');
+        if (acoesMerged.length !== n) {
+          console.log(
+            JSON.stringify({
+              tag: 'jarvis.nl',
+              event: 'strip_false_confirmar_despesa',
+              userId: uid
+            })
+          );
+        }
+      }
     }
     // Cinto: "reproduz layout" NÃO gera arte solta via LLM (inventa VS/cinematic)
     if (
