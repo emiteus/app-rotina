@@ -654,14 +654,34 @@ router.get('/missions', async (req, res) => {
   }
 });
 
-/** Sweep proativo manual (Phase 10) */
+/** Sweep proativo manual (Gap #11). Body/query notify=1 → ping WA se houver warn. */
 router.post('/proactive/sweep', async (req, res) => {
   const uid = requireUserId(req, res);
   if (!uid) return;
   try {
-    const { runProactiveSweep, formatProactiveNotes } = require('../lib/jarvis/events/bus');
+    const {
+      runProactiveSweep,
+      formatProactiveNotes,
+      notifyWarnNotes
+    } = require('../lib/jarvis/events/bus');
     const notes = await runProactiveSweep(uid);
-    res.json({ ok: true, notes, text: formatProactiveNotes(notes) });
+    const text = formatProactiveNotes(notes);
+    const wantNotify =
+      req.body?.notify === true ||
+      req.body?.notify === 1 ||
+      req.body?.notify === '1' ||
+      req.query?.notify === '1';
+    let notified = null;
+    if (wantNotify) {
+      notified = await notifyWarnNotes(notes, { source: 'api' });
+    }
+    res.json({
+      ok: true,
+      notes,
+      text,
+      notified,
+      contract: 'notify_only_never_auto_critical'
+    });
   } catch (e) {
     res.status(500).json({ erro: e.message });
   }

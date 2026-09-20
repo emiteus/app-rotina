@@ -471,70 +471,43 @@ sched('0 9 * * *', runCron('das-reminder', async () => {
   }
 }));
 
-// JARVIS proativo (Phase 10) — avisos only, nunca executa tools HIGH/CRITICAL
-sched('0 */3 * * *', runCron('jarvis-proactive', async () => {
+// JARVIS proativo (Gap #11) — avisos only, nunca executa tools HIGH/CRITICAL
+async function jarvisOwnerUserId() {
   const { get } = require('./lib/db');
   const { OWNER_LOGIN } = require('./lib/plano-owner');
   const owner = await get(
     `SELECT id FROM usuarios WHERE lower(login) = $1 AND ativo = true`,
     [OWNER_LOGIN]
   );
-  if (!owner?.id) return;
+  return owner?.id || null;
+}
+
+// Railway FAIL/CRASH a cada 15min
+sched('*/15 * * * *', runCron('jarvis-railway-watch', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
+  const { runRailwayWatchNotify } = require('./lib/jarvis/events/bus');
+  await runRailwayWatchNotify(uid);
+}));
+
+// Ops (Editor fila / Havok / Attracione) a cada 30min
+sched('*/30 * * * *', runCron('jarvis-ops-watch', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
+  const { runOpsWatchNotify } = require('./lib/jarvis/events/bus');
+  await runOpsWatchNotify(uid);
+}));
+
+// Sweep geral a cada 3h (aprovação + missão + ops + railway)
+sched('0 */3 * * *', runCron('jarvis-proactive', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
   const {
     runProactiveSweep,
-    formatProactiveNotes,
-    notifyOwnerWhatsApp
+    notifyWarnNotes
   } = require('./lib/jarvis/events/bus');
-  const notes = await runProactiveSweep(owner.id);
-  const text = formatProactiveNotes(notes);
-  if (!text) return;
-  // Só notifica se houver warn (aprovação pendente etc.)
-  if (!notes.some((n) => n.level === 'warn')) return;
-  await notifyOwnerWhatsApp(text);
-}));
-
-// Railway deploy FAIL/CRASH — mais frequente, dedupe por deployment id
-sched('*/15 * * * *', runCron('jarvis-railway-watch', async () => {
-  if (process.env.JARVIS_RAILWAY_WATCH === '0') return;
-  const { get } = require('./lib/db');
-  const { OWNER_LOGIN } = require('./lib/plano-owner');
-  const owner = await get(
-    `SELECT id FROM usuarios WHERE lower(login) = $1 AND ativo = true`,
-    [OWNER_LOGIN]
-  );
-  if (!owner?.id) return;
-  const {
-    checkRailwayDeployHealth,
-    formatProactiveNotes,
-    notifyOwnerWhatsApp
-  } = require('./lib/jarvis/events/bus');
-  const notes = await checkRailwayDeployHealth(owner.id);
-  if (!notes.length) return;
-  const text = formatProactiveNotes(notes);
-  if (!text) return;
-  await notifyOwnerWhatsApp(text);
-}));
-
-// Ops: Editor fila / Havok / Attracione — a cada 30min
-sched('*/30 * * * *', runCron('jarvis-ops-watch', async () => {
-  if (process.env.JARVIS_OPS_WATCH === '0') return;
-  const { get } = require('./lib/db');
-  const { OWNER_LOGIN } = require('./lib/plano-owner');
-  const owner = await get(
-    `SELECT id FROM usuarios WHERE lower(login) = $1 AND ativo = true`,
-    [OWNER_LOGIN]
-  );
-  if (!owner?.id) return;
-  const {
-    checkOpsHealth,
-    formatProactiveNotes,
-    notifyOwnerWhatsApp
-  } = require('./lib/jarvis/events/bus');
-  const notes = await checkOpsHealth(owner.id);
-  if (!notes.length) return;
-  const text = formatProactiveNotes(notes);
-  if (!text) return;
-  await notifyOwnerWhatsApp(text);
+  const notes = await runProactiveSweep(uid);
+  await notifyWarnNotes(notes, { source: 'sweep' });
 }));
 
 // Enviar mensagem Telegram
