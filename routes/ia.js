@@ -215,6 +215,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
+    'ops_flag_list', 'ops_flag_get', 'ops_flag_set',
     'dev_diagnose', 'dev_git_status', 'dev_git_diff', 'dev_read_file',
     'dev_propose_patch', 'dev_apply_patch_local', 'dev_github_pr', 'dev_run_tests',
     'dev_deploy_checklist',
@@ -340,6 +341,32 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(`Disparei publicação dos agendados no SocialHub (${a.processed != null ? a.processed + ' processados' : 'ok'}).`);
       } else if (a.tipo === 'snapshot_refresh') {
         partes.push('Limpei o cache de snapshots — próximo pacote vem fresco.');
+      } else if (a.tipo === 'ops_flag_list') {
+        const n = (a.flags || []).length;
+        partes.push(
+          `Listei **${n}** flag(s) de ops em **${a.project_id || '?'}**` +
+            (a.live_adapter ? ' (adapter live)' : ' (só store local)') +
+            '.'
+        );
+      } else if (a.tipo === 'ops_flag_get') {
+        const f = a.flag || {};
+        partes.push(
+          `Flag **${f.key || '?'}** em **${a.project_id}**: **${f.enabled === false ? 'pausada' : 'ligada'}**` +
+            (f.live ? ' (live)' : ' (local)') +
+            '.'
+        );
+      } else if (a.tipo === 'ops_flag_set') {
+        const f = a.flag || {};
+        if (a.live && a.synced) {
+          partes.push(
+            `Ops **${f.key || a.key}** em **${a.project_id}**: **${f.enabled === false ? 'pausada' : 'ligada'}** no backend live.`
+          );
+        } else {
+          partes.push(
+            a.aviso ||
+              `Anotei flag **${f.key || '?'}** em **${a.project_id}** (sem pause live — ${a.erro || 'sem adapter/remoto'}).`
+          );
+        }
       } else if (a.tipo === 'dev_diagnose') {
         partes.push(
           a.texto ||
@@ -2482,8 +2509,9 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
-- Negação/pausa (“não vamos mais”, “pause”, “desliga”) ≠ pedido de criar. Não emita tool de criação; confirme o pedido e use memória/projeto se fizer sentido.
-- **Honestidade:** `project_memory_set` só registra decisão — NÃO diga que “pausou/desligou” automações reais no CineHub/backend a menos que exista tool/flag que faça isso de verdade. Diga: anotei; o kill switch real ainda depende do serviço.
+- Negação/pausa (“não vamos mais”, “pause”, “desliga”) ≠ pedido de criar. Não emita tool de criação; confirme o pedido e use ops_flag_set se for pausar automação real.
+- **Ops flags (geral):** pause/retoma automação com ops_flag_list / ops_flag_get / ops_flag_set (Args: project + key + enabled). Keys: support_automation, access_automation, support_email_autoreply (e outras por projeto). Só diga que pausou/desligou de verdade se o retorno tiver **live:true** e **synced:true**. Sem adapter live → anote e fale que o backend ainda não tem kill switch.
+- **Honestidade:** `project_memory_set` só registra decisão — NÃO substitui ops_flag_set. Memória ≠ kill switch.
 - "me confirma pfv" / "confirma quando estiver" ≠ confirmar_despesa. Só confirmar_despesa com "paguei X" ou "confirma pagamento …".
 - Attracione: ranking atual em projetos.attracione.ranking (views+vídeos); **hoje** em projetos.attracione.hoje.por_pessoa (vídeos publicados no dia). Comps passadas → attracione_ranking com n.
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
@@ -2512,6 +2540,7 @@ Args típicos de finanças (quando a description for curta):
 - cinerush_criar: email (obrigatório), nome?, plano?
 - cinerush_editor_process: url, manual_headline?, clip_duration?
 - project_memory_set: project + stack|objetivo|status|nota|decisao|ultima_falha|link
+- ops_flag_set: project + key + enabled (bool) + note?
 - project_info: project id ou "all"
 - projeto_milhao_fechamento: ymd? (default ontem)
 

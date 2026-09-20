@@ -14,6 +14,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
+- **0.9.65**: ops flags gerais (`ops_flag_*`) + adapter CineRush (Redis runtime pause)
 - **0.9.64**: `nl/pt` — “me confirma” ≠ `confirmar_despesa`; honestidade memória ≠ kill switch real
 - **0.9.63**: match Unicode + create/stop intent
 - **0.9.62–0.9.60**: layout reproduce

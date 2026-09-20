@@ -151,6 +151,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 28. ~~Follow-up de ajuste de layout~~ **DONE 0.9.62** — cache/quote + locked tweak (bloqueia creative solto).
 29. ~~NL PT Unicode + create/stop intent~~ **DONE 0.9.63** — `nl/pt.js` (capacidade geral; atalhos usam isso).
 30. ~~Confirmar pagamento vs “me confirma”~~ **DONE 0.9.64** — `hasConfirmPaymentIntent` + cinto; honestidade memória ≠ pause real.
+31. ~~Ops flags gerais~~ **DONE 0.9.65** — `ops_flag_list/get/set` + store; adapter CineRush Redis (`support_automation`, `access_automation`, `support_email_autoreply`).
 
 ---
 
