@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.50  
+**Version:** 0.9.51  
 **Date:** 2026-09-20
 
 ## Norte
@@ -13,14 +13,14 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
-- **0.9.50**: layout reproduce — nunca cai no LLM solto; prompt anti-VS/ElClásico; referência primeiro
-- **0.9.49**: layout reproduce com referência + prompt travado
+- **0.9.51**: layout reproduce — aspect da referência + fidelidade de escudo (tamanho/traço) + crop apertado
+- **0.9.50**: layout reproduce — nunca cai no LLM solto; anti-VS
+- **0.9.49**: referência + prompt travado
 - **0.9.48**: Vision blueprint JSON
-- (0.9.43–0.9.47 memória/HITL/agents — ver GAP map)
 
 ## Smoke
 
-WA: print + `reproduz esse layout só que com…` → **mesmo card** (headline/ODD), só troca de escudos — sem VS/stadium
+WA: print + `reproduz layout só que com…` → mesmo card, escudos **mesmo tamanho/traço branco**, sem padding extra
 
 ## Backlog (só sob pedido)
 
