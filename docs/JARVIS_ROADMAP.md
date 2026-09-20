@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.25  
+**Version:** 0.9.26  
 **Date:** 2026-09-19
 
 ## Norte

@@ -1770,22 +1770,30 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     acoes.push({ tipo: 'dev_deploy_checklist', project });
   }
 
-  // Browser: abre/olha URL ou mensagem que é só URL
+  // Browser: abre/olha URL (com ou sem https://)
   if (
     !acoes.some((a) => a && (a.tipo === 'browser_open' || a.tipo === 'browser_links'))
   ) {
-    const urlMatch = msg.match(/https?:\/\/[^\s<>"']+/i);
+    const urlMatch =
+      msg.match(/https?:\/\/[^\s<>"']+/i) ||
+      msg.match(
+        /\b((?:www\.)?[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+)\b/i
+      );
     const wantsLinks = /\b(lista|liste|mostra)\s+(os\s+)?links\b/i.test(msg);
     const wantsOpen =
       /\b(abre|abrir|olha|olhe|visita|visite|navega|navegue|snapshot|o\s+que\s+tem)\b/i.test(
         msg
       ) || (/^https?:\/\/\S+$/i.test(msg.trim()) && msg.trim().length < 300);
     if (urlMatch && (wantsOpen || wantsLinks)) {
-      const url = urlMatch[0].replace(/[.,);]+$/, '');
-      acoes.push({
-        tipo: wantsLinks ? 'browser_links' : 'browser_open',
-        url
-      });
+      let url = urlMatch[0].replace(/[.,);]+$/, '');
+      if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+      // evita capturar palavras soltas tipo "missao.cutflix"
+      if (/\.[a-z]{2,}/i.test(url)) {
+        acoes.push({
+          tipo: wantsLinks ? 'browser_links' : 'browser_open',
+          url
+        });
+      }
     }
   }
 
