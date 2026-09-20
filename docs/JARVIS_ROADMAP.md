@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.58  
+**Version:** 0.9.59  
 **Date:** 2026-09-20
 
 ## Norte
@@ -10,18 +10,17 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 ### Princípio
 
 **Conexão real > atalhos NL.**  
-**Capacidade geral > gambiarra de domínio** (sem catálogo hardcode de times/marcas).
+**Capacidade geral > gambiarra de domínio**.
 
 ## Done
 
-- **0.9.58**: slots com **cap duro** + densidade por coluna (não engole ODD/título)
-- **0.9.57**: slots por pixels + vision fallback; prefer PNG
-- **0.9.56**: Commons retry 429 + sem half-pair
-- **0.9.55**: compositor sharp paste
+- **0.9.59**: erase do crest antigo (white wipe) + snap ao conteúdo; pixels > vision
+- **0.9.58**: slot cap / densidade
+- **0.9.57–0.9.55**: compose + Commons
 
 ## Smoke
 
-WA layout reproduce → slots ≤32% da menor dimensão, sem invadir o centro
+WA: layout reproduce — crest antigo some por completo antes do paste
 
 ## Backlog (só sob pedido)
 
