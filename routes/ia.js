@@ -1855,8 +1855,10 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   }
 
   // Creative: gera/cria/desenha imagem|banner|arte
+  // Layout reproduce NÃO passa por aqui — ingress gera com referência travada.
   if (
     !acoes.some((a) => a && a.tipo === 'creative_generate_image') &&
+    !require('../lib/jarvis/multimodal/ingress').looksLikeLayoutReproduceMessage(msg) &&
     /\b(gera|gerar|cria|criar|desenha|faz)\b.{0,40}\b(imagem|foto|banner|arte|illustration|ilustra)/i.test(
       msg
     )
@@ -2523,6 +2525,7 @@ Regras:
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
 - ${EXTERNAL_CONTENT_HINT}
 - Imagem/banner/arte: creative_generate_image com prompt descritivo (aspect 9:16 ou 16:9 se pedirem).
+- **NUNCA** emita creative_generate_image para "reproduz/copia esse layout" — o ingress já gera com a imagem de referência. Se cair aqui, responda pedindo pra reenviar o print; acoes:[].
 - Outline de landing (hero/CTA/seções): creative_landing_copy com project=id (cutflix, cinerush, …).
 - Página/URL: browser_open (snapshot) ou browser_links. Allowlist RESEARCH_FETCH_*.
 - Patch/código: read_file → propose_patch (path+content ou files[]) → apply_local OU github_pr (HITL).
@@ -2594,6 +2597,32 @@ Regras:
         'depositar_meta'
       ]);
       acoesMerged = acoesMerged.filter((a) => a && !block.has(a.tipo));
+    }
+    // Cinto: "reproduz layout" NÃO gera arte solta via LLM (inventa VS/cinematic)
+    if (
+      require('../lib/jarvis/multimodal/ingress').looksLikeLayoutReproduceMessage(mensagem)
+    ) {
+      const n = acoesMerged.length;
+      acoesMerged = acoesMerged.filter(
+        (a) =>
+          !(
+            a &&
+            a.tipo === 'creative_generate_image' &&
+            !a.locked_layout &&
+            !a.reference_image_base64 &&
+            !a.image_base64
+          )
+      );
+      if (acoesMerged.length !== n) {
+        console.log(
+          JSON.stringify({
+            tag: 'jarvis.creative',
+            event: 'layout_block_loose_generate',
+            userId: uid,
+            removed: n - acoesMerged.length
+          })
+        );
+      }
     }
     const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey, agentId: agent && agent.id });
     const resposta = stripToolLeakage(
