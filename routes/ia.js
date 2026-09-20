@@ -169,7 +169,7 @@ function respostaClaimMutacao(texto) {
     'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|' +
     'paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|' +
     'corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi|enfileirei|' +
-    'rodando|rodei|disparando';
+    'rodando|rodei|disparando|paus(?:ei|ando|ado)|deslig(?:uei|ando)';
   const limpo = String(texto || '').replace(
     new RegExp(`\\b(?:n[aã]o|nunca|ainda\\s+n[aã]o)\\s+(?:${verbs})\\b`, 'gi'),
     ' '
@@ -342,11 +342,19 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       } else if (a.tipo === 'snapshot_refresh') {
         partes.push('Limpei o cache de snapshots — próximo pacote vem fresco.');
       } else if (a.tipo === 'ops_flag_list') {
-        const n = (a.flags || []).length;
+        const flags = a.flags || [];
+        const lines = flags
+          .slice(0, 8)
+          .map(
+            (f) =>
+              `· **${f.key}**: **${f.enabled === false ? 'pausada' : 'ligada'}**` +
+              (f.live ? ' (live)' : '')
+          )
+          .join('\n');
         partes.push(
-          `Listei **${n}** flag(s) de ops em **${a.project_id || '?'}**` +
-            (a.live_adapter ? ' (adapter live)' : ' (só store local)') +
-            '.'
+          lines
+            ? `Status ops **${a.project_id || '?'}**:\n${lines}`
+            : `Listei flags de ops em **${a.project_id || '?'}** (vazio).`
         );
       } else if (a.tipo === 'ops_flag_get') {
         const f = a.flag || {};
@@ -617,6 +625,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       } else {
         out = brief;
       }
+    } else if (
+      finOk.length &&
+      finOk.every((a) => a.tipo === 'ops_flag_list' || a.tipo === 'ops_flag_get') &&
+      /pausand|estou\s+paus|pausei|desligand|pausando\s+as\s+automa/i.test(base)
+    ) {
+      // LLM mentiu "estou pausando" num pedido só de confirmação — manda o status real
+      out = `Confirmado — estado atual:\n${partes.join('\n')}`;
     } else if (base && base.length > 40) {
       out = `${base}\n\n${partes.join(' ')}`.trim();
     } else {
@@ -2509,8 +2524,9 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
-- Negação/pausa (“não vamos mais”, “pause”, “desliga”) ≠ pedido de criar. Não emita tool de criação; confirme o pedido e use ops_flag_set se for pausar automação real.
-- **Ops flags (geral):** pause/retoma automação com ops_flag_list / ops_flag_get / ops_flag_set (Args: project + key + enabled). Keys: support_automation, access_automation, support_email_autoreply (e outras por projeto). Só diga que pausou/desligou de verdade se o retorno tiver **live:true** e **synced:true**. Sem adapter live → anote e fale que o backend ainda não tem kill switch.
+- Negação/pausa (“não vamos mais”, “pause”, “desliga”) ≠ pedido de criar. Não emita tool de criação; use ops_flag_set (enabled:false) pra pausar automação real.
+- **Ops flags (geral):** ops_flag_list / ops_flag_get / ops_flag_set (Args: project + key + enabled). Keys: support_automation, access_automation, support_email_autoreply. Só diga que pausou de verdade se live:true e synced:true. Sem adapter → diga que anotou, sem kill switch.
+- **Confirmar status ≠ pausar de novo:** “me confirma pfv” / “assim que estiver pausado” / “já pausou?” → ops_flag_list (ou get). NÃO emita ops_flag_set de novo. Resposta: diga o estado atual (já pausado / ainda ligado), sem “estou pausando agora”.
 - **Honestidade:** project_memory_set só registra decisão — NÃO substitui ops_flag_set. Memória ≠ kill switch.
 - "me confirma pfv" / "confirma quando estiver" ≠ confirmar_despesa. Só confirmar_despesa com "paguei X" ou "confirma pagamento …".
 - Attracione: ranking atual em projetos.attracione.ranking (views+vídeos); **hoje** em projetos.attracione.hoje.por_pessoa (vídeos publicados no dia). Comps passadas → attracione_ranking com n.
@@ -2624,9 +2640,12 @@ Regras:
       ]);
       acoesMerged = acoesMerged.filter((a) => a && !block.has(a.tipo));
     }
-    // Cinto: "me confirma" / pause-ops ≠ confirmar_despesa
+    // Cinto: "me confirma" / pause-ops ≠ confirmar_despesa; status ≠ re-set flags
     {
-      const { hasConfirmPaymentIntent } = require('../lib/jarvis/nl/pt');
+      const {
+        hasConfirmPaymentIntent,
+        looksLikeStatusConfirmOnly
+      } = require('../lib/jarvis/nl/pt');
       if (!hasConfirmPaymentIntent(mensagem)) {
         const n = acoesMerged.length;
         acoesMerged = acoesMerged.filter((a) => a && a.tipo !== 'confirmar_despesa');
@@ -2636,6 +2655,45 @@ Regras:
               tag: 'jarvis.nl',
               event: 'strip_false_confirmar_despesa',
               userId: uid
+            })
+          );
+        }
+      }
+      if (looksLikeStatusConfirmOnly(mensagem)) {
+        const sets = acoesMerged.filter((a) => a && a.tipo === 'ops_flag_set');
+        acoesMerged = acoesMerged.filter((a) => a && a.tipo !== 'ops_flag_set');
+        const hasRead = acoesMerged.some(
+          (a) => a && (a.tipo === 'ops_flag_list' || a.tipo === 'ops_flag_get')
+        );
+        if (!hasRead) {
+          let project = null;
+          if (sets.length) {
+            project = sets[0].project || sets[0].projeto || sets[0].project_id;
+          }
+          if (!project) {
+            try {
+              const hits = require('../lib/jarvis/projects/registry').resolveProjectsFromMessage(
+                mensagem
+              );
+              project = hits && hits[0];
+            } catch {
+              /* ignore */
+            }
+          }
+          if (!project && /\b(cine|cinerush|havok|chatwoot|cinehub)\b/i.test(mensagem)) {
+            project = 'cinerush';
+          }
+          if (project || sets.length) {
+            acoesMerged.push({ tipo: 'ops_flag_list', project: project || 'cinerush' });
+          }
+        }
+        if (sets.length) {
+          console.log(
+            JSON.stringify({
+              tag: 'jarvis.nl',
+              event: 'ops_confirm_use_list_not_set',
+              userId: uid,
+              stripped: sets.length
             })
           );
         }
