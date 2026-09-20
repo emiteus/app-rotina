@@ -323,7 +323,7 @@
       ],
       "packagePath": "Cutflix\\package.json",
       "hasReadme": true,
-      "remote": null,
+      "remote": "https://github.com/emiteus/cutflix.git",
       "scannedAt": "2026-09-17T22:46:02.079Z"
     },
     {
