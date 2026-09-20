@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
-**Baseline:** v0.9.47 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Baseline:** v0.9.48 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -28,7 +28,7 @@ O trilho OS 3.0 mínimo (#1–#12) está fechado; o que falta é **profundidade*
 | **Memória** | Prefs + notas + projeto + falhas + recall temporal + **recall semântico lexical** | Embeddings reais (vector) | `memory/projects.js`, `episodic.js` |
 | **Automation** | 64 tools + connectors | Só o que está plugado; criar assinante etc. faltam | `tools/`, `connectors/` |
 | **Analytics** | Snapshots HTTP + watches (Railway/ops) | Sem séries históricas nem alerta genérico | registry snapshots, `events/bus.js` |
-| **Vision** | Vision v2: print/PDF → achados diretos | “Reproduzir layout” ainda não | `multimodal/ingress.js` |
+| **Vision** | Vision v2 findings + **reproduzir layout** (JSON blueprint) | SPA/browser headless pra capturar | `multimodal/ingress.js` |
 | **Voice** | STT (Gemini, fallback Whisper) + TTS OpenAI | Sem conversa contínua | `ingress.js`, `multimodal/tts.js` |
 | **Agents** | 6 personas + orquestrador + auto-missão + **toolPrefixes gate** | Workers isolados (subprocess) | `agents/registry.js`, `orchestrator.js`, `tools/index.js` |
 | **Missions** | Heurística + LLM + batch + retry + landing copy + CAS lock | Workers isolados (subprocess) | `missions/` |
@@ -141,6 +141,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 18. ~~Histórico anti-contaminação~~ **DONE 0.9.45** — `sanitizeHistoricoForDecision` (topic switch + scrub externo).
 19. ~~Recall semântico lexical~~ **DONE 0.9.46** — `recall_semantico` (overlap tokens; embeddings ainda depois).
 20. ~~Agent toolPrefixes gate~~ **DONE 0.9.47** — `splitByAgentScope` (isolation lite; workers reais depois).
+21. ~~Vision reproduzir layout~~ **DONE 0.9.48** — print → blueprint JSON (zonas/hierarquia/CTAs).
 
 ---
 
