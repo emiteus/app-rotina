@@ -2515,6 +2515,21 @@ Regras:
 - Contagens de projetos: leia pack.projetos.*.hoje / fechamento — acoes:[] (não invente tool).
 - No máximo 1 emoji. Valores em R$.`;
 
+    const { sanitizeHistoricoForDecision } = require('../lib/jarvis/context/history');
+    const historicoSafe = sanitizeHistoricoForDecision(historico, { intent, mensagem });
+    if (historicoSafe.length !== (historico || []).length) {
+      console.log(
+        JSON.stringify({
+          tag: 'jarvis.context',
+          event: 'history_sanitize',
+          intent: intent.kind,
+          before: (historico || []).length,
+          after: historicoSafe.length,
+          userId: uid
+        })
+      );
+    }
+
     let texto;
     let usage;
     let provider;
@@ -2522,7 +2537,7 @@ Regras:
       ({ texto, usage, provider } = await chamarIA({
         system: systemPrompt,
         user: mensagem,
-        historico,
+        historico: historicoSafe,
         maxTokens: 2200,
         jsonMode: true,
         timeout: 28000

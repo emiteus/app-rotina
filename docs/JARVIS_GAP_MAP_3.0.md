@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
-**Baseline:** v0.9.44 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Baseline:** v0.9.45 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -21,7 +21,7 @@ O trilho OS 3.0 mínimo (#1–#12) está fechado; o que falta é **profundidade*
 
 | Camada | Hoje | Gap principal | Código âncora |
 |--------|------|---------------|---------------|
-| **Cérebro** | Turno + intent pack + LLM JSON + planner LLM | Histórico ainda contamina decisões; sem quarentena de conteúdo externo | `core.js`, `context/`, `routes/ia.js` |
+| **Cérebro** | Turno + intent pack + LLM JSON + planner LLM + **higiene de histórico** | Embeddings / workers isolados | `core.js`, `context/`, `routes/ia.js` |
 | **Research** | Busca (Brave/Serper) + fetch SSRF-safe + relatório | Sem síntese multi-fonte com citação | `tools/handlers/research.js` |
 | **Dev** | 11 tools: diagnose, git, logs, read/patch, PR, testes, redeploy | Sem sandbox isolado; patch escreve no disco real | `tools/handlers/dev.js` |
 | **Creative** | Geração de imagem (Gemini Flash Image) + outline de landing | Sem layout visual estruturado | `multimodal/creative.js`, `landing-copy.js` |
@@ -31,7 +31,7 @@ O trilho OS 3.0 mínimo (#1–#12) está fechado; o que falta é **profundidade*
 | **Vision** | Vision v2: print/PDF → achados diretos | “Reproduzir layout” ainda não | `multimodal/ingress.js` |
 | **Voice** | STT (Gemini, fallback Whisper) + TTS OpenAI | Sem conversa contínua | `ingress.js`, `multimodal/tts.js` |
 | **Agents** | 6 personas + orquestrador + auto-missão | Não há workers isolados de verdade | `agents/registry.js`, `orchestrator.js` |
-| **Missions** | Heurística + LLM + batch + retry + landing copy real | Missões ainda single-thread (sem lock) | `missions/` |
+| **Missions** | Heurística + LLM + batch + retry + landing copy + CAS lock | Workers isolados (subprocess) | `missions/` |
 | **Permissions** | Risk + HITL + matriz documentada + TTL | HITL no WA só p/ critical (decisão, não gap) | `permissions/`, reconciler |
 
 **Maturidade estimada: ~70% do blueprint 3.0** — base completa, profundidade em aberto.
@@ -138,6 +138,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 15. ~~Lock de missões~~ **DONE 0.9.42** — `claimMissionRun` (CAS).
 16. ~~§8 restante~~ **DONE 0.9.43** — realpath patch · redact logs · OPEN bloqueado em prod.
 17. ~~Recall temporal~~ **DONE 0.9.44** — `recall_temporal` (semana passada / ontem / N dias) no pack.
+18. ~~Histórico anti-contaminação~~ **DONE 0.9.45** — `sanitizeHistoricoForDecision` (topic switch + scrub externo).
 
 ---
 
