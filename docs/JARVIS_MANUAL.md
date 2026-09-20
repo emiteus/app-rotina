@@ -27,7 +27,7 @@ Confira / preencha no serviço **app-rotina**:
 | `RAILWAY_TOKEN` | Dev agent: logs + **redeploy** (Account token) |
 | `PROJETOS_ROOT` | Disco local pra `dev_apply_patch_local` / `dev_git_diff` (ex. `R:/Projetos`) |
 | `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` | Research: busca web (senão DuckDuckGo) |
-| `RESEARCH_FETCH_ALLOWLIST` | Research/Browser: hosts permitidos (comma); ou `RESEARCH_FETCH_OPEN=1` |
+| `RESEARCH_FETCH_ALLOWLIST` | Research/Browser: hosts permitidos (comma). `RESEARCH_FETCH_OPEN=1` só fora de prod; em prod exige `RESEARCH_FETCH_OPEN_FORCE=1` |
 | `OPENAI_API_KEY` | **TTS** outbound + fallback de STT (o STT primário é Gemini) |
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on). **Não** afeta `critical`: redeploy/patch/PR pedem SIM sempre |
 | `JARVIS_HITL_WHATSAPP=1` | Opt-in: high/medium no WhatsApp (default **off**) |

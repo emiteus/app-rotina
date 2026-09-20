@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
-**Baseline:** v0.9.36 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Baseline:** v0.9.43 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -136,21 +136,22 @@ Objetivo: Orchestrator delega; você só dá a missão.
 13. ~~Quarentena conteúdo externo~~ **DONE 0.9.40** — wrap research/browser/vision + system hint.
 14. ~~Gate central ownerOnly~~ **DONE 0.9.41** — `splitByOwner` + `snapshot_refresh`/`project_memory_set`.
 15. ~~Lock de missões~~ **DONE 0.9.42** — `claimMissionRun` (CAS).
+16. ~~§8 restante~~ **DONE 0.9.43** — realpath patch · redact logs · OPEN bloqueado em prod.
 
 ---
 
-## 8. Auditoria 2026-09-20 — o que ficou em aberto
+## 8. Auditoria 2026-09-20 — status
 
-Corrigido em 0.9.34–0.9.35. **Não** corrigido (risco aceito, por ordem de prioridade):
+Corrigido em 0.9.34–0.9.43. **§8 fechado.**
 
 | Achado | Onde | Por que aceitamos |
 |--------|------|-------------------|
 | Conteúdo externo (research/browser/vision) volta pro LLM sem quarentena | `handlers/research.js`, `browser.js` | **DONE 0.9.40** — wrap `[CONTEÚDO EXTERNO]` + hint no system prompt |
 | Sem gate central de `ownerOnly` — `snapshot_refresh` e `project_memory_set` abertos | `handlers.js`, `ops.js`, `memory.js` | **DONE 0.9.41** — `splitByOwner` em `runToolBatch` + flags nas defs |
 | Missões sem lock — duas mensagens simultâneas podem corromper `steps` | `missions/store.js` | **DONE 0.9.42** — `claimMissionRun` CAS planned→running |
-| Symlink pode escapar do `PROJETOS_ROOT` no patch | `handlers/dev.js` | Disco próprio; patch é critical (SIM) |
-| Logs do Railway podem conter segredo ao voltar pro WA | `handlers/dev.js` | Canal privado do dono |
-| `RESEARCH_FETCH_OPEN=1` desliga a allowlist de hosts | `handlers/research.js` | Flag manual, off por padrão |
+| Symlink pode escapar do `PROJETOS_ROOT` no patch | `handlers/dev.js` | **DONE 0.9.43** — `resolvePathUnderProject` + realpath |
+| Logs do Railway podem conter segredo ao voltar pro WA | `handlers/dev.js` | **DONE 0.9.43** — `redactSecrets` nas lines |
+| `RESEARCH_FETCH_OPEN=1` desliga a allowlist de hosts | `handlers/research.js` | **DONE 0.9.43** — bloqueado em prod sem `FORCE=1` |
 
 ---
 
