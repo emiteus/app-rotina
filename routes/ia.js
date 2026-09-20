@@ -536,7 +536,14 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     } else if (finOk.find((a) => a.tipo === 'browser_links' && a.texto)) {
       out = String(finOk.find((a) => a.tipo === 'browser_links' && a.texto).texto).trim();
     } else if (finOk.find((a) => a.tipo === 'dev_deploy_checklist' && a.texto)) {
-      out = String(finOk.find((a) => a.tipo === 'dev_deploy_checklist' && a.texto).texto).trim();
+      const dump = String(
+        finOk.find((a) => a.tipo === 'dev_deploy_checklist' && a.texto).texto
+      ).trim();
+      if (/Missão\s+\*|Passo\s+\d+\//i.test(base)) {
+        out = `${base}\n\n${dump}`.trim();
+      } else {
+        out = dump;
+      }
     } else if (diagnoseOk || logsOk) {
       // Diagnóstico/logs mandam — sem "quer que eu rode Railway?" do LLM
       const bits = [];
