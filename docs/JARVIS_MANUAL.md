@@ -108,7 +108,7 @@ Proativo (**nunca** auto-CRITICAL): Railway FAIL 15min · Ops (Editor/Havok/Attr
 ```
 missão: …
 próximo passo
-executa missão
+mete marcha / executa missão
 status missão
 retry passo
 cancela missão
@@ -122,7 +122,7 @@ quantos posts no teushub hoje
 SIM a1b2c3d4 / NÃO a1b2c3d4
 ```
 
-Missões: `executa missão` manda pings curtos (`Passo 2/4 · ok`); board completo em `status missão`.  
+Missões: `próximo passo` = 1 passo; `mete marcha` / `executa missão` = batch com pings (`Passo 2/4 · ok`); board em `status missão`.  
 `JARVIS_MISSION_PROGRESS=0` desliga pings no WA.
 API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`
 

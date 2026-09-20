@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.27  
+**Version:** 0.9.28  
 **Date:** 2026-09-20
 
 ## Norte
@@ -13,16 +13,16 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
-- Hub + Creative + Coding + Browser + ops batch 0.9.25–0.9.27
+- Hub + Creative + Coding + Browser + ops batch 0.9.25–0.9.28
 - Allowlist ecossistema (Attracione/CineRush/TeuHub) + Discord
-- Missão: aliases `bora` / `mete marcha` / `próximo` = avanço
+- Missão: `próximo`/`bora` = 1 passo; `mete marcha` / `executa missão` = batch
+- Lançar produto: research query amarrada no PROJECT_BRIEF (não genérica)
 
 ## Smoke WA (retest)
 
 ```
-abre attracionecomp.com.br
-próximo passo
-executa missão
+missão: lançar produto cutflix
+mete marcha na missão
 ```
 
 Local: `npm run smoke`

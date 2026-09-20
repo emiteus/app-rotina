@@ -553,7 +553,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         out = dump;
       }
     } else if (searchHits.length) {
-      out = briefFromResearchHits(searchHits, searchQuery);
+      const brief = briefFromResearchHits(searchHits, searchQuery);
+      // Missão já trouxe progresso — anexa research, não apaga o board
+      if (/Missão\s+\*|Passo\s+\d+\//i.test(base)) {
+        out = `${base}\n\n${brief}`.trim();
+      } else {
+        out = brief;
+      }
     } else if (base && base.length > 40) {
       out = `${base}\n\n${partes.join(' ')}`.trim();
     } else {
