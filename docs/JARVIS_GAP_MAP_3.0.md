@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
-**Baseline:** v0.9.60 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Baseline:** v0.9.61 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -147,6 +147,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 24. ~~Commons fetch resiliente~~ **DONE 0.9.56** — candidatos + retry 429 + bloqueia half-pair.
 25. ~~Slots confiáveis no compose~~ **0.9.57–0.9.59** (compose experimental).
 26. ~~Layout: Gemini-first de novo~~ **DONE 0.9.60** — template via modelo + assets Commons; compose só com `JARVIS_LAYOUT_COMPOSE=1`.
+27. ~~Fidelidade de tratamentos~~ **DONE 0.9.61** — vision `tratamentos` + prompt exige stroke/sombra/glow do template.
 
 ---
 
