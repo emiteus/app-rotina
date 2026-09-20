@@ -134,6 +134,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 11. ~~Auditoria 2026-09-20~~ **DONE 0.9.35** — 7 achados corrigidos (HITL reuse/TTL/hard-gate, missão travada, SSRF redirect, honestidade no finance, working tree do host). Ver §8.
 12. ~~Copy real na landing~~ **DONE 0.9.36** — `creative_landing_copy` (brief → hero/CTA/seções; fallback sem LLM).
 13. ~~Quarentena conteúdo externo~~ **DONE 0.9.40** — wrap research/browser/vision + system hint.
+14. ~~Gate central ownerOnly~~ **DONE 0.9.41** — `splitByOwner` + `snapshot_refresh`/`project_memory_set`.
 
 ---
 
@@ -144,7 +145,7 @@ Corrigido em 0.9.34–0.9.35. **Não** corrigido (risco aceito, por ordem de pri
 | Achado | Onde | Por que aceitamos |
 |--------|------|-------------------|
 | Conteúdo externo (research/browser/vision) volta pro LLM sem quarentena | `handlers/research.js`, `browser.js` | **DONE 0.9.40** — wrap `[CONTEÚDO EXTERNO]` + hint no system prompt |
-| Sem gate central de `ownerOnly` — `snapshot_refresh` e `project_memory_set` abertos | `handlers.js`, `ops.js`, `memory.js` | Web exige auth; impacto é cache/nota |
+| Sem gate central de `ownerOnly` — `snapshot_refresh` e `project_memory_set` abertos | `handlers.js`, `ops.js`, `memory.js` | **DONE 0.9.41** — `splitByOwner` em `runToolBatch` + flags nas defs |
 | Missões sem lock — duas mensagens simultâneas podem corromper `steps` | `missions/store.js` | Uso single-user |
 | Symlink pode escapar do `PROJETOS_ROOT` no patch | `handlers/dev.js` | Disco próprio; patch é critical (SIM) |
 | Logs do Railway podem conter segredo ao voltar pro WA | `handlers/dev.js` | Canal privado do dono |
