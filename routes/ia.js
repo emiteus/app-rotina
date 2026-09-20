@@ -2244,7 +2244,9 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       upsertProjectMemory,
       loadMemoriesForMessage,
       recallForMessage,
-      looksLikeTemporalRecall
+      looksLikeTemporalRecall,
+      recallSemanticForMessage,
+      looksLikeSemanticRecall
     } = require('../lib/jarvis/memory/projects');
     let projectMemorySaved = null;
     const inferredPm = inferProjectMemoryFromMessage(mensagem);
@@ -2265,6 +2267,17 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
         });
       } catch (e) {
         console.error('[jarvis.memory] recall', e.message);
+      }
+    }
+
+    let recallSemantico = null;
+    if (!recallTemporal && looksLikeSemanticRecall(mensagem)) {
+      try {
+        recallSemantico = await recallSemanticForMessage(uid, mensagem, {
+          prefsNotas: prefs.extras?.notas || []
+        });
+      } catch (e) {
+        console.error('[jarvis.memory] recall_semantic', e.message);
       }
     }
 
@@ -2387,7 +2400,8 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
 
     const { pack: ctxPack, intent, stats: ctxStats } = packContext(snap, mensagem, prefs, {
       projectMemories,
-      recallTemporal
+      recallTemporal,
+      recallSemantico
     });
     console.log(
       JSON.stringify({
@@ -2449,6 +2463,7 @@ Como usar o contexto:
 - Se o usuário disser "lembra que…" / "anota que…", confirme em 1 linha (já persistido).
 - Memória de projetos: use memoria_projetos[] (stack, objetivo, status, decisões, ultima_falha, notas). Responda sobre projetos com esses fatos + registry/projetos.*. Para gravar: project_memory_set (ou o usuário já gravou via "lembra que no X: …").
 - Recall temporal: se pack.recall_temporal existir (semana passada / ontem / últimos N dias), responda SÓ com esses itens datados. Se empty=true, diga honestamente que não há eventos gravados na janela — não invente timeline.
+- Recall semântico: se pack.recall_semantico existir (hits por overlap lexical), priorize esses fatos ao responder "o que você lembra / qual a stack / decisão". Se empty=true, diga que não achou match — não invente.
 
 Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir na tela manualmente):
 - registrar pendência/dívida/despesa/tarefa/meta → criar_*

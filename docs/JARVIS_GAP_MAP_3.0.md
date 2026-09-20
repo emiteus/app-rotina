@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
-**Baseline:** v0.9.45 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Baseline:** v0.9.46 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -25,7 +25,7 @@ O trilho OS 3.0 mínimo (#1–#12) está fechado; o que falta é **profundidade*
 | **Research** | Busca (Brave/Serper) + fetch SSRF-safe + relatório | Sem síntese multi-fonte com citação | `tools/handlers/research.js` |
 | **Dev** | 11 tools: diagnose, git, logs, read/patch, PR, testes, redeploy | Sem sandbox isolado; patch escreve no disco real | `tools/handlers/dev.js` |
 | **Creative** | Geração de imagem (Gemini Flash Image) + outline de landing | Sem layout visual estruturado | `multimodal/creative.js`, `landing-copy.js` |
-| **Memória** | Prefs + notas + memória de projeto + falhas + **recall temporal** | Sem recall semântico (embeddings) | `memory/projects.js`, `episodic.js` |
+| **Memória** | Prefs + notas + projeto + falhas + recall temporal + **recall semântico lexical** | Embeddings reais (vector) | `memory/projects.js`, `episodic.js` |
 | **Automation** | 64 tools + connectors | Só o que está plugado; criar assinante etc. faltam | `tools/`, `connectors/` |
 | **Analytics** | Snapshots HTTP + watches (Railway/ops) | Sem séries históricas nem alerta genérico | registry snapshots, `events/bus.js` |
 | **Vision** | Vision v2: print/PDF → achados diretos | “Reproduzir layout” ainda não | `multimodal/ingress.js` |
@@ -139,6 +139,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 16. ~~§8 restante~~ **DONE 0.9.43** — realpath patch · redact logs · OPEN bloqueado em prod.
 17. ~~Recall temporal~~ **DONE 0.9.44** — `recall_temporal` (semana passada / ontem / N dias) no pack.
 18. ~~Histórico anti-contaminação~~ **DONE 0.9.45** — `sanitizeHistoricoForDecision` (topic switch + scrub externo).
+19. ~~Recall semântico lexical~~ **DONE 0.9.46** — `recall_semantico` (overlap tokens; embeddings ainda depois).
 
 ---
 
@@ -159,7 +160,7 @@ Corrigido em 0.9.34–0.9.43. **§8 fechado.**
 
 ## 7. Definition of Done — “OS 3.0 mínimo”
 
-- [x] Memória de projeto responde fatos gravados (stack/status/notas) — recall temporal **0.9.44** (semana passada); embeddings ainda não  
+- [x] Memória de projeto responde fatos gravados (stack/status/notas) — temporal **0.9.44** + lexical **0.9.46**; embeddings ainda não  
 - [x] ≥1 agent com tools próprias (não só persona) — **Dev** + **Research**  
 - [x] ≥1 missão multi-sistema sem mentir sucesso — Mission Mode polish (smoke WA)  
 - [x] Permission matrix publicada e respeitada — Manual + `npm run check:tools` + `os-status.permissionMatrix`  
