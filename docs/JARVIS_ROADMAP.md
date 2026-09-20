@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.48  
+**Version:** 0.9.49  
 **Date:** 2026-09-20
 
 ## Norte
@@ -16,6 +16,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 - Trilho 61–90 **fechado** + auditoria HITL (0.9.34–0.9.35)
 - Landing copy real (0.9.36–0.9.39)
 - Quarentena externo · owner gate · mission CAS (0.9.40–0.9.42)
+- **0.9.49**: layout reproduce com fidelidade — referência + prompt travado (não inventa VS/cinematic)
 - **0.9.48**: Vision “reproduz esse layout” → blueprint JSON (zonas / hierarquia / CTAs)
 - **0.9.47**: agent `toolPrefixes` gate — research/dev/browser/creative não vazam tools fora do escopo
 - **0.9.46**: recall semântico lexical → `pack.recall_semantico` (overlap; sem embeddings)
@@ -27,7 +28,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 Local: `npm run smoke` · `npm run check:tools`
 
-WA: print + `reproduz esse layout` → blueprint; `prepara landing do cutflix` → `mete marcha`
+WA: print + `reproduz esse layout só que com…` → **mesma estrutura**, só a troca pedida
 
 ## Backlog (só sob pedido)
 
