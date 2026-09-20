@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.57  
+**Version:** 0.9.58  
 **Date:** 2026-09-20
 
 ## Norte
@@ -14,14 +14,14 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
-- **0.9.57**: slots por **pixels** (sem LLM) + vision model fallback; prefer PNG crest; sem JPG panorama
-- **0.9.56**: Commons fetch resiliente (candidatos + retry 429 + sem half-pair) + erase white no compose
-- **0.9.55**: compositor pixel (`compose.js`) — detect slots + sharp paste; Gemini só fallback
-- **0.9.54**: `visual-assets` — resolve logo/crest por **busca Commons**
+- **0.9.58**: slots com **cap duro** + densidade por coluna (não engole ODD/título)
+- **0.9.57**: slots por pixels + vision fallback; prefer PNG
+- **0.9.56**: Commons retry 429 + sem half-pair
+- **0.9.55**: compositor sharp paste
 
 ## Smoke
 
-WA: `reproduz layout com escudo do X e Y` → slots pixels/vision → compose paste em tamanho certo
+WA layout reproduce → slots ≤32% da menor dimensão, sem invadir o centro
 
 ## Backlog (só sob pedido)
 
