@@ -1396,7 +1396,8 @@ async function executarAcoes(acoes, userId, opts = {}) {
     userId,
     executeAll: executarAcoesCorpo,
     skipHitl: !!opts.skipHitl,
-    channel: opts.channel || null
+    channel: opts.channel || null,
+    agentId: opts.agentId || null
   });
 }
 
@@ -2122,7 +2123,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       const hitl = await tryHandleApprovalReply(
         uid,
         mensagem,
-        (acoes) => executarAcoes(acoes, uid, { skipHitl: true, channel: channelKey }),
+        (acoes) => executarAcoes(acoes, uid, { skipHitl: true, channel: channelKey, agentId: agent && agent.id }),
         { channel: channelKey }
       );
       if (hitl && hitl.handled) {
@@ -2145,7 +2146,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
             if (resumed && resumed.canAdvance && resumed.mission) {
               const cont = await runMissionBatch(
                 uid,
-                (acoes) => executarAcoes(acoes, uid, { channel: channelKey }),
+                (acoes) => executarAcoes(acoes, uid, { channel: channelKey, agentId: agent && agent.id }),
                 { missionId: resumed.mission.id, onProgress }
               );
               if (cont && cont.resposta) {
@@ -2198,7 +2199,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       const missionOut = await tryHandleMissionCommand(
         uid,
         mensagem,
-        (acoes, u) => executarAcoes(acoes, u || uid, { channel: channelKey }),
+        (acoes, u) => executarAcoes(acoes, u || uid, { channel: channelKey, agentId: agent && agent.id }),
         onProgress
       );
       if (missionOut && missionOut.handled) {
@@ -2356,7 +2357,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
           agent: agent.id
         };
       }
-      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey });
+      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey, agentId: agent && agent.id });
       const resposta = reconciliarRespostaComAcoes('', acoesExec);
       await salvarMensagem(conversaId, 'assistant', resposta, uid);
       return {
@@ -2377,7 +2378,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       'marcar_das', 'marcar_habito', 'depositar_meta'
     ]);
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
-      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey });
+      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey, agentId: agent && agent.id });
       if (acoesExec.some(a => a && a.ok)) {
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
@@ -2560,7 +2561,7 @@ Regras:
     } catch (errGemini) {
       const fallback = inferirAcoesDaMensagem(mensagem, snap, []);
       if (fallback.length) {
-        const acoesExec = await executarAcoes(fallback, uid, { channel: channelKey });
+        const acoesExec = await executarAcoes(fallback, uid, { channel: channelKey, agentId: agent && agent.id });
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
@@ -2594,7 +2595,7 @@ Regras:
       ]);
       acoesMerged = acoesMerged.filter((a) => a && !block.has(a.tipo));
     }
-    const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey });
+    const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey, agentId: agent && agent.id });
     const resposta = stripToolLeakage(
       reconciliarRespostaComAcoes(respostaBruta, acoesExec)
     );
