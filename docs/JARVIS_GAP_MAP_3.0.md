@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
-**Baseline:** v0.9.35 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Baseline:** v0.9.36 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -24,14 +24,14 @@ O trilho OS 3.0 mínimo (#1–#12) está fechado; o que falta é **profundidade*
 | **Cérebro** | Turno + intent pack + LLM JSON + planner LLM | Histórico ainda contamina decisões; sem quarentena de conteúdo externo | `core.js`, `context/`, `routes/ia.js` |
 | **Research** | Busca (Brave/Serper) + fetch SSRF-safe + relatório | Sem síntese multi-fonte com citação | `tools/handlers/research.js` |
 | **Dev** | 11 tools: diagnose, git, logs, read/patch, PR, testes, redeploy | Sem sandbox isolado; patch escreve no disco real | `tools/handlers/dev.js` |
-| **Creative** | Geração de imagem (Gemini Flash Image) | Sem layout/copy estruturado | `multimodal/creative.js` |
+| **Creative** | Geração de imagem (Gemini Flash Image) + outline de landing | Sem layout visual estruturado | `multimodal/creative.js`, `landing-copy.js` |
 | **Memória** | Prefs + notas + memória de projeto + falhas | Episódios ricos / recall semântico | `memory/projects.js`, `episodic.js` |
 | **Automation** | 64 tools + connectors | Só o que está plugado; criar assinante etc. faltam | `tools/`, `connectors/` |
 | **Analytics** | Snapshots HTTP + watches (Railway/ops) | Sem séries históricas nem alerta genérico | registry snapshots, `events/bus.js` |
 | **Vision** | Vision v2: print/PDF → achados diretos | “Reproduzir layout” ainda não | `multimodal/ingress.js` |
 | **Voice** | STT (Gemini, fallback Whisper) + TTS OpenAI | Sem conversa contínua | `ingress.js`, `multimodal/tts.js` |
 | **Agents** | 6 personas + orquestrador + auto-missão | Não há workers isolados de verdade | `agents/registry.js`, `orchestrator.js` |
-| **Missions** | Heurística + LLM + batch + retry | “Lançar produto” ainda tem passo de copy como stub | `missions/` |
+| **Missions** | Heurística + LLM + batch + retry + landing copy real | Missões ainda single-thread (sem lock) | `missions/` |
 | **Permissions** | Risk + HITL + matriz documentada + TTL | HITL no WA só p/ critical (decisão, não gap) | `permissions/`, reconciler |
 
 **Maturidade estimada: ~70% do blueprint 3.0** — base completa, profundidade em aberto.
@@ -98,14 +98,14 @@ Objetivo: Orchestrator delega; você só dá a missão.
 
 | # | Entrega | Aceite |
 |---|---------|--------|
-| 9 | Orchestrator escolhe agent(s) por intent (não só addendum de prompt) | ~~“prepara landing” → research→copy→…~~ **DONE 0.9.31** (auto-missão stub) |
+| 9 | Orchestrator escolhe agent(s) por intent (não só addendum de prompt) | ~~“prepara landing” → research→copy→…~~ **DONE 0.9.31** · copy real **0.9.36** (`creative_landing_copy`) |
 | 10 | Vision v2 — PDF + screenshot → achados estruturados | ~~“o que está errado?” em print~~ **DONE** (ingress + smoke) |
 | 11 | Proatividade útil — 1–2 alertas reais (deploy fail, fila editor, crédito Havok) | ~~ping WA sem auto-CRITICAL~~ **DONE 0.9.32** (cron 15m/30m + sweep 3h) |
 | 12 | Permission matrix documentada (AUTO / APPROVAL / BLOCKED) por tool | ~~tabela no Manual~~ **DONE 0.9.33** (`check:tools` valida criticals) |
 
-**Ainda depois do 90 (backlog consciente):** copy real na missão de landing (hoje é stub), subagentes isolados, séries de analytics, quarentena de conteúdo externo (prompt injection), sandbox pro patch local.
+**Ainda depois do 90 (backlog consciente):** subagentes isolados, séries de analytics, quarentena de conteúdo externo (prompt injection), sandbox pro patch local.
 
-> Creative/image gen, Voice TTS, coding agent (patch+test+PR+deploy) e browser genérico **saíram do backlog** — já estão implementados.
+> Creative/image gen, Voice TTS, coding agent (patch+test+PR+deploy), browser genérico e **copy de landing** **saíram do backlog** — já estão implementados.
 
 ---
 
@@ -132,6 +132,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 9. ~~Próximo: **#11 proatividade**~~ **DONE 0.9.32**
 10. ~~Próximo livre / backlog sob pedido~~ Trilho 61–90 **completo** (#9–#12). Backlog sob pedido.
 11. ~~Auditoria 2026-09-20~~ **DONE 0.9.35** — 7 achados corrigidos (HITL reuse/TTL/hard-gate, missão travada, SSRF redirect, honestidade no finance, working tree do host). Ver §8.
+12. ~~Copy real na landing~~ **DONE 0.9.36** — `creative_landing_copy` (brief → hero/CTA/seções; fallback sem LLM).
 
 ---
 

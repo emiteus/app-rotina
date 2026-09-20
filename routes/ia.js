@@ -217,7 +217,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'dev_deploy_checklist',
     'dev_railway_logs', 'dev_railway_redeploy', 'dev_railway_restart',
     'browser_open', 'browser_links',
-    'creative_generate_image',
+    'creative_generate_image', 'creative_landing_copy',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
@@ -412,6 +412,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         );
       } else if (a.tipo === 'creative_generate_image') {
         partes.push(a.texto || 'Pronto — imagem no chat.');
+      } else if (a.tipo === 'creative_landing_copy') {
+        if (a.texto) partes.push(String(a.texto));
       } else if (a.tipo === 'research_web_search') {
         // Não polui WA com "Busca ok" — o resumo vem do report ou do brief
       } else if (a.tipo === 'research_fetch_url') {
@@ -497,6 +499,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const reportOk = finOk.find(
       (a) => a.tipo === 'research_write_report' && a.texto
     );
+    const landingCopyOk = finOk.find(
+      (a) => a.tipo === 'creative_landing_copy' && a.texto
+    );
     const diagnoseOk = finOk.find((a) => a.tipo === 'dev_diagnose' && a.texto);
     const readFileOk = finOk.find((a) => a.tipo === 'dev_read_file' && (a.texto || a.content));
     const redeployOk = finOk.find((a) => a.tipo === 'dev_railway_redeploy' && a.texto);
@@ -510,6 +515,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     let out;
     if (reportOk) {
       out = String(reportOk.texto).trim();
+    } else if (landingCopyOk) {
+      const dump = String(landingCopyOk.texto).trim();
+      if (/Missão\s+\*|Passo\s+\d+\//i.test(base)) {
+        out = `${base}\n\n${dump}`.trim();
+      } else {
+        out = dump;
+      }
     } else if (restartOk) {
       out = String(restartOk.texto).trim();
     } else if (redeployOk) {
@@ -2468,6 +2480,7 @@ Regras:
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
 - Imagem/banner/arte: creative_generate_image com prompt descritivo (aspect 9:16 ou 16:9 se pedirem).
+- Outline de landing (hero/CTA/seções): creative_landing_copy com project=id (cutflix, cinerush, …).
 - Página/URL: browser_open (snapshot) ou browser_links. Allowlist RESEARCH_FETCH_*.
 - Patch/código: read_file → propose_patch (path+content ou files[]) → apply_local OU github_pr (HITL).
 - Testes: dev_run_tests (script allowlist test/smoke/check/lint) se tiver disco.

@@ -131,7 +131,7 @@ SIM a1b2c3d4 / NÃO a1b2c3d4
 ```
 
 Missões: `próximo passo` = 1 passo; `mete marcha` / `executa missão` = batch com pings (`Passo 2/4 · ok`); board em `status missão`.  
-`prepara landing …` abre missão tipada sozinho (orquestrador).  
+`prepara landing …` abre missão tipada sozinho (orquestrador) — research + **outline de copy** (`creative_landing_copy`) + checklist.  
 `JARVIS_MISSION_PROGRESS=0` desliga pings no WA.
 API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`
 
