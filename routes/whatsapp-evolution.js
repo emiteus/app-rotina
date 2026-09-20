@@ -17,7 +17,7 @@ const {
   startTypingIndicator,
   sendPresence
 } = require('../lib/evolution');
-const { extractMediaMeta } = require('../lib/jarvis/multimodal/ingress');
+const { resolveTurnMedia } = require('../lib/jarvis/multimodal/ingress');
 const {
   shouldReplyWithVoice,
   synthesizeSpeech
@@ -134,8 +134,8 @@ function parseEvolutionPayload(body) {
     const phone = normalizeWaId(remoteJid.replace(/@.*/, ''));
     const message = item.message || item;
     const text = extractTextFromMessage(message).trim();
-    const media = extractMediaMeta(message);
-    if (media && key) media.raw = { ...message, key };
+    let media = resolveTurnMedia(message);
+    if (media && key) media.raw = { ...(media.raw || message), key };
     if (!phone) continue;
     if (!text && !media) continue;
     out.push({ phone, text, media, fromMe, isGroup, remoteJid });
