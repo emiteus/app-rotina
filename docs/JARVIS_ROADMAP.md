@@ -17,7 +17,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 - Matrix AUTO / APPROVAL / BLOCKED no Manual; `npm run check:tools` valida criticals listados
 - **Auditoria 0.9.34–0.9.35**: reuse de aprovação · TTL no `SIM <id>` · hard gate critical · missão não trava · SSRF redirect · finance honesto
 - **0.9.36**: `creative_landing_copy` na missão `prepara landing`
-- **0.9.37**: copy de cliente (sem dump técnico / sem “Cutflix — do cutflix”); LLM rejeitado se vier engenheiro demais
+- **0.9.37–0.9.38**: copy de cliente (presets); sem “worker + ,”; nota de erro do LLM no rodapé; timeout 45s
 
 ## Smoke
 
