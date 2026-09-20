@@ -96,8 +96,8 @@ Objetivo: Orchestrator delega; você só dá a missão.
 
 | # | Entrega | Aceite |
 |---|---------|--------|
-| 9 | Orchestrator escolhe agent(s) por intent (não só addendum de prompt) | “prepara landing” → research→copy→… (mesmo stub) |
-| 10 | Vision v2 — PDF + screenshot → achados estruturados | “o que está errado?” em print |
+| 9 | Orchestrator escolhe agent(s) por intent (não só addendum de prompt) | ~~“prepara landing” → research→copy→…~~ **DONE 0.9.31** (auto-missão stub) |
+| 10 | Vision v2 — PDF + screenshot → achados estruturados | ~~“o que está errado?” em print~~ **DONE** (ingress + smoke) |
 | 11 | Proatividade útil — 1–2 alertas reais (deploy fail, fila editor, crédito Havok) | ping WA sem auto-CRITICAL |
 | 12 | Permission matrix documentada (AUTO / APPROVAL / BLOCKED) por tool | tabela no Manual |
 
@@ -124,7 +124,8 @@ Objetivo: Orchestrator delega; você só dá a missão.
 5. ~~Smoke Research no WA~~ (curto + fontes sob demanda)
 6. ~~Mission Mode polish~~ — progresso compacto + ultima_falha + HITL onProgress
 7. Smoke: `missão: diagnostica o milhão` → `executa missão`
-8. Dia 61+: orchestrator
+8. ~~Dia 61+: orchestrator~~ **DONE 0.9.31** (`prepara landing` auto-missão)
+9. Próximo: **#11 proatividade** (alerta real no WA)
 ---
 
 ## 7. Definition of Done — “OS 3.0 mínimo”

@@ -107,6 +107,7 @@ Proativo (**nunca** auto-CRITICAL): Railway FAIL 15min · Ops (Editor/Havok/Attr
 
 ```
 missão: …
+prepara landing do cutflix
 próximo passo
 mete marcha / executa missão
 status missão
@@ -123,6 +124,7 @@ SIM a1b2c3d4 / NÃO a1b2c3d4
 ```
 
 Missões: `próximo passo` = 1 passo; `mete marcha` / `executa missão` = batch com pings (`Passo 2/4 · ok`); board em `status missão`.  
+`prepara landing …` abre missão tipada sozinho (orquestrador).  
 `JARVIS_MISSION_PROGRESS=0` desliga pings no WA.
 API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`
 

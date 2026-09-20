@@ -2003,11 +2003,14 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
   const { pickAgentForMessage, getAgent } = require('../lib/jarvis/agents/registry');
   let agent = agentId ? getAgent(agentId) : null;
   let orchestratorHint = '';
+  let autoMissionGoal = null;
   if (!agent) {
     const picked = pickAgentForMessage(mensagem);
     agent = picked.agent;
     if (picked.route && picked.route.hint) orchestratorHint = picked.route.hint;
-    if (picked.route && picked.route.suggestMission) {
+    if (picked.route && picked.route.autoMission) {
+      autoMissionGoal = picked.message || mensagem;
+    } else if (picked.route && picked.route.suggestMission) {
       try {
         const { formatRouteNudge } = require('../lib/jarvis/agents/orchestrator');
         orchestratorHint =
@@ -2035,6 +2038,35 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
     }
 
     await salvarMensagem(conversaId, 'user', mensagem, uid);
+
+    // Gap #9 — orchestrator auto-missão (ex.: prepara landing)
+    if (autoMissionGoal) {
+      try {
+        const {
+          parseMissionCommand,
+          startMission,
+          formatMission
+        } = require('../lib/jarvis/missions/planner');
+        if (!parseMissionCommand(mensagem)) {
+          const m = await startMission(uid, autoMissionGoal);
+          const resposta =
+            `Missão criada (orquestrador).\n\n${formatMission(m)}\n\n` +
+            `Manda **mete marcha** pra rodar em sequência.`;
+          await salvarMensagem(conversaId, 'assistant', resposta, uid);
+          return {
+            resposta,
+            acoes: [],
+            snapshot: null,
+            provider: 'orchestrator',
+            usage: null,
+            conversa_id: conversaId,
+            agent: agent.id
+          };
+        }
+      } catch (e) {
+        console.error('[ia] autoMission:', e.message);
+      }
+    }
 
     // HITL: SIM / NÃO (com ou sem id) contra aprovação deste canal
     {
