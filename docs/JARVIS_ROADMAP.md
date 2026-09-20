@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.62  
+**Version:** 0.9.63  
 **Date:** 2026-09-20
 
 ## Norte
@@ -14,13 +14,9 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
-- **0.9.62**: follow-up de layout (`afasta`/`aproxima`) → cache/quote + locked edit (não inventa arte nova)
-- **0.9.61**: tratamentos (stroke/sombra) no reproduce
-- **0.9.60**: Gemini-first + assets Commons
-
-## Smoke
-
-WA: reproduz layout → depois “afasta os escudos” → mesma arte, só espaçamento
+- **0.9.63**: `nl/pt` — match Unicode de palavra + intent create/stop (corrige `\bgera\b` ⊂ geração)
+- **0.9.62**: follow-up de layout  
+- **0.9.61–0.9.60**: layout reproduce + tratamentos
 
 ## Backlog (só sob pedido)
 
