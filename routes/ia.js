@@ -1714,6 +1714,7 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   }
 
   // "criar/gerar acesso novo" no CineRush — documenta limite (não provisiona)
+  // Cuidado: em JS, \bgera\b casa em "geração" (ç quebra o word-boundary).
   if (
     !acoes.some(
       (a) =>
@@ -1725,10 +1726,20 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     const isCine =
       /\b(cinerush|cine\s*rush|cinehub|cine\s*hub|havok)\b/i.test(msg) ||
       (/\bacesso\b/i.test(msg) && /\b(tv|streaming|assinante)\b/i.test(msg));
-    const isCreate =
-      /\b(criar|cadast[rt]|gere|gerar|gera|novo\s+acesso|acesso\s+novo|assinante\s+novo|gera(?:r)?\s+(?:um\s+)?acesso)\b/i.test(
+    const isPauseOrStop =
+      /\b(pause|pausar|desliga(?:r)?|desativ(?:ar|e)|parar|suspende(?:r)?)\b/i.test(msg) ||
+      /\bn[aã]o\s+(vamos\s+mais|quero\s+mais|preciso\s+mais)\b/i.test(msg) ||
+      /\bn[aã]o\s+vamos\s+mais\s+realizar\b/i.test(msg) ||
+      /\bsem\s+(mais\s+)?(suporte\s+autom[aá]tico|gera[cç][aã]o\s+de\s+acessos?|automa[cç][aã]o)\b/i.test(
         msg
       );
+    const isCreate =
+      !isPauseOrStop &&
+      !/\bgera[cç][aã]o\b/i.test(msg) &&
+      (/\b(criar|cadast(?:rar|ro)|gerar|crie)\b/i.test(msg) ||
+        /\b(novo\s+acesso|acesso\s+novo|assinante\s+novo)\b/i.test(msg) ||
+        /\bgera(?:r)?\s+(?:um\s+)?acesso\b/i.test(msg) ||
+        /\bcria(?:r)?\s+(?:um\s+)?acesso\b/i.test(msg));
     const isProvisionOnly =
       /\b(provision|liber[aeo])\b/i.test(msg) && !/\b(criar|gerar|cadast)/i.test(msg);
     if (isCine && isCreate && !isProvisionOnly) {
@@ -2488,6 +2499,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Cutflix → cutflix_status (health da API; sem ops de write ainda)
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
+- Pedido de **pausar/desligar** suporte automático ou geração de acessos ≠ criar acesso. Confirme o pedido, anote em project_memory_set (cinerush) e diga o que ainda é manual vs o que depende de flag/deploy no backend.
 - Attracione: ranking atual em projetos.attracione.ranking (views+vídeos); **hoje** em projetos.attracione.hoje.por_pessoa (vídeos publicados no dia). Comps passadas → attracione_ranking com n.
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
 - **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. "no TeuHub/SocialHub" → projetos.socialhub.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
