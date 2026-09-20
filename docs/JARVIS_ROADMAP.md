@@ -21,10 +21,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Smoke WA (retest)
 
-```
-missão: lançar produto cutflix
-mete marcha
-```
+Cutflix launch **ok** no WA (batch + git + checklist por projeto).
 
 Local: `npm run smoke`
 
