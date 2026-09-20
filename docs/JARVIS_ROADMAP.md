@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.36  
+**Version:** 0.9.37  
 **Date:** 2026-09-20
 
 ## Norte
@@ -16,14 +16,14 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 - Trilho 61–90 **fechado**: #9 orchestrator · #10 Vision · #11 proativo · **#12 permission matrix**
 - Matrix AUTO / APPROVAL / BLOCKED no Manual; `npm run check:tools` valida criticals listados
 - **Auditoria 0.9.34–0.9.35**: reuse de aprovação · TTL no `SIM <id>` · hard gate critical · missão não trava · SSRF redirect · finance honesto
-- **0.9.36**: `prepara landing` gera **copy real** (`creative_landing_copy` — hero/CTA/seções a partir do brief; salva na memória do projeto)
+- **0.9.36**: `creative_landing_copy` na missão `prepara landing`
+- **0.9.37**: copy de cliente (sem dump técnico / sem “Cutflix — do cutflix”); LLM rejeitado se vier engenheiro demais
 
 ## Smoke
 
-Local: `npm run smoke` · `npm run check:tools`  
-Isolados: `npm run smoke:approvals` · `node scripts/smoke-mission-fail.js`
+Local: `npm run smoke` · `npm run check:tools`
 
-WA: `prepara landing do cutflix` → `mete marcha` → deve vir outline com Headline/CTA (não stub)
+WA: `prepara landing do cutflix` → `mete marcha` → headline de marketing (não brief/stack)
 
 ## Backlog (só sob pedido)
 
