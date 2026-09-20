@@ -28,8 +28,8 @@ Confira / preencha no serviço **app-rotina**:
 | `PROJETOS_ROOT` | Disco local pra `dev_apply_patch_local` / `dev_git_diff` (ex. `R:/Projetos`) |
 | `BRAVE_SEARCH_API_KEY` / `SERPER_API_KEY` | Research: busca web (senão DuckDuckGo) |
 | `RESEARCH_FETCH_ALLOWLIST` | Research/Browser: hosts permitidos (comma); ou `RESEARCH_FETCH_OPEN=1` |
-| `OPENAI_API_KEY` | Whisper STT + TTS outbound |
-| `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on) |
+| `OPENAI_API_KEY` | **TTS** outbound + fallback de STT (o STT primário é Gemini) |
+| `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on). **Não** afeta `critical`: redeploy/patch/PR pedem SIM sempre |
 | `JARVIS_HITL_WHATSAPP=1` | Opt-in: high/medium no WhatsApp (default **off**) |
 | `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
 | `JARVIS_PROACTIVE_WA=0` | Desliga pings proativos no WhatsApp |
@@ -47,12 +47,15 @@ Confira / preencha no serviço **app-rotina**:
 | `JARVIS_CREATIVE=0` | Desliga geração de imagem |
 | `JARVIS_IMAGE_MODEL` | Modelo imagem (default `gemini-2.5-flash-image`; fallbacks 3.1 flash-lite/image) |
 | `JARVIS_IMAGE_RETRIES` | Tentativas por modelo em 429/503 (default `2`) |
+| `JARVIS_APPROVAL_TTL_MS` | Validade do SIM pendente (default 10min; expirado não executa) |
+
+**Menos usadas, mas lidas pelo código:** `GH_TOKEN` e `RAILWAY_API_TOKEN` (aliases de `GITHUB_TOKEN`/`RAILWAY_TOKEN`), `RAILWAY_TOKEN_KIND`, `RAILWAY_PROJECT_ID`, `OPENAI_BASE_URL`, `JARVIS_TTS_KEY` / `JARVIS_WHISPER_KEY` (key OpenAI separada), `JARVIS_TTS_MAX_CHARS`, `JARVIS_IMAGE_ASPECT`, `JARVIS_TEST_TIMEOUT_MS`, `JARVIS_HOME`, `JARVIS_MISSION_PROGRESS`, `JARVIS_LLM_PLANNER`, `JARVIS_DAILY_CALL_BUDGET` / `JARVIS_DAILY_TOKEN_BUDGET`, `JARVIS_WA_TYPING`, `CRONS_ENABLED`.
 
 **Imagem / Creative:** free tier Gemini costuma ter **limit 0** pra image gen → ativa billing no [AI Studio](https://aistudio.google.com/) no mesmo projeto da `GEMINI_API_KEY`.
 
 Redeploy após mudar env.
 
-**Milhão:** serviço próprio no Railway (24/7). `IG_FONTE=embed` (datacenter — ~6 posts/página). Não depende do PC.
+**Milhão:** serviço próprio no Railway (24/7), com env própria (`IG_FONTE=embed` — datacenter, ~6 posts/página). Não depende do PC nem do env do Jarvis.
 
 ### Matriz de permissão (AUTO / APPROVAL / BLOCKED)
 
@@ -90,7 +93,7 @@ Proativo: Railway FAIL 15min · Ops (Editor/Havok/Attracione) 30min · sweep ger
 9. WA: `restart milhão` → pede **SIM**; reinicia sem rebuild
 10. WA: manda print de erro (sem legenda) → achados Vision v2 (*Screenshot* + bullets)
 11. WA: PDF curto ou print com legenda `o que está errado?` → achados + resposta curta
-12. WA (com `JARVIS_TTS=auto` + `OPENAI_API_KEY`): manda áudio → resposta texto + voice note
+12. WA: manda áudio → transcrição (Gemini, só precisa `GEMINI_API_KEY`); com `JARVIS_TTS=auto` + `OPENAI_API_KEY` volta também voice note
 13. WA: `gera imagem de um gato astronauta` → texto + foto no chat
 
 ---
@@ -102,7 +105,7 @@ Proativo: Railway FAIL 15min · Ops (Editor/Havok/Attracione) 30min · sweep ger
 | **Editor de vídeo CineRush em massa** | ✅ ligado (`cinerush_editor_*`) | Confere `CINERUSH_EDITOR_URL` + `CINERUSH_EDITOR_OPS_KEY` |
 | **Projeto Milhão** | Precisa rede Railway→PC/túnel | Sobe Docker + seta `PROJETO_MILHAO_URL` |
 | **Validar botões Evolution** | Depende da build da Evolution | Testa HITL; se botão não aparecer, texto SIM/NÃO já funciona |
-| **Whisper / TTS** | Precisa OpenAI key | `OPENAI_API_KEY` + `JARVIS_TTS=auto` |
+| **TTS (voice note)** | Precisa OpenAI key | `OPENAI_API_KEY` + `JARVIS_TTS=auto` (STT já roda no Gemini) |
 | **Multi-user WA** | Precisa logins reais | `WHATSAPP_PHONE_USERS=fone:login` |
 
 ---

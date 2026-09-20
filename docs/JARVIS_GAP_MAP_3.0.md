@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
-**Date:** 2026-09-17  
-**Baseline:** v0.8.3 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
+**Baseline:** v0.9.35 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -10,29 +10,31 @@
 
 ## 1. Onde estamos (1 frase)
 
-**Hub pessoal com tools reais** (finanças, rotina, CineRush, Attracione, SocialHub, Editor) + HITL + missões v1 + multimodal leve.  
-**Ainda não** é um OS que pesquisa a web, debuga código ou coordena subagentes de verdade.
+**Hub pessoal com 64 tools reais** (finanças, rotina, CineRush, Attracione, SocialHub, Editor, Chatwoot) + HITL + missões batch + research/dev/creative/browser + vision v2 + proativo.  
+O trilho OS 3.0 mínimo (#1–#12) está fechado; o que falta é **profundidade** (subagentes isolados, copy real, séries de analytics), não a camada base.
 
 ---
 
 ## 2. Gap por camada
 
+> Atualizado na auditoria de 2026-09-20. “Hoje” = verificado no código, não no plano.
+
 | Camada | Hoje | Gap principal | Código âncora |
 |--------|------|---------------|---------------|
-| **Cérebro** | Turno + intent pack + LLM JSON | Planner frágil; histórico contamina decisões | `core.js`, `context/`, `routes/ia.js` |
-| **Research** | — | Sem web/browser/relatório | *(novo)* `tools` + agent |
-| **Dev** | — | Sem git/logs/arquivos/deploy | *(novo)* sandbox + agent |
-| **Creative** | — | Sem imagem/layout | *(novo)* |
-| **Memória** | Prefs + notas curtas | Sem memória de projeto / episódios ricos | `memory/episodic.js` |
-| **Automation** | 38 tools + connectors | Só o que está plugado; criar assinante etc. faltam | `tools/`, `connectors/` |
-| **Analytics** | Snapshots HTTP | Sem séries/alertas genéricos | registry snapshots |
-| **Vision** | Gemini image + STT | PDF/doc fraco; sem “reproduzir layout” | `multimodal/ingress.js` |
-| **Voice** | STT | Sem TTS / conversa contínua | ingress |
-| **Agents** | Personas de prompt | Não há workers isolados | `agents/registry.js` |
-| **Missions** | Heurística + LLM + batch | Mission Mode “lançar produto” incompleto | `missions/` |
-| **Permissions** | Risk + HITL (WA off por default) | Calibragem + não mentir sucesso | `permissions/`, reconciler |
+| **Cérebro** | Turno + intent pack + LLM JSON + planner LLM | Histórico ainda contamina decisões; sem quarentena de conteúdo externo | `core.js`, `context/`, `routes/ia.js` |
+| **Research** | Busca (Brave/Serper) + fetch SSRF-safe + relatório | Sem síntese multi-fonte com citação | `tools/handlers/research.js` |
+| **Dev** | 11 tools: diagnose, git, logs, read/patch, PR, testes, redeploy | Sem sandbox isolado; patch escreve no disco real | `tools/handlers/dev.js` |
+| **Creative** | Geração de imagem (Gemini Flash Image) | Sem layout/copy estruturado | `multimodal/creative.js` |
+| **Memória** | Prefs + notas + memória de projeto + falhas | Episódios ricos / recall semântico | `memory/projects.js`, `episodic.js` |
+| **Automation** | 64 tools + connectors | Só o que está plugado; criar assinante etc. faltam | `tools/`, `connectors/` |
+| **Analytics** | Snapshots HTTP + watches (Railway/ops) | Sem séries históricas nem alerta genérico | registry snapshots, `events/bus.js` |
+| **Vision** | Vision v2: print/PDF → achados diretos | “Reproduzir layout” ainda não | `multimodal/ingress.js` |
+| **Voice** | STT (Gemini, fallback Whisper) + TTS OpenAI | Sem conversa contínua | `ingress.js`, `multimodal/tts.js` |
+| **Agents** | 6 personas + orquestrador + auto-missão | Não há workers isolados de verdade | `agents/registry.js`, `orchestrator.js` |
+| **Missions** | Heurística + LLM + batch + retry | “Lançar produto” ainda tem passo de copy como stub | `missions/` |
+| **Permissions** | Risk + HITL + matriz documentada + TTL | HITL no WA só p/ critical (decisão, não gap) | `permissions/`, reconciler |
 
-**Maturidade global estimada: ~35% do blueprint 3.0** (automation ~55%, resto puxa a média pra baixo).
+**Maturidade estimada: ~70% do blueprint 3.0** — base completa, profundidade em aberto.
 
 ---
 
@@ -101,7 +103,9 @@ Objetivo: Orchestrator delega; você só dá a missão.
 | 11 | Proatividade útil — 1–2 alertas reais (deploy fail, fila editor, crédito Havok) | ~~ping WA sem auto-CRITICAL~~ **DONE 0.9.32** (cron 15m/30m + sweep 3h) |
 | 12 | Permission matrix documentada (AUTO / APPROVAL / BLOCKED) por tool | ~~tabela no Manual~~ **DONE 0.9.33** (`check:tools` valida criticals) |
 
-**Ainda depois do 90 (backlog consciente):** Creative/image gen, Voice TTS, coding agent full (patch+test+deploy), browser genérico, “lançar produto” mission completa.
+**Ainda depois do 90 (backlog consciente):** copy real na missão de landing (hoje é stub), subagentes isolados, séries de analytics, quarentena de conteúdo externo (prompt injection), sandbox pro patch local.
+
+> Creative/image gen, Voice TTS, coding agent (patch+test+PR+deploy) e browser genérico **saíram do backlog** — já estão implementados.
 
 ---
 
@@ -127,6 +131,23 @@ Objetivo: Orchestrator delega; você só dá a missão.
 8. ~~Dia 61+: orchestrator~~ **DONE 0.9.31** (`prepara landing` auto-missão)
 9. ~~Próximo: **#11 proatividade**~~ **DONE 0.9.32**
 10. ~~Próximo livre / backlog sob pedido~~ Trilho 61–90 **completo** (#9–#12). Backlog sob pedido.
+11. ~~Auditoria 2026-09-20~~ **DONE 0.9.35** — 7 achados corrigidos (HITL reuse/TTL/hard-gate, missão travada, SSRF redirect, honestidade no finance, working tree do host). Ver §8.
+
+---
+
+## 8. Auditoria 2026-09-20 — o que ficou em aberto
+
+Corrigido em 0.9.34–0.9.35. **Não** corrigido (risco aceito, por ordem de prioridade):
+
+| Achado | Onde | Por que aceitamos |
+|--------|------|-------------------|
+| Conteúdo externo (research/browser/vision) volta pro LLM sem quarentena | `handlers/research.js`, `browser.js` | Critical sempre exige SIM; vetor real é tool `high` no WA |
+| Sem gate central de `ownerOnly` — `snapshot_refresh` e `project_memory_set` abertos | `handlers.js`, `ops.js`, `memory.js` | Web exige auth; impacto é cache/nota |
+| Missões sem lock — duas mensagens simultâneas podem corromper `steps` | `missions/store.js` | Uso single-user |
+| Symlink pode escapar do `PROJETOS_ROOT` no patch | `handlers/dev.js` | Disco próprio; patch é critical (SIM) |
+| Logs do Railway podem conter segredo ao voltar pro WA | `handlers/dev.js` | Canal privado do dono |
+| `RESEARCH_FETCH_OPEN=1` desliga a allowlist de hosts | `handlers/research.js` | Flag manual, off por padrão |
+
 ---
 
 ## 7. Definition of Done — “OS 3.0 mínimo”
