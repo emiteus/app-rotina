@@ -23,7 +23,10 @@ const {
 const { runToolBatch } = require('../lib/jarvis/tools');
 const { getToolCatalog, listToolNames, toolsPromptBlock } = require('../lib/jarvis/tools/registry');
 const { packContext } = require('../lib/jarvis/context/pack');
-
+const {
+  wrapExternalContent,
+  SYSTEM_HINT: EXTERNAL_CONTENT_HINT
+} = require('../lib/jarvis/safety/external-content');
 
 const router = express.Router();
 
@@ -514,7 +517,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       null;
     let out;
     if (reportOk) {
-      out = String(reportOk.texto).trim();
+      out = wrapExternalContent(String(reportOk.texto).trim(), { source: 'research' });
     } else if (landingCopyOk) {
       const dump = String(landingCopyOk.texto).trim();
       if (/Missão\s+\*|Passo\s+\d+\//i.test(base)) {
@@ -544,9 +547,15 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     } else if (finOk.find((a) => a.tipo === 'dev_apply_patch_local' && a.texto)) {
       out = String(finOk.find((a) => a.tipo === 'dev_apply_patch_local' && a.texto).texto).trim();
     } else if (finOk.find((a) => a.tipo === 'browser_open' && a.texto)) {
-      out = String(finOk.find((a) => a.tipo === 'browser_open' && a.texto).texto).trim();
+      out = wrapExternalContent(
+        String(finOk.find((a) => a.tipo === 'browser_open' && a.texto).texto).trim(),
+        { source: 'browser' }
+      );
     } else if (finOk.find((a) => a.tipo === 'browser_links' && a.texto)) {
-      out = String(finOk.find((a) => a.tipo === 'browser_links' && a.texto).texto).trim();
+      out = wrapExternalContent(
+        String(finOk.find((a) => a.tipo === 'browser_links' && a.texto).texto).trim(),
+        { source: 'browser' }
+      );
     } else if (finOk.find((a) => a.tipo === 'dev_deploy_checklist' && a.texto)) {
       const dump = String(
         finOk.find((a) => a.tipo === 'dev_deploy_checklist' && a.texto).texto
@@ -572,7 +581,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         out = dump;
       }
     } else if (searchHits.length) {
-      const brief = briefFromResearchHits(searchHits, searchQuery);
+      const brief = wrapExternalContent(briefFromResearchHits(searchHits, searchQuery), {
+        source: 'research'
+      });
       // Missão já trouxe progresso — anexa research, não apaga o board
       if (/Missão\s+\*|Passo\s+\d+\//i.test(base)) {
         out = `${base}\n\n${brief}`.trim();
@@ -2479,6 +2490,7 @@ Regras:
 - NUNCA emita XML, <function_calls>, <invoke>, tool_call ou "invoke X with" — só JSON {"resposta","acoes"}.
 - NUNCA diga que fez se não emitir a ação em "acoes".
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
+- ${EXTERNAL_CONTENT_HINT}
 - Imagem/banner/arte: creative_generate_image com prompt descritivo (aspect 9:16 ou 16:9 se pedirem).
 - Outline de landing (hero/CTA/seções): creative_landing_copy com project=id (cutflix, cinerush, …).
 - Página/URL: browser_open (snapshot) ou browser_links. Allowlist RESEARCH_FETCH_*.
