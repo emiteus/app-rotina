@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.32  
+**Version:** 0.9.33  
 **Date:** 2026-09-20
 
 ## Norte
@@ -13,18 +13,14 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
-- Hub + Creative + Coding + Browser + missions + orchestrator landing (0.9.25–0.9.31)
-- **#11 Proatividade:** Railway FAIL **15min** · Ops (Editor/Havok) **30min** · sweep **3h** — ping WA **só aviso**, nunca auto-CRITICAL
+- Trilho 61–90 **fechado**: #9 orchestrator · #10 Vision · #11 proativo · **#12 permission matrix**
+- Matrix AUTO / APPROVAL / BLOCKED no Manual; `npm run check:tools` valida criticals listados
 
-## Smoke WA
+## Smoke
 
-```
-prepara landing do cutflix → mete marcha
-```
+Local: `npm run smoke` · `npm run check:tools`
 
-Proativo: `POST /api/ia/proactive/sweep` (opcional `{"notify":1}`) — espera notes + header “só aviso”.
-
-Local: `npm run smoke`
+WA: `prepara landing do cutflix` → `mete marcha`
 
 ## Backlog (só sob pedido)
 

@@ -99,7 +99,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 | 9 | Orchestrator escolhe agent(s) por intent (não só addendum de prompt) | ~~“prepara landing” → research→copy→…~~ **DONE 0.9.31** (auto-missão stub) |
 | 10 | Vision v2 — PDF + screenshot → achados estruturados | ~~“o que está errado?” em print~~ **DONE** (ingress + smoke) |
 | 11 | Proatividade útil — 1–2 alertas reais (deploy fail, fila editor, crédito Havok) | ~~ping WA sem auto-CRITICAL~~ **DONE 0.9.32** (cron 15m/30m + sweep 3h) |
-| 12 | Permission matrix documentada (AUTO / APPROVAL / BLOCKED) por tool | tabela no Manual |
+| 12 | Permission matrix documentada (AUTO / APPROVAL / BLOCKED) por tool | ~~tabela no Manual~~ **DONE 0.9.33** (`check:tools` valida criticals) |
 
 **Ainda depois do 90 (backlog consciente):** Creative/image gen, Voice TTS, coding agent full (patch+test+deploy), browser genérico, “lançar produto” mission completa.
 
@@ -126,7 +126,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 7. Smoke: `missão: diagnostica o milhão` → `executa missão`
 8. ~~Dia 61+: orchestrator~~ **DONE 0.9.31** (`prepara landing` auto-missão)
 9. ~~Próximo: **#11 proatividade**~~ **DONE 0.9.32**
-10. Próximo livre / backlog sob pedido
+10. ~~Próximo livre / backlog sob pedido~~ Trilho 61–90 **completo** (#9–#12). Backlog sob pedido.
 ---
 
 ## 7. Definition of Done — “OS 3.0 mínimo”

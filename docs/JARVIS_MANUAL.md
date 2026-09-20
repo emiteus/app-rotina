@@ -54,22 +54,26 @@ Redeploy após mudar env.
 
 **Milhão:** serviço próprio no Railway (24/7). `IG_FONTE=embed` (datacenter — ~6 posts/página). Não depende do PC.
 
-### Matriz de risco (tools)
+### Matriz de permissão (AUTO / APPROVAL / BLOCKED)
 
-| Classe | Risk | Canal WA (default) | Assist web | Exemplos |
-|--------|------|--------------------|------------|----------|
-| **AUTO** | low | executa | executa | `dev_diagnose`, `dev_railway_logs`, `cinerush_buscar`, `research_*`, leitura |
-| **AUTO*** | medium / high | executa (HITL WA off) | SIM se ≥ `JARVIS_APPROVAL_THRESHOLD` (default high) | sync bancos, mutações financeiras medium; `cinerush_criar`, `attracione_coleta` (high) |
-| **APPROVAL** | critical | **sempre SIM** | **sempre SIM** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
-| **AUTO*** | high | WA off (default) | SIM se ≥ threshold | `dev_run_tests` |
-| **AUTO** | low/medium | executa | executa | `dev_deploy_checklist`, `browser_*`, reads |
+Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Canal WA default = HITL WhatsApp **off** (`JARVIS_HITL_WHATSAPP` não setado).
 
-Validação: `npm run check:tools` (defs ↔ handlers).
-| **BLOCKED** | qualquer | non-owner → erro `só owner` | idem | tools `ownerOnly` (dev_*, research_*, várias ops) |
+| Classe | Regra | WA (default) | Assist web | Tools |
+|--------|-------|--------------|------------|-------|
+| **AUTO** | `risk=low` (e medium/high se HITL do canal off) | executa | low = executa; medium/high pedem SIM se ≥ `JARVIS_APPROVAL_THRESHOLD` (default **high**) | leitura, `dev_diagnose`, `dev_git_*`, `dev_railway_logs`, `dev_deploy_checklist`, `research_web_search`, `research_fetch_url`, `browser_*`, `cinerush_buscar`, `cutflix_status`, rotina/finance **low** |
+| **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
+| **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
-Critical ignora `JARVIS_HITL_WHATSAPP=0`. `JARVIS_HITL=0` desliga HITL global (não recomendado).
+**High** (não critical): no Assist pedem SIM se threshold ≤ high; no WA default **executam** (trust-owner). Exemplos: `dev_run_tests`, `cinerush_criar`, `attracione_coleta`, `recategorizar`, `socialhub_publicar_agendados`.
 
-Proativo (**nunca** auto-CRITICAL): Railway FAIL 15min · Ops (Editor/Havok/Attracione) 30min · sweep geral 3h.
+**Medium**: Assist SIM se threshold ≤ medium; WA default executa. Exemplos: `sincronizar_bancos`, `creative_generate_image`, `dev_propose_patch`, `research_write_report`.
+
+Validação: `npm run check:tools` — falha se def sem handler, handler órfão, ou Manual sem listar os **critical**.  
+`GET /api/ia/os` → `permissionMatrix.documented=true` + lista `tools.critical`.
+
+`JARVIS_HITL=0` desliga HITL global (não recomendado). Proativo **nunca** dispara CRITICAL.
+
+Proativo: Railway FAIL 15min · Ops (Editor/Havok/Attracione) 30min · sweep geral 3h — só aviso.
 
 ---
 
