@@ -1,7 +1,7 @@
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  
-**Baseline:** v0.9.54 (`R:\Projetos\Jarvis` → sync → app-rotina)  
+**Baseline:** v0.9.55 (`R:\Projetos\Jarvis` → sync → app-rotina)  
 **Target:** interface NL + memória + orquestrador + tools + agentes + missões
 
 > Regra: **WhatsApp = boca/ouvido**. Cérebro e braços ficam no OS. Não reescrever o App Rotina.
@@ -143,6 +143,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 20. ~~Agent toolPrefixes gate~~ **DONE 0.9.47** — `splitByAgentScope` (isolation lite; workers reais depois).
 21. ~~Vision reproduzir layout~~ **DONE 0.9.48** — print → blueprint JSON (zonas/hierarquia/CTAs).
 22. ~~Layout reproduce fidelidade~~ **DONE 0.9.49–0.9.54** — assets via **Commons search genérico** (sem catálogo de times).
+23. ~~Compositor pixel~~ **DONE 0.9.55** — `compose.js` (bbox slots + sharp paste; Gemini fallback).
 
 ---
 
