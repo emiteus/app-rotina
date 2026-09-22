@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.70  
+**Version:** 0.9.71  
 **Date:** 2026-09-22
 
 ## Norte
@@ -14,6 +14,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
+- **0.9.71**: resolve TeuHub/teuhub (token match; alias real) + `pausa` NL
 - **0.9.70**: SocialHub ops flags live (`crons` → publish + refresh-tokens)
 - **0.9.69**: MCU — subagentes fork + séries analytics + voice contínua
 - **0.9.68**: embeddings Gemini; adapter Approtina; browser headless
