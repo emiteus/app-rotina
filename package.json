@@ -28,7 +28,7 @@
     "express-session": "^1.19.0",
     "node-schedule": "^2.1.1",
     "pg": "^8.21.0",
-    "playwright": "^1.49.0",
+    "playwright": "^1.63.0",
     "sharp": "^0.35.3",
     "uuid": "^14.0.0",
     "web-push": "^3.6.7",
@@ -107,5 +107,5 @@
         "releaseType": "release"
       }
     ]
-  },
+  }
 }
