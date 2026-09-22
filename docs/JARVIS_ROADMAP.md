@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.69  
+**Version:** 0.9.70  
 **Date:** 2026-09-22
 
 ## Norte
@@ -14,6 +14,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
+- **0.9.70**: SocialHub ops flags live (`crons` → publish + refresh-tokens)
 - **0.9.69**: MCU — subagentes fork + séries analytics + voice contínua
 - **0.9.68**: embeddings Gemini; adapter Approtina; browser headless
 - **0.9.67**: NL infer pause/retoma ops flags
@@ -23,5 +24,5 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 - Compose sharp estável  
 - Sandbox Dev / pgvector  
-- Mais adapters ops (SocialHub, Editor, Cutflix)  
-- Playwright em prod (`JARVIS_BROWSER_HEADLESS=1`)
+- Mais adapters ops (Editor, Cutflix)  
+- Playwright em prod (`JARVIS_BROWSER_HEADLESS=1`) — **feito em Railway**
