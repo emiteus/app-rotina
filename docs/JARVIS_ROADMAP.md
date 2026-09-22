@@ -14,6 +14,7 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
+- **0.9.68**: embeddings Gemini no recall; adapter Approtina (`crons`/`proactive_wa`); browser headless (Playwright opt-in)
 - **0.9.67**: NL infer pause/retoma → `ops_flag_set` (inclui email se “automações/suporte”)
 - **0.9.66**: “me confirma” após pause → `ops_flag_list` (não re-set); formatter de status
 - **0.9.65**: ops flags gerais (`ops_flag_*`) + adapter CineRush (Redis runtime pause)
@@ -23,5 +24,6 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Backlog (só sob pedido)
 
-- Compose sharp / embeddings / browser headless  
-- Adapters de ops flags em outros projetos (Cutflix, Editor, …)
+- Compose sharp estável  
+- Mais adapters de ops (Cutflix API, Editor auto_post)  
+- Instalar Playwright em prod (`JARVIS_BROWSER_HEADLESS=1`)

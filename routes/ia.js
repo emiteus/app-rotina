@@ -221,6 +221,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'dev_deploy_checklist',
     'dev_railway_logs', 'dev_railway_redeploy', 'dev_railway_restart',
     'browser_open', 'browser_links',
+    'browser_click', 'browser_type', 'browser_snapshot',
     'creative_generate_image', 'creative_landing_copy',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);

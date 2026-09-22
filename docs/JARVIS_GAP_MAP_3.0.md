@@ -154,6 +154,7 @@ Objetivo: Orchestrator delega; você só dá a missão.
 31. ~~Ops flags gerais~~ **DONE 0.9.65** — `ops_flag_list/get/set` + store; adapter CineRush Redis (`support_automation`, `access_automation`, `support_email_autoreply`).
 32. ~~Confirm ≠ re-pause~~ **DONE 0.9.66** — `looksLikeStatusConfirmOnly` → list.
 33. ~~NL infer pause completo~~ **DONE 0.9.67** — pause automações CineRush inclui as 3 flags (chat + access + email).
+34. ~~Embeddings + Approtina ops + browser headless~~ **DONE 0.9.68** — Gemini embed recall; adapter `crons`/`proactive_wa`; Playwright opt-in.
 
 ---
 

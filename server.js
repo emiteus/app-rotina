@@ -184,6 +184,19 @@ app.get('/', (req, res) => {
 function runCron(nome, fn) {
   return async function () {
     try {
+      if (CRONS_ENABLED) {
+        try {
+          const {
+            isApprotinaFlagEnabled
+          } = require('./lib/jarvis/ops/flags/adapters/approtina');
+          if (!(await isApprotinaFlagEnabled('crons'))) {
+            console.log(`[cron:${nome}] skip — ops flag crons=false`);
+            return;
+          }
+        } catch {
+          /* jarvis sync ainda não no host */
+        }
+      }
       await fn();
     } catch (err) {
       console.error(`[cron:${nome}] falhou:`, err && err.stack || err);
