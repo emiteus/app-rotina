@@ -216,8 +216,16 @@ async function processPhoneQueue(phone) {
       userText: mensagem,
       mediaKind: media?.kind || null,
       resposta,
-      pendingHitl: !!pendingHitl
+      pendingHitl: !!pendingHitl,
+      userId: uid
     });
+    if (wantVoice) {
+      try {
+        require('../lib/jarvis/multimodal/voice-session').touchVoiceSession(uid);
+      } catch {
+        /* ignore */
+      }
+    }
 
     // Creative: imagem carrega a legenda — texto curto só se não for HITL
     if (imgOk && !pendingHitl) {

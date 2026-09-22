@@ -1,7 +1,7 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.67  
-**Date:** 2026-09-21
+**Version:** 0.9.69  
+**Date:** 2026-09-22
 
 ## Norte
 
@@ -14,16 +14,14 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
-- **0.9.68**: embeddings Gemini no recall; adapter Approtina (`crons`/`proactive_wa`); browser headless (Playwright opt-in)
-- **0.9.67**: NL infer pause/retoma → `ops_flag_set` (inclui email se “automações/suporte”)
-- **0.9.66**: “me confirma” após pause → `ops_flag_list` (não re-set); formatter de status
-- **0.9.65**: ops flags gerais (`ops_flag_*`) + adapter CineRush (Redis runtime pause)
-- **0.9.64**: `nl/pt` — “me confirma” ≠ `confirmar_despesa`; honestidade memória ≠ kill switch real
-- **0.9.63**: match Unicode + create/stop intent
-- **0.9.62–0.9.60**: layout reproduce
+- **0.9.69**: MCU — subagentes fork + séries analytics + voice contínua
+- **0.9.68**: embeddings Gemini; adapter Approtina; browser headless
+- **0.9.67**: NL infer pause/retoma ops flags
+- **0.9.66–0.9.60**: ops flags, NL, layout
 
 ## Backlog (só sob pedido)
 
 - Compose sharp estável  
-- Mais adapters de ops (Cutflix API, Editor auto_post)  
-- Instalar Playwright em prod (`JARVIS_BROWSER_HEADLESS=1`)
+- Sandbox Dev / pgvector  
+- Mais adapters ops (SocialHub, Editor, Cutflix)  
+- Playwright em prod (`JARVIS_BROWSER_HEADLESS=1`)
