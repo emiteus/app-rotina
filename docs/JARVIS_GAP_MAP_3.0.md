@@ -152,6 +152,8 @@ Objetivo: Orchestrator delega; você só dá a missão.
 29. ~~NL PT Unicode + create/stop intent~~ **DONE 0.9.63** — `nl/pt.js` (capacidade geral; atalhos usam isso).
 30. ~~Confirmar pagamento vs “me confirma”~~ **DONE 0.9.64** — `hasConfirmPaymentIntent` + cinto; honestidade memória ≠ pause real.
 31. ~~Ops flags gerais~~ **DONE 0.9.65** — `ops_flag_list/get/set` + store; adapter CineRush Redis (`support_automation`, `access_automation`, `support_email_autoreply`).
+32. ~~Confirm ≠ re-pause~~ **DONE 0.9.66** — `looksLikeStatusConfirmOnly` → list.
+33. ~~NL infer pause completo~~ **DONE 0.9.67** — pause automações CineRush inclui as 3 flags (chat + access + email).
 
 ---
 

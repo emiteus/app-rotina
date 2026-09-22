@@ -2525,7 +2525,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - CineRush TV: cinerush_buscar / cinerush_provisionar / cinerush_criar / cinerush_reenviar_email / chatwoot_*
 - **CineRush:** TV (assinantes/IPTV/Havok) ≠ Editor (cortes em massa). Venda Kirvano → pendente → provisionar. Acesso manual → cinerush_criar com email **real** (nunca email@x.com). Devolve config_link. Sem email no pedido: pergunte o email, nao invente.
 - Negação/pausa (“não vamos mais”, “pause”, “desliga”) ≠ pedido de criar. Não emita tool de criação; use ops_flag_set (enabled:false) pra pausar automação real.
-- **Ops flags (geral):** ops_flag_list / ops_flag_get / ops_flag_set (Args: project + key + enabled). Keys: support_automation, access_automation, support_email_autoreply. Só diga que pausou de verdade se live:true e synced:true. Sem adapter → diga que anotou, sem kill switch.
+- **Ops flags (geral):** ops_flag_list / ops_flag_get / ops_flag_set (Args: project + key + enabled). Keys: support_automation, access_automation, support_email_autoreply. Só diga que pausou de verdade se live:true e synced:true. Sem adapter → diga que anotou, sem kill switch. Pause de “automações/suporte” no CineRush deve cobrir chat + email + acessos (não omitir email).
 - **Confirmar status ≠ pausar de novo:** “me confirma pfv” / “assim que estiver pausado” / “já pausou?” → ops_flag_list (ou get). NÃO emita ops_flag_set de novo. Resposta: diga o estado atual (já pausado / ainda ligado), sem “estou pausando agora”.
 - **Honestidade:** project_memory_set só registra decisão — NÃO substitui ops_flag_set. Memória ≠ kill switch.
 - "me confirma pfv" / "confirma quando estiver" ≠ confirmar_despesa. Só confirmar_despesa com "paguei X" ou "confirma pagamento …".
@@ -2694,6 +2694,41 @@ Regras:
               event: 'ops_confirm_use_list_not_set',
               userId: uid,
               stripped: sets.length
+            })
+          );
+        }
+      }
+    }
+    // Cinto: pause/retoma automações → ops_flag_set (completa keys que o LLM esqueceu, ex. email)
+    {
+      const { looksLikeStatusConfirmOnly } = require('../lib/jarvis/nl/pt');
+      if (!looksLikeStatusConfirmOnly(mensagem)) {
+        const {
+          inferOpsFlagActionsFromMessage
+        } = require('../lib/jarvis/ops/flags/infer');
+        const inferred = inferOpsFlagActionsFromMessage(mensagem) || [];
+        let added = 0;
+        for (const a of inferred) {
+          const dup = acoesMerged.some(
+            (x) =>
+              x &&
+              x.tipo === 'ops_flag_set' &&
+              String(x.key || x.flag || '') === a.key &&
+              String(x.project || x.projeto || x.project_id || '') === a.project
+          );
+          if (!dup) {
+            acoesMerged.push(a);
+            added += 1;
+          }
+        }
+        if (added) {
+          console.log(
+            JSON.stringify({
+              tag: 'jarvis.nl',
+              event: 'infer_ops_flags',
+              userId: uid,
+              added,
+              keys: inferred.map((x) => x.key)
             })
           );
         }
