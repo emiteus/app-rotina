@@ -28,6 +28,7 @@
     "express-session": "^1.19.0",
     "node-schedule": "^2.1.1",
     "pg": "^8.21.0",
+    "playwright": "^1.49.0",
     "sharp": "^0.35.3",
     "uuid": "^14.0.0",
     "web-push": "^3.6.7",
@@ -36,8 +37,7 @@
   "devDependencies": {
     "electron": "^42.2.0",
     "electron-builder": "^26.8.1",
-    "electron-is-dev": "^3.0.1",
-    "playwright": "^1.62.1"
+    "electron-is-dev": "^3.0.1"
   },
   "homepage": "./",
   "build": {
@@ -108,7 +108,4 @@
       }
     ]
   },
-  "optionalDependencies": {
-    "playwright": "^1.49.0"
-  }
 }
