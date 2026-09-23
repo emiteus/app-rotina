@@ -7,8 +7,9 @@ const { requireUserId } = require('../lib/tenant');
 let wsServer;
 const router = express.Router();
 
-function emit(tipo, dados) {
-  if (wsServer) wsServer.broadcast({ tipo: 'recorrente-' + tipo, dados });
+// Só pro dono da recorrente (antes ia pra todos os conectados)
+function emit(userId, tipo, dados) {
+  if (wsServer) wsServer.broadcastToUser(userId, { tipo: 'recorrente-' + tipo, dados });
 }
 
 // GET todas recorrentes
@@ -41,7 +42,7 @@ router.post('/', async (req, res) => {
        frequencia || 'diario', dias_semana || '0,1,2,3,4,5,6', uid]
     );
     const item = await get(`SELECT * FROM tarefas_recorrentes WHERE id = $1 AND user_id = $2`, [id, uid]);
-    emit('criada', item);
+    emit(uid, 'criada', item);
     res.status(201).json(item);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -64,7 +65,7 @@ router.patch('/:id', async (req, res) => {
     if (dias_semana !== undefined) await run(`UPDATE tarefas_recorrentes SET dias_semana = $1 WHERE id = $2 AND user_id = $3`, [dias_semana, req.params.id, uid]);
     if (ativa !== undefined) await run(`UPDATE tarefas_recorrentes SET ativa = $1 WHERE id = $2 AND user_id = $3`, [!!ativa, req.params.id, uid]);
     const item = await get(`SELECT * FROM tarefas_recorrentes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
-    emit('atualizada', item);
+    emit(uid, 'atualizada', item);
     res.json(item);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -78,7 +79,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const r = await run(`DELETE FROM tarefas_recorrentes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!r.rowCount) return res.status(404).json({ erro: 'Recorrente não encontrada' });
-    emit('deletada', { id: req.params.id });
+    emit(uid, 'deletada', { id: req.params.id });
     res.json({ msg: 'Recorrente deletada' });
   } catch (err) {
     res.status(500).json({ erro: err.message });

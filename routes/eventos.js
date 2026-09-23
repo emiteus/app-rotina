@@ -6,8 +6,9 @@ const { requireUserId } = require('../lib/tenant');
 let wsServer;
 const router = express.Router();
 
-function emit(tipo, dados) {
-  if (wsServer) wsServer.broadcast({ tipo: 'evento-' + tipo, dados });
+// Só pro dono do evento (antes ia pra todos os conectados)
+function emit(userId, tipo, dados) {
+  if (wsServer) wsServer.broadcastToUser(userId, { tipo: 'evento-' + tipo, dados });
 }
 
 // GET eventos (com filtro de mês opcional)
@@ -45,7 +46,7 @@ router.post('/', async (req, res) => {
       [id, titulo, descricao || '', data, hora || null, tipo || 'evento', cor || 'blue', uid]
     );
     const evento = await get(`SELECT * FROM eventos WHERE id = $1 AND user_id = $2`, [id, uid]);
-    emit('criado', evento);
+    emit(uid, 'criado', evento);
     res.status(201).json(evento);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -68,7 +69,7 @@ router.patch('/:id', async (req, res) => {
     if (tipo !== undefined) await run(`UPDATE eventos SET tipo = $1 WHERE id = $2 AND user_id = $3`, [tipo, req.params.id, uid]);
     if (cor !== undefined) await run(`UPDATE eventos SET cor = $1 WHERE id = $2 AND user_id = $3`, [cor, req.params.id, uid]);
     const evento = await get(`SELECT * FROM eventos WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
-    emit('atualizado', evento);
+    emit(uid, 'atualizado', evento);
     res.json(evento);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -82,7 +83,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const r = await run(`DELETE FROM eventos WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!r.rowCount) return res.status(404).json({ erro: 'Evento não encontrado' });
-    emit('deletado', { id: req.params.id });
+    emit(uid, 'deletado', { id: req.params.id });
     res.json({ msg: 'Evento deletado' });
   } catch (err) {
     res.status(500).json({ erro: err.message });

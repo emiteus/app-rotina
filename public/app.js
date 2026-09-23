@@ -4014,6 +4014,13 @@ function conectarWebSocket() {
 
 function handleWebSocketMessage(msg) {
   const { tipo } = msg;
+  // Socket aberto antes do login não tem sessão: reconecta pra levar o cookie
+  if (tipo === 'auth-required') {
+    if (window.__currentUser?.id && ws) {
+      try { ws.close(); } catch (_) { /* reconecta no close */ }
+    }
+    return;
+  }
   if (tipo === 'ranking-dia') carregarRankingDia();
   else if (tipo?.startsWith('tarefa-')) {
     carregarTarefas();

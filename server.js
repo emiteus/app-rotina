@@ -41,7 +41,7 @@ app.use(express.json({ limit: '2mb' }));
 app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 
-app.use(session({
+const sessionMiddleware = session({
   name: 'rotina.sid',
   secret: process.env.SESSION_SECRET || 'seu-secret-aqui-mudar-em-producao',
   store: process.env.DATABASE_URL
@@ -61,7 +61,10 @@ app.use(session({
     sameSite: 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dias
   }
-}));
+});
+app.use(sessionMiddleware);
+// WebSocket identifica o usuário pela MESMA sessão do cookie (não pelo que o cliente diz)
+wsServer.setSessionMiddleware(sessionMiddleware);
 
 // Sessão inválida (user apagado/trocado) → força login de novo
 app.use(async (req, res, next) => {

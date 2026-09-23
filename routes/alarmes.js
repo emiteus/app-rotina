@@ -8,9 +8,10 @@ let wsServer; // Será setado pelo server.js
 const router = express.Router();
 
 // Função pra emitir eventos WebSocket
-function emitAlarmeUpdate(tipo, dados) {
+// Só pro dono do alarme (antes ia pra todos os conectados)
+function emitAlarmeUpdate(userId, tipo, dados) {
   if (wsServer) {
-    wsServer.broadcast({
+    wsServer.broadcastToUser(userId, {
       tipo: 'alarme-' + tipo,
       dados
     });
@@ -56,7 +57,7 @@ router.post('/', async (req, res) => {
     );
 
     const alarme = await get(`SELECT * FROM alarmes WHERE id = $1 AND user_id = $2`, [id, uid]);
-    emitAlarmeUpdate('criado', alarme);
+    emitAlarmeUpdate(uid, 'criado', alarme);
     res.status(201).json(alarme);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -99,7 +100,7 @@ router.patch('/:id', async (req, res) => {
 
     await run(sql, params);
     const alarme = await get(`SELECT * FROM alarmes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
-    emitAlarmeUpdate('atualizado', alarme);
+    emitAlarmeUpdate(uid, 'atualizado', alarme);
     res.json(alarme);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -113,7 +114,7 @@ router.delete('/:id', async (req, res) => {
   try {
     const r = await run(`DELETE FROM alarmes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     if (!r.rowCount) return res.status(404).json({ erro: 'Alarme não encontrado' });
-    emitAlarmeUpdate('deletado', { id: req.params.id });
+    emitAlarmeUpdate(uid, 'deletado', { id: req.params.id });
     res.json({ msg: 'Alarme deletado' });
   } catch (err) {
     res.status(500).json({ erro: err.message });
