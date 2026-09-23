@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.81  
+**Version:** 0.9.82  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.82**: fix voz: "Jarvis, <pedido>" curto virava saudação local ("Tranquilo, senhor…") sem chamar o modelo; agora só é saudação se não sobrar pedido. Fim de fala relativo à voz (ruído de fundo não segura a gravação; 800 ms). Tempos por etapa no log (`jarvis.voice` timing no servidor; gravandoMs/servidorMs no Desktop)
 - **0.9.81**: **Fase 2.7 MCU (autonomia no PC)**: Spotify tocando de verdade (Web API + PKCE, Premium; abre o app se fechado), 1º vídeo do YouTube, abrir sites (só http/https), arquivos só leitura (listar/procurar/ler com resposta à `pergunta`, conteúdo como CONTEÚDO EXTERNO; raízes pessoais + R:\Projetos com realpath, bloqueio de segredos) e abrir pasta/arquivo (nunca executável); marcadores de conteúdo externo saem da tela/fala do Desktop e do TTS
 - **0.9.80**: **Fase 3 MCU (TV LG direto pelo PC)**: tools `tv_status/power/volume/media/key/open_app/input/notify/pair`; Desktop fala SSAP com a TV (wss 3001 com certificado LG ou TOFU, sem fallback pra ws em cert trocado), pareamento com "Permitir" na TV, chave cifrada só no PC, Wake-on-LAN pra ligar, reencontra a TV por UUID se o IP mudar; apps pelo nome do que está instalado; Home Assistant fica pra quando tiver mais aparelhos
 - **0.9.79**: **Fase 2.6 MCU (comandos no PC)**: tools `pc_status/volume/media/open_app/close_app/lock/screenshot` na matriz (fechar app pede SIM); servidor → gateway → Desktop, que revalida com lista própria (sem shell livre; volume por Core Audio via DLL compilada 1x; teclas de mídia; apps só da lista, Explorer não fecha); interruptor local na bandeja; tudo que roda aparece na conversa
