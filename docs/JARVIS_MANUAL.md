@@ -133,7 +133,12 @@ esquece a lição ab12cd
 lista receitas
 apaga a receita ab12cd
 refaz plano
+parear pc
+meus dispositivos
+desconecta o dispositivo ab12cd
 ```
+
+**Desktop (0.9.76):** `parear pc` gera um código de 8 caracteres (10 min, uso único) pra digitar no Jarvis Desktop (`desktop/`, `npm start`, abre com **Alt+J**). Cada aparelho tem token próprio (só o hash fica no banco) e pode ser revogado a qualquer hora; revogar derruba a conexão na hora.
 
 **Lições (0.9.75):** toda falha de tool vira lição (`jarvis_lessons`), agrupada por tool + projeto + erro normalizado; repetição soma. Quando a mesma tool passa no mesmo projeto, a lição fecha e guarda os args que funcionaram. Lições dos projetos citados entram no contexto do turno (`pack.licoes`) e no planner.
 **Receitas (0.9.75):** missão concluída sem erro vira receita (`jarvis_recipes`). Missão nova com objetivo parecido **e os mesmos projetos** é montada pela receita (o board avisa); nada executa sem `executa missão`. `refaz plano` descarta a receita e planeja do zero.

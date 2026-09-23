@@ -2347,6 +2347,24 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       }
     }
 
+    // Fase 2: "parear pc" / "meus dispositivos" / "desconecta o dispositivo X"
+    {
+      const { tryHandleDeviceCommand } = require('../lib/jarvis/devices/commands');
+      const dev = await tryHandleDeviceCommand(uid, mensagem);
+      if (dev && dev.handled) {
+        await salvarMensagem(conversaId, 'assistant', dev.resposta, uid);
+        return {
+          resposta: dev.resposta,
+          acoes: [],
+          snapshot: null,
+          provider: 'devices',
+          usage: null,
+          conversa_id: conversaId,
+          agent: agent.id
+        };
+      }
+    }
+
     // Fase 1: "lista lições" / "esquece a lição X" / "lista receitas" / "apaga a receita X"
     {
       const { tryHandleLearningCommand } = require('../lib/jarvis/learning/commands');

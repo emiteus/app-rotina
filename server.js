@@ -65,6 +65,8 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 // WebSocket identifica o usuário pela MESMA sessão do cookie (não pelo que o cliente diz)
 wsServer.setSessionMiddleware(sessionMiddleware);
+// Jarvis Desktop: canal /jarvis-device autenticado por token de aparelho
+wsServer.addGateway(require('./lib/jarvis/devices/gateway').createGateway());
 
 // Sessão inválida (user apagado/trocado) → força login de novo
 app.use(async (req, res, next) => {
@@ -87,6 +89,8 @@ app.use(async (req, res, next) => {
 
 // Rotas publicas
 app.use('/api/auth', authRouter);
+// Pareamento do Jarvis Desktop (código de uso único → token do aparelho)
+app.use('/api/jarvis-device', require('./routes/jarvis-device'));
 
 // Rotas privadas (requerem autenticacao)
 const tasksRouter = require('./routes/tasks');

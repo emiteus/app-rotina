@@ -56,7 +56,7 @@ Termina o item #8 do plano 3.0 (memória operacional), que ficou pela metade: ho
 
 ---
 
-## Fase 2 · Jarvis Desktop (interface + voz no PC)
+## Fase 2 · Jarvis Desktop (interface + voz no PC) — 2.1–2.3 ✅ 0.9.76
 
 App novo no PC (Electron, Windows primeiro), separado do App Rotina.
 
@@ -138,8 +138,8 @@ Cuidados que valem pra fase inteira:
 
 ## Decisões em aberto
 
-- TTS: OpenAI (já usado) ou ElevenLabs (voz mais "Jarvis", custo maior)?
-- Palavra de ativação: Porcupine (pago p/ palavra custom) ou openWakeWord (grátis, treinar "Jarvis")?
+- ~~TTS~~ **OpenAI** (decidido 22/09/2026)
+- ~~Palavra de ativação~~ **openWakeWord** (decidido 22/09/2026). O modelo pronto é "hey jarvis"; só "Jarvis" exige treinar um modelo próprio.
 - Home Assistant no PC (só funciona com PC ligado) ou num Raspberry (sempre ligado)?
 - Quais aparelhos existem hoje na casa?
 - Quais redes entram primeiro na Fase 4?
