@@ -39,7 +39,7 @@ Regra de ouro: **a nuvem decide, o PC executa, e o PC só aceita comando de tool
 
 ---
 
-## Fase 1 · Aprender com erros e receitas
+## Fase 1 · Aprender com erros e receitas ✅ 0.9.75
 
 Termina o item #8 do plano 3.0 (memória operacional), que ficou pela metade: hoje `ultima_falha` guarda uma falha só por projeto e sobrescreve.
 
@@ -51,6 +51,8 @@ Termina o item #8 do plano 3.0 (memória operacional), que ficou pela metade: ho
 | 1.4 | "esquece essa lição" / "lista receitas" por NL | controle manual do que ele aprendeu |
 
 **Fora de escopo:** Jarvis escrevendo tool nova sozinho. Tool nova só via `dev_github_pr` + revisão + SIM.
+
+**Como ficou (0.9.75):** lições entram no contexto casadas por **tool e projeto** (não por embedding): previsível e sem custo de API; embedding fica pra quando houver volume. Receita só é reusada com os **mesmos projetos** no objetivo, senão os args apontariam pro projeto errado. Aceite da receita = a missão é criada parada; nada roda sem `executa missão`, e `refaz plano` descarta.
 
 ---
 

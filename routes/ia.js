@@ -762,7 +762,7 @@ router.post('/proactive/sweep', async (req, res) => {
 router.get('/gemini-models', async (req, res) => {
   if (!process.env.GEMINI_API_KEY) return res.status(400).json({ erro: 'GEMINI_API_KEY não configurada' });
   try {
-    const resp = await axios.get(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`, { timeout: 10000 });
+    const resp = await axios.get('https://generativelanguage.googleapis.com/v1beta/models', { timeout: 10000, headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY } });
     const nomes = (resp.data?.models || [])
       .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
       .map(m => ({ nome: m.name, versao: m.version, displayName: m.displayName }));
@@ -956,7 +956,8 @@ router.post('/analise/diaria', async (req, res) => {
       }
     };
 
-    const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus. Informal, direto, insights úteis sobre o dia. Português brasileiro conversacional ("vc" ou "você"). Estrutura:
+    const nomeUsuario = await nomeDoUsuario(uid);
+    const systemPrompt = `Você é o Jarvis — assistente pessoal de ${nomeUsuario}. Informal, direto, insights úteis sobre o dia. Português brasileiro conversacional ("vc" ou "você"). Estrutura:
 
 1. Frase de abertura curta comentando o dia (produtividade + finanças em 1-2 linhas)
 2. Um insight ou padrão notável nos dados
@@ -996,6 +997,16 @@ function mapTarefa(t) {
     categoria: t.categoria || null,
     data: t.data_reset ? String(t.data_reset).slice(0, 10) : null
   };
+}
+
+/** Nome de quem está falando — o prompt dizia "Mateus" pra qualquer usuário do app. */
+async function nomeDoUsuario(userId) {
+  try {
+    const u = await get(`SELECT nome, login FROM usuarios WHERE id = $1`, [userId]);
+    return (u && (u.nome || u.login)) || 'o usuário';
+  } catch (_) {
+    return 'o usuário';
+  }
 }
 
 async function snapshotAssistente(opts = {}) {
@@ -2336,6 +2347,24 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       }
     }
 
+    // Fase 1: "lista lições" / "esquece a lição X" / "lista receitas" / "apaga a receita X"
+    {
+      const { tryHandleLearningCommand } = require('../lib/jarvis/learning/commands');
+      const learn = await tryHandleLearningCommand(uid, mensagem);
+      if (learn && learn.handled) {
+        await salvarMensagem(conversaId, 'assistant', learn.resposta, uid);
+        return {
+          resposta: learn.resposta,
+          acoes: [],
+          snapshot: null,
+          provider: 'learning',
+          usage: null,
+          conversa_id: conversaId,
+          agent: agent.id
+        };
+      }
+    }
+
     // Preferências Jarvis (tratamento, cumprimento curto)
     const {
       getJarvisPrefs,
@@ -2506,10 +2535,24 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       }
     }
 
+    // Fase 1: lições dos projetos citados (falhas abertas + o que resolveu)
+    let licoes = [];
+    try {
+      const { resolveProjectsFromMessage } = require('../lib/jarvis/projects/registry');
+      const projectIds = resolveProjectsFromMessage(mensagem) || [];
+      if (projectIds.length) {
+        const { relevantLessons, formatLessonLine } = require('../lib/jarvis/learning/lessons');
+        licoes = (await relevantLessons(uid, { projectIds, limit: 4 })).map(formatLessonLine);
+      }
+    } catch (e) {
+      console.error('[jarvis.lesson] load', e.message);
+    }
+
     const { pack: ctxPack, intent, stats: ctxStats } = packContext(snap, mensagem, prefs, {
       projectMemories,
       recallTemporal,
-      recallSemantico
+      recallSemantico,
+      licoes
     });
     console.log(
       JSON.stringify({
@@ -2531,10 +2574,11 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
         ? '\nTom: máximo direto; poucas palavras.'
         : '';
 
-    const systemPrompt = `Você é o Jarvis — assistente pessoal do Mateus (login teus). Nome: Jarvis. Português brasileiro, direto, competente, leve (braço-direito).
+    const nomeUsuario = await nomeDoUsuario(uid);
+    const systemPrompt = `Você é o Jarvis — assistente pessoal de ${nomeUsuario}. Nome: Jarvis. Português brasileiro, direto, competente, leve (braço-direito).
 ${agent && agent.addendum ? `\n${agent.addendum}\n` : ''}
 ${orchestratorHint ? `\n${orchestratorHint}\n` : ''}
-Tratamento: chame o usuário de **${prefs.tratamento || 'chefe'}**${prefs.extras?.tratamento_alt ? ` (ou ${prefs.extras.tratamento_alt})` : ''}. Nunca force "Mateus" se ele pediu outro tratamento.
+Tratamento: chame o usuário de **${prefs.tratamento || 'chefe'}**${prefs.extras?.tratamento_alt ? ` (ou ${prefs.extras.tratamento_alt})` : ''}. Nunca force o nome (${nomeUsuario}) se pediu outro tratamento.
 ${tomHint}${memoriaHint}
 
 Cumprimentos ("oi", "e aí", "fala jarvis", "bom dia", "alô", "kkk" solto, áudio "olá jarvis tranquilo"):
@@ -2571,6 +2615,7 @@ Como usar o contexto:
 - Se o usuário disser "lembra que…" / "anota que…", confirme em 1 linha (já persistido).
 - Memória de projetos: use memoria_projetos[] (stack, objetivo, status, decisões, ultima_falha, notas). Responda sobre projetos com esses fatos + registry/projetos.*. Para gravar: project_memory_set (ou o usuário já gravou via "lembra que no X: …").
 - Recall temporal: se pack.recall_temporal existir (semana passada / ontem / últimos N dias), responda SÓ com esses itens datados. Se empty=true, diga honestamente que não há eventos gravados na janela — não invente timeline.
+- Lições: pack.licoes lista erros já vistos nesses projetos (e o que resolveu). Se o pedido cair num deles, ajuste os args ou avise antes — não repita o mesmo erro cego. Não recite a lista se não for relevante.
 - Recall semântico: se pack.recall_semantico existir (hits por overlap lexical), priorize esses fatos ao responder "o que você lembra / qual a stack / decisão". Se empty=true, diga que não achou match — não invente.
 
 Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO mande ele ir na tela manualmente):

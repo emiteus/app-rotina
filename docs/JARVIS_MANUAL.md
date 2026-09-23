@@ -128,9 +128,17 @@ lembra que …
 atualiza o cache
 quantos posts no teushub hoje
 SIM a1b2c3d4 / NÃO a1b2c3d4
+lista lições / o que você aprendeu?
+esquece a lição ab12cd
+lista receitas
+apaga a receita ab12cd
+refaz plano
 ```
 
-Missões: `próximo passo` = 1 passo; `mete marcha` / `executa missão` = batch com pings (`Passo 2/4 · ok`); board em `status missão`.  
+**Lições (0.9.75):** toda falha de tool vira lição (`jarvis_lessons`), agrupada por tool + projeto + erro normalizado; repetição soma. Quando a mesma tool passa no mesmo projeto, a lição fecha e guarda os args que funcionaram. Lições dos projetos citados entram no contexto do turno (`pack.licoes`) e no planner.
+**Receitas (0.9.75):** missão concluída sem erro vira receita (`jarvis_recipes`). Missão nova com objetivo parecido **e os mesmos projetos** é montada pela receita (o board avisa); nada executa sem `executa missão`. `refaz plano` descarta a receita e planeja do zero.
+
+Missões: `próximo passo` = 1 passo (`bora`/`continua` soltos só valem com missão viva de até 6h); `mete marcha` / `executa missão` = batch com pings (`Passo 2/4 · ok`); board em `status missão`.  
 `prepara landing …` abre missão tipada sozinho (orquestrador) — research + **outline de copy** (`creative_landing_copy`) + checklist.  
 `JARVIS_MISSION_PROGRESS=0` desliga pings no WA.
 API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`

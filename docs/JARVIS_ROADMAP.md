@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.74  
+**Version:** 0.9.75  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.75**: **Fase 1 MCU**: lições (`jarvis_lessons`, falha vira lição e sucesso resolve; entram no turno e no planner) + receitas (`jarvis_recipes`, missão ok vira receita, objetivo parecido com mesmos projetos reusa) + comandos `lista lições`/`esquece a lição`/`lista receitas`/`apaga a receita`/`refaz plano`. Lote 3: tool sem registro bloqueada, LIKE escapado, ensureTable 1x por processo, chave Gemini no header, prompt usa o nome do usuário
 - **0.9.74**: auditoria lote 2: fila por número no WA (sem turno paralelo) e silêncio pra número desconhecido; regra de dados de terceiros (PIX/clientes/suporte) no prompt; missão parada em running vira failed honesto e "bora"/"continua" soltos só valem com missão recente; agente browser in-process (sessão headless sobrevive); timeout do Gemini vai direto pro fallback; budget grava incrementos (worker contabilizado); reindex de embedding só do trecho que mudou, fora do turno
 - **0.9.73**: auditoria lote 1: atalhos NL não gravam em pergunta/frase solta (só item real, com id); áudio do usuário não é mais "conteúdo externo"; SIM de outro pedido não conclui passo de missão; timeouts ≥ conectores + worker não re-executa lote já iniciado ("sem confirmação"); SSRF (faixas reservadas, redirect validado por salto, guarda de rede no headless); `/api/whatsapp/status` só logado; WA pede SIM em high
 - **0.9.72**: HITL e quarentena: marcador externo neutralizado; `dev_run_tests` pede SIM após patch local; "pode" solto não aprova; pedido novo = id novo; critical não passa com `JARVIS_HITL=0`
@@ -27,7 +28,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Próximo
 
-- **Fase 1 MCU**: lições (`jarvis_lessons`) + receitas de missão
+- **Fase 2 MCU**: Jarvis Desktop (interface + voz no PC) — ver decisões em aberto no roadmap MCU
 
 ## Backlog (só sob pedido)
 
