@@ -82,6 +82,8 @@ Riscos por tool no PC:
 
 ## Fase 3 · Casa via Home Assistant
 
+**0.9.80 — TV LG direto pelo PC ✅ (código).** Com um aparelho só, HA em VM seria peso sem ganho: o Jarvis Desktop fala com a TV LG na rede local (tools `tv_*`, chave só no PC, Wake-on-LAN pra ligar). Falta parear com a TV ligada. O HA entra quando chegarem luz/tomada/etc.; aí `tv_*` pode passar a ir pelo HA sem mudar as frases.
+
 Home Assistant faz a ponte com quase todo aparelho (Tuya, Sonoff, Philips Hue, TVs, Alexa/Google via integração). O Jarvis não fala com cada marca; fala com o HA.
 
 | # | Entrega | Aceite |

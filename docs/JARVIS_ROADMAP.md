@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.79  
+**Version:** 0.9.80  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.80**: **Fase 3 MCU (TV LG direto pelo PC)**: tools `tv_status/power/volume/media/key/open_app/input/notify/pair`; Desktop fala SSAP com a TV (wss 3001 com certificado LG ou TOFU, sem fallback pra ws em cert trocado), pareamento com "Permitir" na TV, chave cifrada só no PC, Wake-on-LAN pra ligar, reencontra a TV por UUID se o IP mudar; apps pelo nome do que está instalado; Home Assistant fica pra quando tiver mais aparelhos
 - **0.9.79**: **Fase 2.6 MCU (comandos no PC)**: tools `pc_status/volume/media/open_app/close_app/lock/screenshot` na matriz (fechar app pede SIM); servidor → gateway → Desktop, que revalida com lista própria (sem shell livre; volume por Core Audio via DLL compilada 1x; teclas de mídia; apps só da lista, Explorer não fecha); interruptor local na bandeja; tudo que roda aparece na conversa
 - **0.9.78**: **Fase 2.4/2.5 MCU (voz no Desktop)**: "hey jarvis" local (openWakeWord portado pra Node, testado com áudio real: positivos ~0,99, negativos ~0,00), gravação até a pausa, transcrição no servidor (`voice` no `/jarvis-device`), resposta falada (OpenAI; sem crédito → voz local do Windows), interromper falando por cima, atalho Alt+Shift+J. Correções: modelos Gemini desligados pelo Google (2.5/2.0/1.5-flash davam 404 → STT do WA, visão e compose estavam quebrados) trocados por 3.5-flash/3.5-flash-lite; `check:models` testa cada modelo de verdade; TTS com fallback Gemini + disjuntor quando a OpenAI fica sem crédito
 - **0.9.77**: pareamento sem caracteres confundíveis (0/O 1/I 2/Z 5/S 6/G 8/B), validade calculada no banco, motivo da falha no log; embeddings `text-embedding-004` (desligado) → `gemini-embedding-001`
@@ -32,7 +33,8 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Próximo
 
-- **Fase 3 MCU**: casa via Home Assistant (decidir: HA no PC ou Raspberry; quais aparelhos)
+- **Fase 3 MCU**: parear a TV LG de verdade (TV ligada) e testar por voz; HA quando chegarem mais aparelhos
+- **Fase 4 MCU**: redes sociais pelo PC
 
 ## Backlog (só sob pedido)
 

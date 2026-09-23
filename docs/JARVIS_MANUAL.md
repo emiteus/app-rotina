@@ -67,6 +67,8 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a
 | **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
+**TV (0.9.80, Jarvis Desktop → TV LG na rede local)**: `tv_status`, `tv_volume`, `tv_media`, `tv_key`, `tv_open_app`, `tv_input`, `tv_notify`, `tv_pair` = low; `tv_power` = medium. ownerOnly; a chave da TV fica só no PC (cifrada), o PC revalida tool/args e só fala com a TV pareada (certificado conferido).
+
 **PC (0.9.79, Jarvis Desktop)**: `pc_status`, `pc_volume`, `pc_media`, `pc_open_app` = low; `pc_lock`, `pc_screenshot` = medium; `pc_close_app` = **high** (SIM). Todas ownerOnly e executadas só no PC do próprio usuário, que revalida tool e argumentos (lista própria) e tem interruptor local na bandeja.
 
 **High** (não critical): pedem SIM no Assist **e no WA** (threshold default high). Exemplos: `dev_run_tests`, `cinerush_criar`, `attracione_coleta`, `recategorizar`, `socialhub_publicar_agendados`.
