@@ -190,6 +190,10 @@ function formatAcaoFalhas(fails) {
       if (!f) return 'Não consegui a ação.';
       // Limite documentado — mensagem já é humana
       if (f.tipo === 'cinerush_criar' && f.erro) return f.erro;
+      // Timeout/queda do worker: a ação pode ter rodado — não afirmar que falhou
+      if (f.uncertain) {
+        return `⚠️ **${f.tipo}** ficou sem confirmação (demorou demais). Pode ter rodado: confere antes de pedir de novo.`;
+      }
       if (f.erro) return `Não consegui **${f.tipo}**: ${f.erro}`;
       return `Não consegui **${f.tipo || 'ação'}**.`;
     })
@@ -1445,6 +1449,46 @@ async function executarAcoes(acoes, userId, opts = {}) {
 }
 
 
+/** Pergunta nunca vira mutação ("o das tá pago?" marcava o DAS como pago). */
+function ehPergunta(msg) {
+  const t = String(msg || '').trim();
+  return (
+    /\?/.test(t) ||
+    /^(qual|quais|quanto|quantos|quantas|quando|cad[eê]|ser[aá]|como|onde|por\s*que)\b/i.test(t)
+  );
+}
+
+function normTxt(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Casa o trecho da frase com um item real do snapshot (receita, tarefa, meta, despesa).
+ * Atalho local só age sobre o que existe — frase solta ("caiu a internet") não vira ação.
+ */
+function acharItemPorTexto(trecho, itens, campos) {
+  const alvo = normTxt(trecho);
+  if (alvo.length < 3) return null;
+  const valores = (item) =>
+    campos.map((c) => normTxt(item && item[c])).filter((v) => v.length >= 3);
+  for (const item of itens || []) {
+    if (valores(item).some((v) => v === alvo)) return item;
+  }
+  const contemPalavra = (texto, termo) => ` ${texto} `.includes(` ${termo} `);
+  for (const item of itens || []) {
+    // "o laranjeira de setembro" contém "laranjeira"; "academia" dentro de "treino academia"
+    if (valores(item).some((v) => contemPalavra(alvo, v) || (alvo.length >= 4 && contemPalavra(v, alvo)))) {
+      return item;
+    }
+  }
+  return null;
+}
+
 /** Contagens/status de projetos: LLM + pack.projetos (sem formatar* local).
  * inferirAcoes: financeiro + guards (coleta ≠ contagem).
  */
@@ -1455,6 +1499,9 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
 
   // Não inventa ação em "desfaz"
   if (/\b(desfaz|desfaça|desfaca|undo|voltar atrás|voltar atras)\b/i.test(msg)) return acoes;
+
+  // Atalhos que GRAVAM (finanças/tarefas/metas) só em afirmação — pergunta vai pro LLM
+  const podeMutar = !ehPergunta(msg);
 
   // Contagem de reels/views ≠ coleta. Só coleta se pedir explicitamente.
   const perguntaContagem =
@@ -1477,7 +1524,7 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   const pedeFundir = /\b(unific|fund|junt[ae]|mescl|soma\b|apenas\s*1|só\s*1|so\s*1)\b/i.test(msg)
     || /deix[ae].{0,20}1\s*categoria/i.test(msg);
 
-  if (pedeFundir && !temFundir) {
+  if (podeMutar && pedeFundir && !temFundir) {
     let label = null;
     const mParens = msg.match(/\(([^)]{2,60})\)\s*$/);
     const mPra = msg.match(/(?:em|pra|para|pro)\s+[\"“']?([^\"”'\n.!?]{2,60})\s*$/i);
@@ -1523,7 +1570,7 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   const pedeRename = !!mMuda
     || /(?:ajust|renome).{0,40}(?:nome|categoria).{0,20}(?:pra|para)/i.test(msg);
 
-  if (pedeRename && !temRename && !pedeFundir) {
+  if (podeMutar && pedeRename && !temRename && !pedeFundir) {
     let de = mMuda ? mMuda[1].trim() : null;
     let novo = mMuda ? mMuda[2].trim() : null;
     if (!novo) {
@@ -1587,26 +1634,24 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   }
 
   // "recebi Laranjeira" / "caiu o Tylty"
-  if (!acoes.some(a => a.tipo === 'confirmar_receita')) {
+  // Só se bater com receita real do mês (ou do plano, se o mês ainda não foi semeado)
+  if (podeMutar && !acoes.some(a => a.tipo === 'confirmar_receita')) {
     const mRec = msg.match(/\b(?:recebi|caiu|entrou)\s+(?:a\s+|o\s+)?(.+?)(?:\s+hoje|\s+ontem)?$/i)
       || msg.match(/\bconfirm[ao]\s+(?:receita|pagamento)\s+(?:d[aeo]\s+)?(.+)$/i);
     if (mRec) {
       const titulo = mRec[1].replace(/[.!?]+$/, '').trim();
-      // Guarda: falha de STT / anexo nunca é receita
-      const bad =
-        /^(um|uma|o|a)\s+(áudio|audio|anexo|imagem|documento)\b/i.test(titulo) ||
-        /\b(áudio|audio|anexo|transcri|conteúdo|conteudo)\b/i.test(titulo) ||
-        /não consegui|indisponível|manda em texto/i.test(titulo);
-      if (!bad && titulo.length >= 2 && titulo.length <= 80) {
-        const chaves = { laranjeira: 'laranjeira', tylty: 'tylty', lucastylty: 'tylty' };
-        const chave = chaves[norm(titulo)] || null;
-        acoes.push(chave ? { tipo: 'confirmar_receita', chave } : { tipo: 'confirmar_receita', titulo });
-      }
+      const pendentes = ((snap && snap.receitas_mes && snap.receitas_mes.itens) || []).filter(
+        (r) => r && r.status !== 'recebido'
+      );
+      const doMes = acharItemPorTexto(titulo, pendentes, ['titulo', 'chave']);
+      const doPlano = doMes ? null : acharItemPorTexto(titulo, plano.rendaFixa || [], ['nome', 'chave']);
+      if (doMes) acoes.push({ tipo: 'confirmar_receita', id: doMes.id, titulo: doMes.titulo });
+      else if (doPlano) acoes.push({ tipo: 'confirmar_receita', chave: doPlano.chave });
     }
   }
 
   // "ganhei 4000 no corte" / "receita de infoproduto 1200"
-  if (!acoes.some(a => a.tipo === 'criar_receita')) {
+  if (podeMutar && !acoes.some(a => a.tipo === 'criar_receita')) {
     const mVar = msg.match(/\b(?:ganhei|recebi|faturei|vendi)\s+(?:r\$\s*)?(\d+(?:[.,]\d+)?)\s+(?:no|na|em|de|com)\s+(.+)$/i)
       || msg.match(/\breceita\s+(?:de\s+)?(.+?)\s+(?:r\$\s*)?(\d+(?:[.,]\d+)?)$/i);
     if (mVar) {
@@ -1624,14 +1669,16 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       if (/corte|competi|attracione/i.test(raw)) chave = 'cortes';
       else if (/infoprod|curso|ebook|produto/i.test(raw)) chave = 'infoproduto';
       else if (/\bpj\b|mei|servi[cç]o/i.test(raw)) chave = 'pj';
-      if (Number.isFinite(valor) && valor > 0) {
+      // Fonte desconhecida sem valor explícito ("ganhei 2 no jogo") → LLM decide
+      const valorExplicito = /r\$|\breais\b|\bmil\b|\bconto|\d\s*k\b/i.test(msg);
+      if (Number.isFinite(valor) && valor > 0 && (chave !== 'outro' || valorExplicito)) {
         acoes.push({ tipo: 'criar_receita', valor, chave, titulo: raw });
       }
     }
   }
 
   // "transfere gastos da categoria trabalho pra projetos" / "move trabalho → projetos"
-  if (!acoes.some(a => a.tipo === 'recategorizar')) {
+  if (podeMutar && !acoes.some(a => a.tipo === 'recategorizar')) {
     const mMove = msg.match(
       /\bcategoria\s+[\"“']?([a-z0-9_À-ú-]{2,40})[\"”']?\s+(?:pra|para|pro|→|->)\s+[\"“']?([a-z0-9_À-ú\s-]{2,40})/i
     ) || msg.match(
@@ -1671,28 +1718,37 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   }
 
   // "já paguei Netflix" / "confirma pagamento da luz" — NÃO "me confirma pfv"
-  if (!acoes.some((a) => a.tipo === 'confirmar_despesa')) {
+  if (podeMutar && !acoes.some((a) => a.tipo === 'confirmar_despesa')) {
     const { extractConfirmExpenseTitle } = require('../lib/jarvis/nl/pt');
     const titulo = extractConfirmExpenseTitle(msg);
-    if (titulo) {
-      acoes.push({ tipo: 'confirmar_despesa', titulo });
+    const pendentes = ((snap && snap.despesas_mes && snap.despesas_mes.itens) || []).filter(
+      (d) => d && d.status !== 'pago' && d.status !== 'ignorado'
+    );
+    const alvo = titulo ? acharItemPorTexto(titulo, pendentes, ['titulo']) : null;
+    if (alvo) {
+      acoes.push({ tipo: 'confirmar_despesa', id: alvo.id, titulo: alvo.titulo });
     }
   }
 
   // "guardei 200 na viagem" / "depositei 50 na meta X"
-  if (!acoes.some(a => a.tipo === 'depositar_meta')) {
+  if (podeMutar && !acoes.some(a => a.tipo === 'depositar_meta')) {
     const mDep = msg.match(/\b(?:guardei|depositei|botei|coloquei)\s+(?:r\$\s*)?(\d+(?:[.,]\d+)?)\s+(?:na|no|em)\s+(?:meta\s+)?(.+)$/i);
     if (mDep) {
       const valor = Number(String(mDep[1]).replace(',', '.'));
       const nome = mDep[2].replace(/[.!?]+$/, '').trim();
-      if (Number.isFinite(valor) && valor > 0 && nome.length >= 2) {
-        acoes.push({ tipo: 'depositar_meta', nome, valor });
+      const meta = acharItemPorTexto(
+        nome.replace(/^meta\s+/i, ''),
+        ((snap && snap.metas) || []).filter((m) => m && !m.concluida),
+        ['nome']
+      );
+      if (Number.isFinite(valor) && valor > 0 && meta) {
+        acoes.push({ tipo: 'depositar_meta', id: meta.id, nome: meta.nome, valor });
       }
     }
   }
 
   // "concluí X" / "terminei a tarefa X" — NÃO usar "fiz" solto (pega "fiz o pagamento")
-  if (!acoes.some(a => a.tipo === 'concluir_tarefa')) {
+  if (podeMutar && !acoes.some(a => a.tipo === 'concluir_tarefa')) {
     const mConc = msg.match(/\b(?:conclu[ií]|terminei)\s+(?:a\s+)?(?:tarefa\s+)?(.+)$/i)
       || msg.match(/\bfiz\s+(?:a\s+)?tarefa\s+(.+)$/i);
     if (mConc && !/\bacademia\b/i.test(msg) && !/\bpaguei\b/i.test(msg) && !/\bpagamento\b/i.test(msg)) {
@@ -1701,14 +1757,17 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
         titulo.length >= 2 && titulo.length <= 80
         && !/^(hoje|ontem|isso|o pagamento|pagamento|pix|transfer)/i.test(titulo)
       ) {
-        acoes.push({ tipo: 'concluir_tarefa', titulo });
+        const pend = ((snap && snap.tarefas && snap.tarefas.hoje && snap.tarefas.hoje.itens) || [])
+          .filter((t) => t && !t.concluida);
+        const tarefa = acharItemPorTexto(titulo.replace(/^(a|o)\s+/i, ''), pend, ['titulo']);
+        if (tarefa) acoes.push({ tipo: 'concluir_tarefa', id: tarefa.id, titulo: tarefa.titulo });
       }
     }
   }
 
   // Explica um lançamento do extrato pra categorizar
   // "NATURA ... foi um pagamento que minha tia pediu... nome dela é ADRIANA"
-  if (!acoes.some(a => a.tipo === 'recategorizar')) {
+  if (podeMutar && !acoes.some(a => a.tipo === 'recategorizar')) {
     const mDesc = msg.match(
       /^([A-Za-z0-9Á-ú][^,]{8,100}?)\s+(?:foi|é|era)\s+(?:um\s+|uma\s+)?(?:pagamento|pix|transfer[eê]ncia|compra|gasto)/i
     );
@@ -1747,8 +1806,13 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   }
 
   // "DAS pago" / "paguei o DAS"
-  if (!acoes.some(a => a.tipo === 'marcar_das')) {
-    if (/\bdas\b/i.test(msg) && /\b(paguei|pago|marquei|confirmei)\b/i.test(msg)) {
+  if (podeMutar && !acoes.some(a => a.tipo === 'marcar_das')) {
+    // Só afirmação/comando: "paguei o DAS", "marca o DAS como pago", "DAS pago"
+    const dasPago =
+      /\b(paguei|pagamos|quitei|marquei|confirmei)\b[^.!\n]{0,25}\bdas\b/i.test(msg) ||
+      /\bmarc[ae]r?\s+(o\s+)?das\b/i.test(msg) ||
+      /^das\s+(foi\s+)?pago\s*[.!]*$/i.test(msg);
+    if (dasPago) {
       acoes.push({ tipo: 'marcar_das', ym: (snap && snap.agora && snap.agora.mes) || undefined, pago: true });
     }
   }
@@ -2178,7 +2242,9 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
               resumeMissionAfterApproval,
               runMissionBatch
             } = require('../lib/jarvis/missions/planner');
-            const resumed = await resumeMissionAfterApproval(uid, hitl.acoes || []);
+            const resumed = await resumeMissionAfterApproval(uid, hitl.acoes || [], {
+              approvalId: hitl.approval && hitl.approval.id
+            });
             if (resumed && resumed.text) {
               resposta = `${resposta}\n\n${resumed.text}`;
             }

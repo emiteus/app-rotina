@@ -30,7 +30,7 @@ Confira / preencha no serviço **app-rotina**:
 | `RESEARCH_FETCH_ALLOWLIST` | Research/Browser: hosts permitidos (comma). `RESEARCH_FETCH_OPEN=1` só fora de prod; em prod exige `RESEARCH_FETCH_OPEN_FORCE=1` |
 | `OPENAI_API_KEY` | **TTS** outbound + fallback de STT (o STT primário é Gemini) |
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on). **Não** afeta `critical`: redeploy/patch/PR pedem SIM sempre |
-| `JARVIS_HITL_WHATSAPP=1` | Opt-in: high/medium no WhatsApp (default **off**) |
+| `JARVIS_HITL_WHATSAPP=0` | Opt-out: WA volta a executar high sem SIM (default **on** desde 0.9.73) |
 | `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
 | `JARVIS_PROACTIVE_WA=0` | Desliga pings proativos no WhatsApp |
 | `JARVIS_RAILWAY_WATCH=0` | Desliga watch de deploy FAIL/CRASH (default **on** se tem `RAILWAY_TOKEN`) |
@@ -59,17 +59,17 @@ Redeploy após mudar env.
 
 ### Matriz de permissão (AUTO / APPROVAL / BLOCKED)
 
-Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Canal WA default = HITL WhatsApp **off** (`JARVIS_HITL_WHATSAPP` não setado).
+Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a mesma regra do Assist: high e critical pedem SIM (`JARVIS_HITL_WHATSAPP=0` desliga).
 
 | Classe | Regra | WA (default) | Assist web | Tools |
 |--------|-------|--------------|------------|-------|
-| **AUTO** | `risk=low` (e medium/high se HITL do canal off) | executa | low = executa; medium/high pedem SIM se ≥ `JARVIS_APPROVAL_THRESHOLD` (default **high**) | leitura, `dev_diagnose`, `dev_git_*`, `dev_railway_logs`, `dev_deploy_checklist`, `research_web_search`, `research_fetch_url`, `browser_*`, `cinerush_buscar`, `cutflix_status`, rotina/finance **low** |
+| **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/medium executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `dev_railway_logs`, `dev_deploy_checklist`, `research_web_search`, `research_fetch_url`, `browser_*`, `cinerush_buscar`, `cutflix_status`, rotina/finance **low** |
 | **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
-**High** (não critical): no Assist pedem SIM se threshold ≤ high; no WA default **executam** (trust-owner). Exemplos: `dev_run_tests`, `cinerush_criar`, `attracione_coleta`, `recategorizar`, `socialhub_publicar_agendados`.
+**High** (não critical): pedem SIM no Assist **e no WA** (threshold default high). Exemplos: `dev_run_tests`, `cinerush_criar`, `attracione_coleta`, `recategorizar`, `socialhub_publicar_agendados`.
 
-**Medium**: Assist SIM se threshold ≤ medium; WA default executa. Exemplos: `sincronizar_bancos`, `creative_generate_image`, `dev_propose_patch`, `research_write_report`.
+**Medium**: executa direto nos dois canais, salvo `JARVIS_APPROVAL_THRESHOLD=medium`. Exemplos: `sincronizar_bancos`, `creative_generate_image`, `dev_propose_patch`, `research_write_report`.
 
 Validação: `npm run check:tools` — falha se def sem handler, handler órfão, ou Manual sem listar os **critical**.  
 `GET /api/ia/os` → `permissionMatrix.documented=true` + lista `tools.critical`.

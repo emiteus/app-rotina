@@ -28,6 +28,8 @@ const {
   phoneMapStatus
 } = require('../lib/jarvis/whatsapp-users');
 
+const { requireAuth } = require('./auth');
+
 const router = express.Router();
 
 /** Debounce: junta bolhas rápidas do mesmo número. */
@@ -306,7 +308,8 @@ function enqueueMessage(phone, text, media = null) {
   }, DEBOUNCE_MS);
 }
 
-router.get('/status', (_req, res) => {
+// Status do canal = dado interno (instância, números mapeados) → só logado.
+router.get('/status', requireAuth, (_req, res) => {
   const map = phoneMapStatus();
   res.json({
     ok: true,

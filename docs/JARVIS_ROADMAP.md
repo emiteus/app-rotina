@@ -1,11 +1,12 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.71  
+**Version:** 0.9.73  
 **Date:** 2026-09-22
 
 ## Norte
 
-Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
+Ver **[JARVIS_ROADMAP_MCU.md](./JARVIS_ROADMAP_MCU.md)** (JARVIS do filme: PC, voz, casa, redes).
+Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md).
 
 ### Princípio
 
@@ -14,12 +15,18 @@ Ver **[JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md)**.
 
 ## Done
 
+- **0.9.73**: auditoria lote 1: atalhos NL não gravam em pergunta/frase solta (só item real, com id); áudio do usuário não é mais "conteúdo externo"; SIM de outro pedido não conclui passo de missão; timeouts ≥ conectores + worker não re-executa lote já iniciado ("sem confirmação"); SSRF (faixas reservadas, redirect validado por salto, guarda de rede no headless); `/api/whatsapp/status` só logado; WA pede SIM em high
+- **0.9.72**: HITL e quarentena: marcador externo neutralizado; `dev_run_tests` pede SIM após patch local; "pode" solto não aprova; pedido novo = id novo; critical não passa com `JARVIS_HITL=0`
 - **0.9.71**: resolve TeuHub/teuhub (token match; alias real) + `pausa` NL
 - **0.9.70**: SocialHub ops flags live (`crons` → publish + refresh-tokens)
 - **0.9.69**: MCU — subagentes fork + séries analytics + voice contínua
 - **0.9.68**: embeddings Gemini; adapter Approtina; browser headless
 - **0.9.67**: NL infer pause/retoma ops flags
 - **0.9.66–0.9.60**: ops flags, NL, layout
+
+## Próximo
+
+- **Fase 1 MCU**: lições (`jarvis_lessons`) + receitas de missão
 
 ## Backlog (só sob pedido)
 

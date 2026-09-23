@@ -183,3 +183,5 @@ Corrigido em 0.9.34–0.9.43. **§8 fechado.**
 - [x] WA continua só como canal  
 
 *Enquanto isso não fechar, somos um **hub operacional excelente**, não o JARVIS do filme — e está ok.*
+
+> **2026-09-22:** plano concluído. O norte agora é o JARVIS do filme: ver [JARVIS_ROADMAP_MCU.md](./JARVIS_ROADMAP_MCU.md).
