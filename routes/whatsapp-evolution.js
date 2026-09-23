@@ -36,6 +36,21 @@ const router = express.Router();
 const pending = new Map(); // phone -> { texts: [], medias: [], timer }
 const DEBOUNCE_MS = Number(process.env.WHATSAPP_DEBOUNCE_MS) || 1000;
 
+/**
+ * Fila por número: um turno de cada vez. Mensagem que chega enquanto o Jarvis ainda
+ * responde abria um 2º turno em paralelo (aprovação/missão/histórico se atropelando).
+ */
+const phoneChains = new Map(); // phone -> Promise do último turno
+function runSerialForPhone(phone, fn) {
+  const prev = phoneChains.get(phone) || Promise.resolve();
+  const next = prev.then(fn, fn).catch((e) => console.error('[whatsapp] queue', e.message));
+  phoneChains.set(phone, next);
+  next.finally(() => {
+    if (phoneChains.get(phone) === next) phoneChains.delete(phone);
+  });
+  return next;
+}
+
 async function ensureWhatsappTables() {
   await run(`
     CREATE TABLE IF NOT EXISTS whatsapp_sessoes (
@@ -304,7 +319,7 @@ function enqueueMessage(phone, text, media = null) {
   if (media) slot.medias.push(media);
   if (slot.timer) clearTimeout(slot.timer);
   slot.timer = setTimeout(() => {
-    processPhoneQueue(phone).catch((e) => console.error('[whatsapp] queue', e.message));
+    runSerialForPhone(phone, () => processPhoneQueue(phone));
   }, DEBOUNCE_MS);
 }
 
@@ -335,15 +350,8 @@ router.post('/evolution', async (req, res) => {
     for (const m of msgs) {
       if (m.fromMe || m.isGroup) continue;
       if (!isPhoneMappedOrAllowed(m.phone)) {
-        console.log('[whatsapp] ignorado (fora da whitelist/mapa):', m.phone);
-        try {
-          await sendText(
-            m.phone,
-            'Esse número ainda não está na whitelist do Jarvis. Me avisa no PC pra liberar.'
-          );
-        } catch (e) {
-          console.error('[whatsapp] reply whitelist:', e.message);
-        }
+        // Silêncio: responder a estranho confirma que o número é um bot e convida spam
+        console.log('[whatsapp] ignorado (fora da whitelist/mapa):', `…${String(m.phone).slice(-4)}`);
         continue;
       }
       enqueueMessage(m.phone, m.text, m.media || null);
