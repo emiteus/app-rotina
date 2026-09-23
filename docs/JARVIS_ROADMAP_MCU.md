@@ -56,7 +56,7 @@ Termina o item #8 do plano 3.0 (memória operacional), que ficou pela metade: ho
 
 ---
 
-## Fase 2 · Jarvis Desktop (interface + voz no PC) — 2.1–2.5 ✅ 0.9.78
+## Fase 2 · Jarvis Desktop (interface + voz no PC) ✅ 0.9.79
 
 App novo no PC (Electron, Windows primeiro), separado do App Rotina.
 

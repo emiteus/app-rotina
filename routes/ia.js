@@ -228,7 +228,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'browser_open', 'browser_links',
     'browser_click', 'browser_type', 'browser_snapshot',
     'creative_generate_image', 'creative_landing_copy',
-    'research_web_search', 'research_fetch_url', 'research_write_report'
+    'research_web_search', 'research_fetch_url', 'research_write_report',
+    'pc_status', 'pc_volume', 'pc_media', 'pc_open_app', 'pc_close_app', 'pc_lock', 'pc_screenshot'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -501,6 +502,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
             ? `Cutflix API **ON**${a.status ? ` (${a.status})` : ''}.`
             : `Cutflix **off**${a.erro || a.motivo ? `: ${a.erro || a.motivo}` : ''}.`
         );
+      } else if (String(a.tipo).startsWith('pc_')) {
+        // Tools do PC já voltam com a frase pronta ("Aumentei o volume do PC.")
+        if (a.texto) partes.push(String(a.texto));
       } else if (a.tipo === 'projeto_milhao_fechamento') {
         if (a.texto) partes.push(String(a.texto).replace(/\*/g, '**'));
         else {
@@ -1902,7 +1906,10 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
   }
 
   // Restart Railway (sem rebuild) — critical → HITL
+  // "reinicia o pc/computador/spotify" é pedido pro PC, não pro servidor
+  const falaDoPc = /\b(pc|computador|notebook|m[aá]quina|spotify|chrome|windows)\b/i.test(msg);
   if (
+    !falaDoPc &&
     !acoes.some((a) => a && (a.tipo === 'dev_railway_restart' || a.tipo === 'dev_railway_redeploy')) &&
     (/\b(restart|reinicia(r)?)\b/i.test(msg) && !/\bre\s*-?deploy|redeploy/i.test(msg))
   ) {
@@ -2703,6 +2710,7 @@ Regras:
 - **NUNCA** emita creative_generate_image para "reproduz/copia esse layout" — o ingress já gera com a imagem de referência. Se cair aqui, responda pedindo pra reenviar o print; acoes:[].
 - Outline de landing (hero/CTA/seções): creative_landing_copy com project=id (cutflix, cinerush, …).
 - Página/URL: browser_open (snapshot) ou browser_links. Allowlist RESEARCH_FETCH_*.
+- PC do usuário (Jarvis Desktop): volume/música/abrir ou fechar app/bloquear tela/print → pc_*. Só apps da lista da tool; fora dela, diga que não está liberado. Print da tela só se ele pedir.
 - Patch/código: read_file → propose_patch (path+content ou files[]) → apply_local OU github_pr (HITL).
 - Testes: dev_run_tests (script allowlist test/smoke/check/lint) se tiver disco.
 - Análise sem alterar: responda com acoes:[].
