@@ -80,6 +80,10 @@ Riscos por tool no PC:
 
 ---
 
+## Fase 2.7 · Autonomia no PC ✅ 0.9.81
+
+"Toca Matuê" (Spotify Premium via API oficial), "toca X no YouTube", "abre o Gmail", "o que tem na pasta Downloads?", "lê o README e me diz o que falta". Arquivos só leitura, nas pastas pessoais + R:\Projetos, com segredos sempre bloqueados.
+
 ## Fase 3 · Casa via Home Assistant
 
 **0.9.80 — TV LG direto pelo PC ✅ (código).** Com um aparelho só, HA em VM seria peso sem ganho: o Jarvis Desktop fala com a TV LG na rede local (tools `tv_*`, chave só no PC, Wake-on-LAN pra ligar). Falta parear com a TV ligada. O HA entra quando chegarem luz/tomada/etc.; aí `tv_*` pode passar a ir pelo HA sem mudar as frases.
