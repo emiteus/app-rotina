@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.76  
+**Version:** 0.9.78  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,8 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.78**: **Fase 2.4/2.5 MCU (voz no Desktop)**: "hey jarvis" local (openWakeWord portado pra Node, testado com áudio real: positivos ~0,99, negativos ~0,00), gravação até a pausa, transcrição no servidor (`voice` no `/jarvis-device`), resposta falada (OpenAI; sem crédito → voz local do Windows), interromper falando por cima, atalho Alt+Shift+J. Correções: modelos Gemini desligados pelo Google (2.5/2.0/1.5-flash davam 404 → STT do WA, visão e compose estavam quebrados) trocados por 3.5-flash/3.5-flash-lite; `check:models` testa cada modelo de verdade; TTS com fallback Gemini + disjuntor quando a OpenAI fica sem crédito
+- **0.9.77**: pareamento sem caracteres confundíveis (0/O 1/I 2/Z 5/S 6/G 8/B), validade calculada no banco, motivo da falha no log; embeddings `text-embedding-004` (desligado) → `gemini-embedding-001`
 - **0.9.76**: **Fase 2.1–2.3 MCU**: pareamento de aparelho (`parear pc` → código de uso único → token com hash no banco), canal WebSocket `/jarvis-device` (turno por aparelho em fila, limite por minuto, revogação derruba na hora) e app `desktop/` (Electron: Alt+J, bandeja, aprovação por botão, token cifrado com DPAPI). App Rotina: WebSocket agora autenticado pela sessão e eventos só pro dono (antes qualquer um conectava e recebia alarmes/eventos de todos)
 - **0.9.75**: **Fase 1 MCU**: lições (`jarvis_lessons`, falha vira lição e sucesso resolve; entram no turno e no planner) + receitas (`jarvis_recipes`, missão ok vira receita, objetivo parecido com mesmos projetos reusa) + comandos `lista lições`/`esquece a lição`/`lista receitas`/`apaga a receita`/`refaz plano`. Lote 3: tool sem registro bloqueada, LIKE escapado, ensureTable 1x por processo, chave Gemini no header, prompt usa o nome do usuário
 - **0.9.74**: auditoria lote 2: fila por número no WA (sem turno paralelo) e silêncio pra número desconhecido; regra de dados de terceiros (PIX/clientes/suporte) no prompt; missão parada em running vira failed honesto e "bora"/"continua" soltos só valem com missão recente; agente browser in-process (sessão headless sobrevive); timeout do Gemini vai direto pro fallback; budget grava incrementos (worker contabilizado); reindex de embedding só do trecho que mudou, fora do turno
@@ -29,7 +31,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Próximo
 
-- **Fase 2.4/2.5 MCU**: voz no Desktop (openWakeWord "hey jarvis" + STT no servidor + TTS OpenAI)
+- **Fase 2.6 MCU**: tools locais `pc_*` (volume, mídia, abrir app…) com risco na matriz
 
 ## Backlog (só sob pedido)
 
