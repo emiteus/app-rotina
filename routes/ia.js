@@ -2745,7 +2745,7 @@ Regras:
     let usage;
     let provider;
     // PC e áudio: resposta rápida pesa mais que "pensar" (medido: +1–2 s e picos)
-    const fastTurn = channelKey === 'desktop' || /^\[Áudio transcrito\]/.test(String(mensagem || ''));
+    const fastTurn = channelKey === 'desktop' || channelKey === 'phone' || /^\[Áudio transcrito\]/.test(String(mensagem || ''));
     const chamarDecisao = (fast) =>
       chamarIA({
         system: systemPrompt,

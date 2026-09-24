@@ -1,6 +1,6 @@
 /**
  * Pareamento do Jarvis Desktop (público: o PC ainda não tem sessão).
- * POST /api/jarvis-device/pair { code, name } → { deviceId, token }
+ * POST /api/jarvis-device/pair { code, name, kind? } → { deviceId, token } (kind 'phone' = página do celular)
  * Código: 8 caracteres, uso único, 10 min. Limite de tentativas por IP contra chute.
  */
 const express = require('express');
@@ -28,10 +28,12 @@ router.post('/pair', express.json({ limit: '2kb' }), async (req, res) => {
   }
   const code = String(req.body?.code || '');
   const name = String(req.body?.name || 'PC');
+  const kind = req.body?.kind === 'phone' ? 'phone' : 'pc';
   try {
-    const out = await redeemPairCode(code, name);
+    const out = await redeemPairCode(code, name, kind);
     if (!out) return res.status(401).json({ erro: 'Código inválido, expirado ou já usado.' });
-    res.json({ deviceId: out.deviceId, token: out.token, name: out.name });
+    res.set('Cache-Control', 'no-store');
+    res.json({ deviceId: out.deviceId, token: out.token, name: out.name, kind: out.kind });
   } catch (e) {
     console.error('[jarvis.device] pair:', e.message);
     res.status(500).json({ erro: 'Falha ao parear.' });

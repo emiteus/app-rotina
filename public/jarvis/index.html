@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Viewport simples, sem viewport-fit=cover nem safe-area: no iPhone a barra de baixo pulava (App Rotina, jul/2026) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a111c" />
+    <meta name="color-scheme" content="dark" />
+    <title>Jarvis</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon-192.png" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="bar">
+      <span class="name">JARVIS</span>
+      <span class="status" id="status" role="status">conectando</span>
+      <button class="more" id="more" type="button" aria-label="Opções" aria-expanded="false" aria-controls="menu">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <div class="menu" id="menu" hidden>
+      <button type="button" class="menu-item" id="push-toggle" role="switch" aria-checked="false">
+        <span class="menu-text">
+          <span class="menu-title">Avisos neste celular</span>
+          <span class="menu-hint" id="push-hint">Deploy que falhou, fila do Editor, Havok e Attracione quando você está longe do PC.</span>
+        </span>
+        <span class="switch" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="menu-item" id="voice-toggle" role="switch" aria-checked="true">
+        <span class="menu-text">
+          <span class="menu-title">Responder falando</span>
+          <span class="menu-hint">Quando você pergunta por voz.</span>
+        </span>
+        <span class="switch" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="menu-item danger" id="forget">Desconectar este celular</button>
+    </div>
+
+    <!-- Pareamento -->
+    <section class="pair" id="pair" hidden>
+      <div class="reactor reactor-small" data-state="offline" aria-hidden="true"><i></i><b></b></div>
+      <h1 class="pair-title">Conecte este celular ao Jarvis</h1>
+      <p class="pair-help">No WhatsApp, mande <strong>parear celular</strong> e digite aqui o código que chegar.</p>
+      <form class="pair-form" id="pair-form" autocomplete="off">
+        <label class="code-label" for="code">Código</label>
+        <input
+          id="code"
+          class="code"
+          inputmode="text"
+          autocapitalize="characters"
+          autocorrect="off"
+          spellcheck="false"
+          maxlength="9"
+          placeholder="XXXX-XXXX"
+          required
+        />
+        <button class="primary" type="submit" id="pair-btn">Conectar</button>
+        <p class="error" id="pair-error" role="alert"></p>
+      </form>
+      <p class="install-tip" id="install-tip" hidden>
+        Dica: no Safari, toque em Compartilhar e depois em <strong>Adicionar à Tela de Início</strong>. Abrindo pelo ícone, o
+        Jarvis pode te mandar avisos.
+      </p>
+    </section>
+
+    <!-- Conversa -->
+    <main class="talk" id="talk" hidden>
+      <ol class="log" id="log" aria-live="polite"></ol>
+
+      <div class="deck">
+        <button
+          type="button"
+          class="reactor"
+          id="reactor"
+          data-state="offline"
+          aria-label="Segure pra falar com o Jarvis"
+        >
+          <i></i><b></b>
+        </button>
+        <p class="hint" id="hint">Segure pra falar</p>
+        <form class="composer" id="composer" autocomplete="off">
+          <span class="prompt" aria-hidden="true">›</span>
+          <input id="input" class="input" enterkeyhint="send" placeholder="Ou escreva aqui" aria-label="Mensagem pro Jarvis" maxlength="4000" />
+          <button type="submit" class="send" id="send" aria-label="Enviar">Enviar</button>
+        </form>
+      </div>
+    </main>
+  </body>
+</html>

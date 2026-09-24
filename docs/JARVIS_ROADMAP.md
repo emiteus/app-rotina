@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.95  
+**Version:** 0.9.96  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.96**: **Fase 5.5 MCU**: Jarvis no celular (iPhone), página instalável em `/jarvis/` (fonte em `phone/`, `sync:host` copia pra `public/jarvis`). "parear celular" no WhatsApp → código + link; a página pareia com `kind: 'phone'` e conecta no mesmo `/jarvis-device` com o token como **subprotocolo** (navegador não manda header; na URL iria pra log). Celular: conversa por texto ou "segure pra falar" (WAV 16 kHz montado no navegador), responde falando (voz do iPhone), cartão de aprovação, canal `phone` (HITL, modelo rápido). Nunca recebe tool nem aviso falado (`requestTool`/`speakToUser` só PC). Avisos: longe do PC → Web Push no celular (`src/devices/phone-push.js`, só endpoint de push oficial, 404/410 apaga a inscrição) no lugar do WhatsApp; sem celular, WhatsApp como antes. Página trancada: CSP sem inline, conexão só com o próprio servidor, sem iframe. iOS: viewport simples, sem safe-area (regra do App Rotina)
 - **0.9.95**: resposta no PC sem a origem do conteúdo externo ("(pc_screen)" aparecia depois de tirar a etiqueta)
 - **0.9.94**: pergunta sobre a tela no PC ("Ei, Jarvis. Que tá errado aqui?") vai direto pra `pc_screen_look` sem o modelo decidir (`intent.looksLikeScreenQuestion`): com "Ei, Jarvis" na frente o modelo tratava como cumprimento e pedia o print; a resposta é só o que a visão viu. Mais rápido (sem a volta do modelo)
 - **0.9.93**: **Fase 5.4 MCU**: "Jarvis, o que tá errado aqui?" (voz ou chat) → tool `pc_screen_look` (medium, owner): o PC manda o print da tela onde está o mouse, o servidor responde a pergunta com visão Gemini 3.5-flash (reserva flash-lite aos 8 s) em até 5 frases faláveis, isolado como CONTEÚDO EXTERNO; o print não entra na conversa. `src/multimodal/screen-look.js`, `scripts/smoke-screen-look.js`; teste real: 3 s, ignorou instrução escrita na tela

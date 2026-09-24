@@ -165,6 +165,22 @@ app.use('/api/relatorios', requireAuth, relatoriosRouter);
 app.use('/api/push', requireAuth, pushRouter);
 app.use('/api/ia', requireAuth, iaRouter);
 
+// Jarvis no celular (Fase 5.5 MCU): página pública; o acesso é o token do aparelho, guardado nela.
+// Tranca a página: só script/estilo daqui, conexão só com este servidor, sem iframe.
+// (/jarvis → /jarvis/ o express.static já faz; rota própria aqui dava loop, porque casa com as duas)
+app.use('/jarvis/', (req, res, next) => {
+  const host = String(req.headers.host || '').replace(/[^a-z0-9.:-]/gi, '');
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: data:; " +
+      `connect-src 'self' wss://${host}; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`
+  );
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'microphone=(self), camera=(), geolocation=()');
+  next();
+});
+
 // Arquivos estaticos (index.html nao requer auth, auth.js vai verificar)
 app.use(express.static('public', {
   setHeaders(res, filePath) {
