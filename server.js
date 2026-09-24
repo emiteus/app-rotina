@@ -552,6 +552,14 @@ sched('*/30 * * * *', runCron('jarvis-ops-watch', async () => {
   await runOpsWatchNotify(uid);
 }));
 
+// VPS/WhatsApp/CineRush no ar? a cada 5min (24/09: VPS suspensa por pagamento e ninguém viu por 13h)
+sched('*/5 * * * *', runCron('jarvis-uptime-watch', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
+  const { runUptimeWatchNotify } = require('./lib/jarvis/events/bus');
+  await runUptimeWatchNotify(uid);
+}));
+
 // Sweep geral a cada 3h (aprovação + missão + ops + railway)
 sched('0 */3 * * *', runCron('jarvis-proactive', async () => {
   const uid = await jarvisOwnerUserId();
