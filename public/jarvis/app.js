@@ -212,14 +212,15 @@
         paint();
       }
     };
-    if (audio && /^audio\//.test(String(audio.mime)) && audio.base64) {
-      const a = new Audio(`data:${audio.mime};base64,${audio.base64}`);
+    if (audio && /^audio\/(mpeg|wav|ogg)$/.test(String(audio.mime)) && /^[A-Za-z0-9+/=]+$/.test(String(audio.base64))) {
+      const a = player; // o tocador destravado no primeiro toque
       currentAudio = a;
       a.onended = done;
       a.onerror = () => {
         currentAudio = null;
         speakLocal(text, done);
       };
+      a.src = `data:${audio.mime};base64,${audio.base64}`;
       busy = 'speaking';
       paint();
       a.play().catch(() => speakLocal(text, done));
@@ -242,7 +243,11 @@
     speechSynthesis.speak(u);
   }
 
-  // No iPhone a voz só sai depois de um toque: destrava no primeiro toque na página
+  // No iPhone o som só sai depois de um toque, e a voz do Jarvis chega segundos depois dele:
+  // destrava UM tocador no primeiro toque (com silêncio) e reaproveita ele pra toda voz
+  const player = new Audio();
+  player.preload = 'auto';
+  const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
   let unlocked = false;
   function unlockAudio() {
     if (unlocked) return;
@@ -252,6 +257,8 @@
     } catch (_) {
       /* sem voz local */
     }
+    player.src = SILENCE;
+    player.play().catch(() => {});
   }
   document.addEventListener('touchend', unlockAudio, { once: true, passive: true });
   document.addEventListener('click', unlockAudio, { once: true });
@@ -264,6 +271,12 @@
   let vapidKey = null;
   let seq = 0;
   const pending = new Map(); // id -> { voice: bool }
+  // Voz do Jarvis (a mesma do WhatsApp) chega depois do texto; sem ela em 27 s, voz do iPhone
+  const awaitingAudio = new Map(); // id -> { text, timer }
+  function dropAwaitingAudio() {
+    for (const w of awaitingAudio.values()) clearTimeout(w.timer);
+    awaitingAudio.clear();
+  }
 
   function wsUrl() {
     return `${location.protocol === 'http:' ? 'ws' : 'wss'}://${location.host}/jarvis-device`;
@@ -358,7 +371,26 @@
       if (m.text) addLine('jarvis', m.text);
       if (m.images) addImages(m.images);
       if (m.approval && m.approval.id) addApproval(m.approval);
-      if (p && p.voice && m.text) speak(m.text, m.audio);
+      if (p && p.voice && m.text) {
+        if (m.audioPending) {
+          dropAwaitingAudio();
+          const timer = setTimeout(() => {
+            awaitingAudio.delete(m.id);
+            speak(m.text, null);
+          }, 27000);
+          awaitingAudio.set(m.id, { text: m.text, timer });
+        } else {
+          speak(m.text, m.audio);
+        }
+      }
+      return;
+    }
+    if (m.type === 'reply_audio') {
+      const w = awaitingAudio.get(m.id);
+      if (!w) return; // já falou com a voz do iPhone ou você cortou
+      awaitingAudio.delete(m.id);
+      clearTimeout(w.timer);
+      speak(w.text, m.audio || null);
       return;
     }
     if (m.type === 'error') {
@@ -393,6 +425,7 @@
     addLine('me', echo || t);
     pending.set(id, { voice: false });
     stopSpeaking();
+    dropAwaitingAudio();
     busy = 'thinking';
     paint();
   }
@@ -405,6 +438,7 @@
   async function startRec() {
     if (rec || conn !== 'online') return;
     stopSpeaking();
+    dropAwaitingAudio(); // falou por cima: a voz atrasada da resposta anterior não toca mais
     unlockAudio();
     let stream;
     try {

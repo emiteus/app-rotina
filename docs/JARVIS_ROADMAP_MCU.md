@@ -131,7 +131,7 @@ Cuidados que valem pra fase inteira:
 |---|---------|
 | 5.1 | Proatividade por voz: "deploy do CineRush falhou", "vence o DAS amanhã" falado no PC (horário silencioso respeitado) |
 | 5.2 | Briefing do dia falado ao ligar o PC (agenda, finanças, ops, redes) |
-| 5.3 | Personalidade e voz consistentes em todos os canais |
+| 5.3 | 🟡 0.9.98 · Personalidade e voz consistentes em todos os canais: PC e celular já falam com a voz do WhatsApp (Charon); falta avisos/briefing falados também nela e a voz final |
 | 5.4 | ✅ 0.9.93 · Contexto do que está na tela sob pedido ("Jarvis, o que tá errado aqui?") usando vision v2 |
 | 5.5 | ✅ 0.9.96 · Celular como segundo dispositivo (mesmo pareamento da Fase 2): página instalada no iPhone, "segure pra falar", avisos por notificação |
 
