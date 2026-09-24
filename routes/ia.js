@@ -2741,17 +2741,36 @@ Regras:
     let texto;
     let usage;
     let provider;
-    try {
-      ({ texto, usage, provider } = await chamarIA({
+    // PC e áudio: resposta rápida pesa mais que "pensar" (medido: +1–2 s e picos)
+    const fastTurn = channelKey === 'desktop' || /^\[Áudio transcrito\]/.test(String(mensagem || ''));
+    const chamarDecisao = (fast) =>
+      chamarIA({
         system: systemPrompt,
         user: mensagem,
         historico: historicoSafe,
         maxTokens: 2200,
         jsonMode: true,
         timeout: 28000,
-        // PC e áudio: resposta rápida pesa mais que "pensar" (medido: +1–2 s e picos)
-        fast: channelKey === 'desktop' || /^\[Áudio transcrito\]/.test(String(mensagem || ''))
-      }));
+        fast
+      });
+    try {
+      ({ texto, usage, provider } = await chamarDecisao(fastTurn));
+      // Modelo rápido às vezes só conversa (ou repete o histórico) num pedido de ação:
+      // "tocar vidigal" voltou sem acoes e com o erro antigo copiado. Aí refaz com o forte.
+      if (fastTurn) {
+        let p0 = null;
+        try { p0 = parseJSON(texto); } catch (_) { p0 = null; }
+        const semAcao = !((p0 && p0.acoes) || []).length && !extrairAcoesDeFunctionCalls(texto).length;
+        const { looksLikeCommand } = require('../lib/jarvis/context/intent');
+        if (semAcao && looksLikeCommand(mensagem)) {
+          console.log(JSON.stringify({ tag: 'jarvis.turn', event: 'fast_retry', reason: 'command_without_action', userId: uid }));
+          try {
+            ({ texto, usage, provider } = await chamarDecisao(false));
+          } catch (e) {
+            console.error('[jarvis.turn] fast_retry falhou:', e.message);
+          }
+        }
+      }
     } catch (errGemini) {
       const fallback = inferirAcoesDaMensagem(mensagem, snap, []);
       if (fallback.length) {
