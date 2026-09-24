@@ -567,6 +567,14 @@ sched('*/30 * * * *', runCron('jarvis-ops-watch', async () => {
   await runOpsWatchNotify(uid);
 }));
 
+// Resumo do Jarvis aquecido enquanto o PC/celular dele está conectado (a fala responde sem esperar ~9 s)
+sched('2-59/5 * * * *', runCron('jarvis-warm', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
+  if (!require('./lib/jarvis/devices/gateway').onlineDeviceIds(uid).length) return;
+  await iaRouter.warmAssistSnap(uid);
+}));
+
 // VPS/WhatsApp/CineRush no ar? a cada 5min (24/09: VPS suspensa por pagamento e ninguém viu por 13h)
 sched('*/5 * * * *', runCron('jarvis-uptime-watch', async () => {
   const uid = await jarvisOwnerUserId();

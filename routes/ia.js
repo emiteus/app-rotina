@@ -2984,3 +2984,6 @@ router.post('/chat', async (req, res) => {
 
 module.exports = router;
 module.exports.processarChat = processarChat;
+// Mantém o resumo do Jarvis aquecido (cron com o PC/celular online): a fala não espera os ~9 s de montagem
+module.exports.warmAssistSnap = (uid) =>
+  getCachedAssistSnap(uid, () => snapshotAssistente({ lite: true, userId: uid }));
