@@ -87,6 +87,21 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Mudou algo pelo app (pagou conta, concluiu tarefa…): o resumo do Jarvis é refeito na próxima fala.
+// (O Jarvis agora responde com o resumo em cache de até 10 min pra não esperar ~9 s a cada fala.)
+app.use((req, res, next) => {
+  if (req.method !== 'GET' && req.path.startsWith('/api/') && req.session?.userId) {
+    const uid = req.session.userId;
+    res.on('finish', () => {
+      if (res.statusCode >= 400) return;
+      try {
+        require('./lib/jarvis/snapshot-cache').invalidateAssistCache(uid);
+      } catch (_) { /* sem Jarvis carregado */ }
+    });
+  }
+  next();
+});
+
 // Rotas publicas
 app.use('/api/auth', authRouter);
 // Pareamento do Jarvis Desktop (código de uso único → token do aparelho)

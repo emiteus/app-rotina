@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.99  
+**Version:** 0.10.0  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.0**: fala mais rápida: o snapshot do turno levava ~9 s pra montar e valia só 20 s, então quase toda fala esperava. Agora cache velho-mas-útil (`snapshot-cache.js`): passado o TTL e até 10 min (`JARVIS_SNAPSHOT_STALE_MS`), responde na hora e atualiza por trás (1 carga por vez, geração por chave: invalidação no meio da carga não guarda valor velho). Tool que muda dado invalida (já era); agora qualquer POST/PUT/DELETE do App Rotina também (`server.js`). `scripts/smoke-snapshot-cache.js`
 - **0.9.99**: avisos falados no PC (deploy, DAS, VPS…) também na voz do Jarvis: `notify` com `voiceFollows`; quando o PC confirma que vai falar (`notify_ack spoken`), o servidor gera a voz e manda `reply_audio` com o id do aviso; PC espera até 20 s (senão voz local); se você começou a falar com ele nesse meio tempo, o aviso vira só texto. Teste novo `desktop/test/reply-audio.test.js`
 - **0.9.98**: **5.3 (parte 1)**: PC e celular falam com a mesma voz do WhatsApp (Gemini "Charon"; OpenAI na frente se voltar a ter crédito). Texto sai na hora com `audioPending`; a voz vem depois em `reply_audio` (gerada fora da fila, prazo 25 s, `JARVIS_DESKTOP_TTS_MS`); sem ela a tempo, voz local. Falar por cima descarta a voz atrasada. Celular: um tocador destravado no 1º toque (iOS bloqueia som fora do toque). Gemini TTS 3.8 testado em 24/09: 503/timeout, fica o 2.5
 - **0.9.97**: vigia de "está no ar?" (`src/ops/uptime-watch.js`, cron 5 min no host): testa Evolution (WhatsApp) e cinerush.app; 2 falhas seguidas = aviso por voz no PC ou notificação no celular (o WhatsApp pode ser o que caiu), VPS inteira = 1 aviso, lembra a cada 3 h, avisa quando volta. Motivo: 24/09 a Hetzner suspendeu a VPS por pagamento pendente (cartão pedia confirmação) às 04:00 e ninguém soube até a tarde. Desktop: vigia (`desktop/src/supervisor.js`) reabre o app se cair (queda com código 4 às 04:35 do mesmo dia); "Sair" da bandeja encerra de verdade; log registra quedas
