@@ -551,6 +551,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     );
     const diagnoseOk = finOk.find((a) => a.tipo === 'dev_diagnose' && a.texto);
     const readFileOk = finOk.find((a) => a.tipo === 'dev_read_file' && (a.texto || a.content));
+    // Olhar a tela: a resposta é o que a visão viu (o texto do modelo não viu a tela)
+    const screenOk = finOk.find((a) => a.tipo === 'pc_screen_look' && a.texto);
     const redeployOk = finOk.find((a) => a.tipo === 'dev_railway_redeploy' && a.texto);
     const restartOk = finOk.find((a) => a.tipo === 'dev_railway_restart' && a.texto);
     const searchHits = finOk
@@ -560,7 +562,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
       (finOk.find((a) => a.tipo === 'research_web_search' && a.query) || {}).query ||
       null;
     let out;
-    if (reportOk) {
+    if (screenOk) {
+      out = String(screenOk.texto).trim();
+    } else if (reportOk) {
       out = wrapExternalContent(String(reportOk.texto).trim(), { source: 'research' });
     } else if (landingCopyOk) {
       const dump = String(landingCopyOk.texto).trim();
@@ -2752,11 +2756,18 @@ Regras:
         timeout: 28000,
         fast
       });
+    // Fase 5.4: pergunta sobre a tela no PC vai direto pra "olhar a tela", sem esperar o modelo decidir
+    // (com "Ei, Jarvis" na frente ele tratava como cumprimento e pedia o print)
+    const { looksLikeScreenQuestion } = require('../lib/jarvis/context/intent');
+    const screenDireto = channelKey === 'desktop' && looksLikeScreenQuestion(mensagem);
     try {
-      ({ texto, usage, provider } = await chamarDecisao(fastTurn));
+      if (screenDireto) {
+        texto = JSON.stringify({ resposta: '', acoes: [] });
+        provider = 'screen-direct';
+      } else ({ texto, usage, provider } = await chamarDecisao(fastTurn));
       // Modelo rápido às vezes só conversa (ou repete o histórico) num pedido de ação:
       // "tocar vidigal" voltou sem acoes e com o erro antigo copiado. Aí refaz com o forte.
-      if (fastTurn) {
+      if (fastTurn && !screenDireto) {
         let p0 = null;
         try { p0 = parseJSON(texto); } catch (_) { p0 = null; }
         const semAcao = !((p0 && p0.acoes) || []).length && !extrairAcoesDeFunctionCalls(texto).length;
@@ -2794,6 +2805,9 @@ Regras:
     ];
     const respostaBruta = textoAssistenteSeguro(texto, parsed);
     let acoesMerged = inferirAcoesDaMensagem(mensagem, snap, baseAcoes);
+    if (screenDireto && !acoesMerged.some((a) => a && (a.tipo === 'pc_screen_look' || a.tipo === 'pc_screenshot'))) {
+      acoesMerged.push({ tipo: 'pc_screen_look', pergunta: String(mensagem).slice(0, 500) });
+    }
     // Cinto: cumprimento nunca executa mutação financeira
     if (looksLikeGreeting(mensagem)) {
       const block = new Set([

@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.93  
+**Version:** 0.9.94  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.94**: pergunta sobre a tela no PC ("Ei, Jarvis. Que tá errado aqui?") vai direto pra `pc_screen_look` sem o modelo decidir (`intent.looksLikeScreenQuestion`): com "Ei, Jarvis" na frente o modelo tratava como cumprimento e pedia o print; a resposta é só o que a visão viu. Mais rápido (sem a volta do modelo)
 - **0.9.93**: **Fase 5.4 MCU**: "Jarvis, o que tá errado aqui?" (voz ou chat) → tool `pc_screen_look` (medium, owner): o PC manda o print da tela onde está o mouse, o servidor responde a pergunta com visão Gemini 3.5-flash (reserva flash-lite aos 8 s) em até 5 frases faláveis, isolado como CONTEÚDO EXTERNO; o print não entra na conversa. `src/multimodal/screen-look.js`, `scripts/smoke-screen-look.js`; teste real: 3 s, ignorou instrução escrita na tela
 - **0.9.92**: **Fase 5.1–5.2 MCU**: avisos falados no PC (`gateway.speakToUser` + `notify_ack`): deploy falhou/Editor/Havok/Attracione e lembretes do app (DAS, orçamento, gastos, resumo 20h) — com você no PC (mexeu há < 5 min), fora do silêncio 23:00–07:30, o PC dá o bipe e fala, e o WhatsApp fica de fora; senão WhatsApp como sempre. Cada aviso ganhou versão falada (`speech`) e o WhatsApp também usa frase de gente. Briefing do dia: 1x, na primeira vez que você usa o PC a partir das 5h (pula jogo em tela cheia), pedido `briefing` no gateway com os avisos do sistema. Desktop: `src/proactive.js` (regras testadas), "Avisos e briefing por voz" na bandeja
 - **0.9.91**: pedido de SIM só com a pergunta ("Posso apagar a transação (Mercado)?"), sem instrução nem código — Mateus: poluía o WhatsApp. Continua pedindo SIM do mesmo jeito
