@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.1  
+**Version:** 0.10.2  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.2**: briefing não refaz com o modelo forte ("ao ligar o PC" casava com "liga" no `looksLikeCommand` e custava +10 s; guarda em `routes/ia.js`)
 - **0.10.1**: resumo aquecido: cron `jarvis-warm` (host, a cada 5 min) chama `iaRouter.warmAssistSnap` só com PC/celular do Jarvis conectado, então nem a primeira fala depois de um tempo parado espera a montagem
 - **0.10.0**: fala mais rápida: o snapshot do turno levava ~9 s pra montar e valia só 20 s, então quase toda fala esperava. Agora cache velho-mas-útil (`snapshot-cache.js`): passado o TTL e até 10 min (`JARVIS_SNAPSHOT_STALE_MS`), responde na hora e atualiza por trás (1 carga por vez, geração por chave: invalidação no meio da carga não guarda valor velho). Tool que muda dado invalida (já era); agora qualquer POST/PUT/DELETE do App Rotina também (`server.js`). `scripts/smoke-snapshot-cache.js`
 - **0.9.99**: avisos falados no PC (deploy, DAS, VPS…) também na voz do Jarvis: `notify` com `voiceFollows`; quando o PC confirma que vai falar (`notify_ack spoken`), o servidor gera a voz e manda `reply_audio` com o id do aviso; PC espera até 20 s (senão voz local); se você começou a falar com ele nesse meio tempo, o aviso vira só texto. Teste novo `desktop/test/reply-audio.test.js`

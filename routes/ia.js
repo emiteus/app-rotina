@@ -2772,7 +2772,9 @@ Regras:
         try { p0 = parseJSON(texto); } catch (_) { p0 = null; }
         const semAcao = !((p0 && p0.acoes) || []).length && !extrairAcoesDeFunctionCalls(texto).length;
         const { looksLikeCommand } = require('../lib/jarvis/context/intent');
-        if (semAcao && looksLikeCommand(mensagem)) {
+        // Briefing é só leitura ("ao ligar o PC" casava com "liga" e refazia com o modelo forte: +10 s)
+        const isBriefing = /^\[Briefing pedido/.test(String(mensagem || ''));
+        if (semAcao && !isBriefing && looksLikeCommand(mensagem)) {
           console.log(JSON.stringify({ tag: 'jarvis.turn', event: 'fast_retry', reason: 'command_without_action', userId: uid }));
           try {
             ({ texto, usage, provider } = await chamarDecisao(false));
