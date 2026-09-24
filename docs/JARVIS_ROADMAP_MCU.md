@@ -132,7 +132,7 @@ Cuidados que valem pra fase inteira:
 | 5.1 | Proatividade por voz: "deploy do CineRush falhou", "vence o DAS amanhã" falado no PC (horário silencioso respeitado) |
 | 5.2 | Briefing do dia falado ao ligar o PC (agenda, finanças, ops, redes) |
 | 5.3 | Personalidade e voz consistentes em todos os canais |
-| 5.4 | Contexto do que está na tela sob pedido ("Jarvis, o que tá errado aqui?") usando vision v2 |
+| 5.4 | ✅ 0.9.93 · Contexto do que está na tela sob pedido ("Jarvis, o que tá errado aqui?") usando vision v2 |
 | 5.5 | Celular como segundo dispositivo (mesmo pareamento da Fase 2) |
 
 ---
