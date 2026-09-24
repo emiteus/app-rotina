@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.91  
+**Version:** 0.9.92  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.92**: **Fase 5.1–5.2 MCU**: avisos falados no PC (`gateway.speakToUser` + `notify_ack`): deploy falhou/Editor/Havok/Attracione e lembretes do app (DAS, orçamento, gastos, resumo 20h) — com você no PC (mexeu há < 5 min), fora do silêncio 23:00–07:30, o PC dá o bipe e fala, e o WhatsApp fica de fora; senão WhatsApp como sempre. Cada aviso ganhou versão falada (`speech`) e o WhatsApp também usa frase de gente. Briefing do dia: 1x, na primeira vez que você usa o PC a partir das 5h (pula jogo em tela cheia), pedido `briefing` no gateway com os avisos do sistema. Desktop: `src/proactive.js` (regras testadas), "Avisos e briefing por voz" na bandeja
 - **0.9.91**: pedido de SIM só com a pergunta ("Posso apagar a transação (Mercado)?"), sem instrução nem código — Mateus: poluía o WhatsApp. Continua pedindo SIM do mesmo jeito
 - **0.9.90**: conversa de gente (Mateus, print "Não consegui **cinerush_editor_job_status**: job_id ou batch_id obrigatório"): `src/nl/humanize.js` com nome em português pra todos os 101 comandos, erro técnico → motivo humano (faltou dado → pergunta; offline/timeout/401/erro em inglês/lista de opções → frase), filtro final `humanizeReply` em toda resposta (core.runJarvisTurn) e no histórico; pedido de SIM em português ("Posso apagar a transação (Mercado)?"); prompt proíbe nome de comando/campo/JSON; app do PC mostra "Toquei no Spotify." / "Não deu pra abrir o site."
 - **0.9.89**: redes com calma (Instagram deu 429 no 1º teste real com chamadas diretas à API): freio `desktop/src/social/limits.js` gravado em disco (30 páginas/dia por rede, 429 → pausa 6 h, verificação/challenge → 24 h, a maior vale), 45 s entre páginas, cache 15 min, bloqueio não entra no cache. Instagram agora abre o perfil/post como pessoa e lê o que a própria página carregou (captura via debugger, `igPostsFromCapture`/`igCommentsFromCapture`); nome da conta = 1 chamada guardada. Pegadinha: Network.enable trava em janela que nunca navegou → about:blank antes. Tempos: soc_* 130 s, resumo 280 s, Desktop espera 320 s

@@ -112,7 +112,25 @@ const iaRouter = require('./routes/ia');
 const rankingRouter = require('./routes/ranking');
 const whatsappEvolutionRouter = require('./routes/whatsapp-evolution');
 const { garantirRecorrentesHabitosTodos } = require('./lib/habitos');
-const { enviarPush } = require('./lib/push');
+const { enviarPush: enviarPushCelular } = require('./lib/push');
+
+/**
+ * Lembrete do app (DAS, orçamento, gastos, resumo): notificação no celular como sempre e, com o
+ * Jarvis Desktop aberto e você no PC, ele também fala (Fase 5.1 MCU). voz:false = só celular.
+ */
+async function enviarPush(titulo, mensagem, url, { voz = true } = {}) {
+  const r = await enviarPushCelular(titulo, mensagem, url);
+  if (voz && process.env.JARVIS_VOICE_ALERTS !== '0') {
+    (async () => {
+      const uid = await jarvisOwnerUserId();
+      if (!uid) return;
+      const t = String(titulo || '').replace(/[^\p{L}\p{N}\s.,!?$%:-]/gu, '').trim();
+      const speech = `${t ? `${t}. ` : ''}${String(mensagem || '')}`.slice(0, 400);
+      await require('./lib/jarvis/devices/gateway').speakToUser(uid, { text: speech, speech, kind: 'lembrete' });
+    })().catch((e) => console.error('[push] voz no PC:', e.message));
+  }
+  return r;
+}
 const { TZ, hojeStr, ymAtual, diaDoMes, diaSemana, ymdDe, dataResetSql, horaAtual, addDias } = require('./lib/datas');
 const { persistirHistoricoDia, backfillHistoricoTodos } = require('./lib/historico');
 
@@ -209,7 +227,7 @@ function runCron(nome, fn) {
       console.error(`[cron:${nome}] falhou:`, err && err.stack || err);
       const msg = `⚠️ Cron "${nome}" falhou: ${(err && err.message) || err}`;
       try { enviarTelegram(msg); } catch (e) {}
-      try { await enviarPush('⚠️ Falha em cron', `${nome}: ${(err && err.message) || err}`.slice(0, 120), '/'); } catch (e) {}
+      try { await enviarPush('⚠️ Falha em cron', `${nome}: ${(err && err.message) || err}`.slice(0, 120), '/', { voz: false }); } catch (e) {}
     }
   };
 }
@@ -527,7 +545,7 @@ sched('0 */3 * * *', runCron('jarvis-proactive', async () => {
     notifyWarnNotes
   } = require('./lib/jarvis/events/bus');
   const notes = await runProactiveSweep(uid);
-  await notifyWarnNotes(notes, { source: 'sweep' });
+  await notifyWarnNotes(notes, { source: 'sweep', userId: uid });
 }));
 
 // Enviar mensagem Telegram

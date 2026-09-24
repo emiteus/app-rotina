@@ -125,6 +125,8 @@ Cuidados que valem pra fase inteira:
 
 ## Fase 5 · Polimento MCU
 
+**5.1 e 5.2 ✅ 0.9.92:** avisos falados no PC (você no PC → fala e não vai pro WhatsApp; longe/silêncio → WhatsApp) e briefing do dia na primeira vez que você usa o PC.
+
 | # | Entrega |
 |---|---------|
 | 5.1 | Proatividade por voz: "deploy do CineRush falhou", "vence o DAS amanhã" falado no PC (horário silencioso respeitado) |
