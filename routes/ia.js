@@ -2746,7 +2746,14 @@ Regras:
     let usage;
     let provider;
     // PC e áudio: resposta rápida pesa mais que "pensar" (medido: +1–2 s e picos)
-    const fastTurn = channelKey === 'desktop' || channelKey === 'phone' || /^\[Áudio transcrito\]/.test(String(mensagem || ''));
+    // WhatsApp: mensagem curta e direta também vai no rápido (8–13 s no forte, medido 24/09/2026);
+    // análise/pedido longo continua no forte. Comando sem ação no rápido já refaz no forte (abaixo).
+    const msgTxt = String(mensagem || '');
+    const waCurta =
+      channelKey === 'whatsapp' &&
+      msgTxt.length <= 140 &&
+      !/(analis|compar|por\s*qu|explic|planej|estrat|relat[oó]rio|resum|diagnost|revis|pesquis|escrev|redij|crie\s+um|cria\s+um|projeto)/i.test(msgTxt);
+    const fastTurn = channelKey === 'desktop' || channelKey === 'phone' || waCurta || /^\[Áudio transcrito\]/.test(msgTxt);
     const chamarDecisao = (fast) =>
       chamarIA({
         system: systemPrompt,
