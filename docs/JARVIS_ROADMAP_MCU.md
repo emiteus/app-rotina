@@ -137,6 +137,16 @@ Cuidados que valem pra fase inteira:
 
 ---
 
+## Fase 6 · Pedidos reais que ainda faltam (do histórico de 19–24/09)
+
+| # | Entrega | Estado |
+|---|---------|--------|
+| 6.1 | CineRush Editor de verdade: jobs com erro, fila por usuário (ex.: reprocessamento do Erik), posts agendados, estatística do dia | em andamento |
+| 6.2 | Editar imagem: remover fundo e devolver PNG; ajustar a última imagem gerada ("tira o contorno dos escudos") sem pedir o print de novo | planejado (futuro) |
+| 6.3 | Fechar uma aba do navegador pelo nome | ✅ 0.10.10 |
+
+---
+
 ## Princípios
 
 1. **Evoluir, não reescrever.** Core, tools, HITL e memória atuais são a base de tudo.

@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.9  
+**Version:** 0.10.10  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.10**: `pc_close_tab` ("fecha a aba do YouTube"): Ctrl+Tab lendo o título até achar, Ctrl+W; para se o navegador sair da frente (nunca fecha em outro app); DLL nativa v2. Spotify: desconectar guarda o Client ID (reconectar = 1 clique). Fase 6 no roadmap MCU (CineRush Editor, edição de imagem)
 - **0.10.9**: correções a partir do histórico real (203 conversas, 19–24/09): apps Cursor, Opera GX, Steam e CS2 no PC; Spotify toca suas curtidas e suas mais ouvidas (`tipo_busca` curtidas/mais_ouvidas, escopos novos → reconectar na bandeja); "abre X no meu PC" não vai mais pro navegador do servidor; texto longo que cita "página de vendas" não vira missão de landing; "status da fila" do Editor responde com a fila geral (antes pedia job_id); tool nova `criar_recorrente` ("todo dia faço prancha" virava evento e falhava); prompt: nunca inventar fato nem anunciar resultado de ação que a tool não confirmou
 - **0.10.8**: OpenAI pronta como reserva (falta só crédito): ouvir = Whisper na 3ª vaga da corrida (~4 s) se o Google não ouvir; voz = Charon (Gemini) primeiro e OpenAI só se o Google falhar (`JARVIS_TTS_ORDER`, antes era o contrário). Sem crédito/429, `openai-health.js` pula a OpenAI por 10 min (voz e ouvir). `scripts/smoke-openai-backup.js`
 - **0.10.7**: Google instável (24/09 ~19h: 3.5-flash-lite levava 18 s pra ouvir, flash-latest 503): reserva em modelos DIFERENTES na voz (3.5-flash-lite → flash-lite-latest → 3.5-flash → flash-latest, a cada 2 s, 15 s cada) e no modelo rápido de conversa (antes 2 cópias do mesmo modelo, que travavam juntas). Se os 4 falham, a voz desiste na hora ("não entendi") em vez de repetir um por um (travava ~60 s)

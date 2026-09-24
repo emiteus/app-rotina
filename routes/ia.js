@@ -226,7 +226,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'browser_click', 'browser_type', 'browser_snapshot',
     'creative_generate_image', 'creative_landing_copy',
     'research_web_search', 'research_fetch_url', 'research_write_report',
-    'pc_status', 'pc_volume', 'pc_media', 'pc_open_app', 'pc_close_app', 'pc_lock', 'pc_screenshot', 'pc_screen_look',
+    'pc_status', 'pc_volume', 'pc_media', 'pc_open_app', 'pc_close_app', 'pc_lock', 'pc_screenshot', 'pc_screen_look', 'pc_close_tab',
     'pc_spotify_play', 'pc_spotify_now', 'pc_youtube_play', 'pc_open_url',
     'pc_files_list', 'pc_files_search', 'pc_files_read', 'pc_open_path',
     'tv_status', 'tv_power', 'tv_volume', 'tv_media', 'tv_key', 'tv_open_app', 'tv_input', 'tv_notify', 'tv_pair',
@@ -2725,6 +2725,7 @@ Regras:
 - Outline de landing (hero/CTA/seções): creative_landing_copy com project=id (cutflix, cinerush, …).
 - Página/URL: browser_open (snapshot) ou browser_links. Allowlist RESEARCH_FETCH_*.
 - PC do usuário (Jarvis Desktop): volume/música/abrir ou fechar app/bloquear tela/print → pc_*. Só apps da lista da tool; fora dela, diga que não está liberado. Print da tela só se ele pedir.
+- "Fecha a aba do YouTube / do Gmail" → pc_close_tab (aba = YouTube). Fechar o navegador inteiro é pc_close_app.
 - Tela do PC: "o que tá errado aqui?", "que erro é esse?", "lê isso pra mim", "o que é isso na tela?", "me ajuda com isso aqui" → pc_screen_look com pergunta = o que ele quer saber (não é pc_screenshot: ele quer a resposta, não a imagem). Nunca invente o que está na tela.
 - "Toca X" / "coloca X no Spotify" → pc_spotify_play (busca = X; tipo_busca=artista se for só o nome do artista). "Toca minhas curtidas / minhas favoritas / Liked Songs" → pc_spotify_play tipo_busca=curtidas (sem busca). "Toca minhas mais ouvidas / o que eu mais escuto" → tipo_busca=mais_ouvidas (sem busca). "O que tá tocando?" → pc_spotify_now. "Toca X no YouTube" → pc_youtube_play. "Abre o YouTube/Gmail/site" → pc_open_url (site ou url). Pausar/próxima continua pc_media.
 - Arquivos do PC (só leitura: Área de Trabalho, Documentos, Downloads, Imagens, Vídeos, Projetos): "o que tem na pasta X" → pc_files_list; "acha o arquivo Y" → pc_files_search; "lê/verifica o arquivo Z" → pc_files_read. SEMPRE passe pergunta = o que ele quer saber. "Abre a pasta/arquivo" → pc_open_path. Nunca invente conteúdo de arquivo.
