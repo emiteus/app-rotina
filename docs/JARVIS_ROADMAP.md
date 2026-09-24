@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.98  
+**Version:** 0.9.99  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.99**: avisos falados no PC (deploy, DAS, VPS…) também na voz do Jarvis: `notify` com `voiceFollows`; quando o PC confirma que vai falar (`notify_ack spoken`), o servidor gera a voz e manda `reply_audio` com o id do aviso; PC espera até 20 s (senão voz local); se você começou a falar com ele nesse meio tempo, o aviso vira só texto. Teste novo `desktop/test/reply-audio.test.js`
 - **0.9.98**: **5.3 (parte 1)**: PC e celular falam com a mesma voz do WhatsApp (Gemini "Charon"; OpenAI na frente se voltar a ter crédito). Texto sai na hora com `audioPending`; a voz vem depois em `reply_audio` (gerada fora da fila, prazo 25 s, `JARVIS_DESKTOP_TTS_MS`); sem ela a tempo, voz local. Falar por cima descarta a voz atrasada. Celular: um tocador destravado no 1º toque (iOS bloqueia som fora do toque). Gemini TTS 3.8 testado em 24/09: 503/timeout, fica o 2.5
 - **0.9.97**: vigia de "está no ar?" (`src/ops/uptime-watch.js`, cron 5 min no host): testa Evolution (WhatsApp) e cinerush.app; 2 falhas seguidas = aviso por voz no PC ou notificação no celular (o WhatsApp pode ser o que caiu), VPS inteira = 1 aviso, lembra a cada 3 h, avisa quando volta. Motivo: 24/09 a Hetzner suspendeu a VPS por pagamento pendente (cartão pedia confirmação) às 04:00 e ninguém soube até a tarde. Desktop: vigia (`desktop/src/supervisor.js`) reabre o app se cair (queda com código 4 às 04:35 do mesmo dia); "Sair" da bandeja encerra de verdade; log registra quedas
 - **0.9.96**: **Fase 5.5 MCU**: Jarvis no celular (iPhone), página instalável em `/jarvis/` (fonte em `phone/`, `sync:host` copia pra `public/jarvis`). "parear celular" no WhatsApp → código + link; a página pareia com `kind: 'phone'` e conecta no mesmo `/jarvis-device` com o token como **subprotocolo** (navegador não manda header; na URL iria pra log). Celular: conversa por texto ou "segure pra falar" (WAV 16 kHz montado no navegador), responde falando (voz do iPhone), cartão de aprovação, canal `phone` (HITL, modelo rápido). Nunca recebe tool nem aviso falado (`requestTool`/`speakToUser` só PC). Avisos: longe do PC → Web Push no celular (`src/devices/phone-push.js`, só endpoint de push oficial, 404/410 apaga a inscrição) no lugar do WhatsApp; sem celular, WhatsApp como antes. Página trancada: CSP sem inline, conexão só com o próprio servidor, sem iframe. iOS: viewport simples, sem safe-area (regra do App Rotina)
