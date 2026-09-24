@@ -238,10 +238,10 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
 
   function askHitl() {
     if (!pending.length) return '';
-    const id = pending[0].approval_id;
+    // Só a pergunta curta (Mateus já sabe responder SIM/NÃO; a instrução poluía o WhatsApp)
     const { label } = require('../lib/jarvis/nl/humanize');
     const oque = [...new Set(pending.map((p) => label(p.tipo)))].join(' e ');
-    return `⚠️ Posso ${oque}?\nResponde **SIM** pra confirmar ou **NÃO** pra cancelar. _(pedido ${id})_`;
+    return `Posso ${oque}?`;
   }
 
   function narrarOks(finOkList) {
