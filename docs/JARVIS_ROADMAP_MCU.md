@@ -103,6 +103,8 @@ Fechadura, alarme, portão e câmera = critical (SIM sempre). Luz, tomada, TV = 
 
 ## Fase 4 · Redes sociais pelo PC
 
+**4.1–4.2 ✅ 0.9.86 (código; falta o Mateus logar):** Instagram, TikTok, X e YouTube só leitura. 4.3 (escrever) é a próxima.
+
 Em vez de API oficial (Meta travou `content_publish`), o Jarvis usa **o navegador do próprio PC com as contas já logadas**, só quando você pedir.
 
 | # | Entrega | Aceite |

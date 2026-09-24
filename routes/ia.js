@@ -232,7 +232,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'pc_status', 'pc_volume', 'pc_media', 'pc_open_app', 'pc_close_app', 'pc_lock', 'pc_screenshot',
     'pc_spotify_play', 'pc_spotify_now', 'pc_youtube_play', 'pc_open_url',
     'pc_files_list', 'pc_files_search', 'pc_files_read', 'pc_open_path',
-    'tv_status', 'tv_power', 'tv_volume', 'tv_media', 'tv_key', 'tv_open_app', 'tv_input', 'tv_notify', 'tv_pair'
+    'tv_status', 'tv_power', 'tv_volume', 'tv_media', 'tv_key', 'tv_open_app', 'tv_input', 'tv_notify', 'tv_pair',
+    'soc_status', 'soc_login', 'soc_posts', 'soc_comments', 'soc_inbox', 'soc_summary'
   ]);
   const finOk = oks.filter(a => acaoTipos.has(a.tipo));
   const claim = respostaClaimMutacao(resposta);
@@ -505,7 +506,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
             ? `Cutflix API **ON**${a.status ? ` (${a.status})` : ''}.`
             : `Cutflix **off**${a.erro || a.motivo ? `: ${a.erro || a.motivo}` : ''}.`
         );
-      } else if (String(a.tipo).startsWith('pc_') || String(a.tipo).startsWith('tv_')) {
+      } else if (/^(pc|tv|soc)_/.test(String(a.tipo))) {
         // Tools do PC/TV já voltam com a frase pronta ("Aumentei o volume do PC.")
         if (a.texto) partes.push(String(a.texto));
       } else if (a.tipo === 'projeto_milhao_fechamento') {
@@ -2716,6 +2717,7 @@ Regras:
 - PC do usuário (Jarvis Desktop): volume/música/abrir ou fechar app/bloquear tela/print → pc_*. Só apps da lista da tool; fora dela, diga que não está liberado. Print da tela só se ele pedir.
 - "Toca X" / "coloca X no Spotify" → pc_spotify_play (busca = X; tipo_busca=artista se for só o nome do artista). "O que tá tocando?" → pc_spotify_now. "Toca X no YouTube" → pc_youtube_play. "Abre o YouTube/Gmail/site" → pc_open_url (site ou url). Pausar/próxima continua pc_media.
 - Arquivos do PC (só leitura: Área de Trabalho, Documentos, Downloads, Imagens, Vídeos, Projetos): "o que tem na pasta X" → pc_files_list; "acha o arquivo Y" → pc_files_search; "lê/verifica o arquivo Z" → pc_files_read. SEMPRE passe pergunta = o que ele quer saber. "Abre a pasta/arquivo" → pc_open_path. Nunca invente conteúdo de arquivo.
+- Redes sociais (SÓ LEITURA, Instagram/TikTok/YouTube/X logados no PC): "como foi meu último post/reel", "quantas views no TikTok" → soc_posts; "o que comentaram" → soc_comments; "tenho DM?"/"alguém me marcou no X?" → soc_inbox; "resumo das redes" → soc_summary; "entra no Instagram"/"conecta o TikTok" → soc_login. SEMPRE passe pergunta = o que ele quer saber. Postar, curtir, seguir, responder ou mandar DM AINDA NÃO: diga que por enquanto é só leitura.
 - TV da casa (LG, via Jarvis Desktop): "liga/desliga a TV", "abre a Netflix na TV", "volume da TV", "pausa a TV", "HDMI 2", "volta"/"ok" no controle → tv_*. Se ele disser só "volume"/"pausa" sem citar TV, é o PC (pc_*). "Conecta na TV"/"pareia a TV" → tv_pair.
 - Patch/código: read_file → propose_patch (path+content ou files[]) → apply_local OU github_pr (HITL).
 - Testes: dev_run_tests (script allowlist test/smoke/check/lint) se tiver disco.

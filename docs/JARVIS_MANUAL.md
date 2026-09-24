@@ -67,6 +67,8 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a
 | **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
+**Redes sociais (0.9.86, Fase 4, SÓ LEITURA)**: `soc_status`, `soc_login`, `soc_posts`, `soc_comments`, `soc_inbox`, `soc_summary` = low, ownerOnly. Instagram/TikTok/X pelo Navegador do Jarvis logado no PC (partição própria, cookies cifrados, só domínios das redes); YouTube pela Data API (OAuth youtube.readonly no PC). Comentários/DMs voltam como CONTEÚDO EXTERNO. Escrever (postar/responder/DM) não existe ainda.
+
 **PC 2.7 (0.9.81)**: `pc_spotify_play`, `pc_spotify_now`, `pc_youtube_play`, `pc_open_url`, `pc_files_list`, `pc_files_search`, `pc_files_read` = low; `pc_open_path` = medium. Arquivos só leitura nas pastas pessoais + R:\Projetos (bloqueio de .env/.ssh/chaves/AppData; nunca abre executável). Conteúdo de arquivo volta como CONTEÚDO EXTERNO; resposta sintetizada com `pergunta`. Spotify via Web API + PKCE (Premium), refresh token cifrado no PC.
 
 **TV (0.9.80, Jarvis Desktop → TV LG na rede local)**: `tv_status`, `tv_volume`, `tv_media`, `tv_key`, `tv_open_app`, `tv_input`, `tv_notify`, `tv_pair` = low; `tv_power` = medium. ownerOnly; a chave da TV fica só no PC (cifrada), o PC revalida tool/args e só fala com a TV pareada (certificado conferido).

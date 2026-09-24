@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.85  
+**Version:** 0.9.86  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.86**: **Fase 4.1–4.2 MCU (redes, só leitura)**: tools `soc_status/login/posts/comments/inbox/summary`. Navegador do Jarvis (Electron, partição `persist:jarvis-social`, UA de Chrome, só domínios das redes/SSO, sem downloads/permissões, cookies cifrados via fuse EnableCookieEncryption) com leitores fixos: Instagram pela API interna do site (posts/reels, comentários, DMs), X e TikTok pelo DOM/estado da página; YouTube pela Data API (OAuth app de computador, youtube.readonly, sem search.list). 1 leitura por vez por rede, 12 s de intervalo, cache 3 min. Resposta sintetizada com `pergunta` e conteúdo como CONTEÚDO EXTERNO (`handlers/data-answer.js`, compartilhado com arquivos)
 - **0.9.85**: "Jarvis" em português (J de "já"): modelo inglês pontua 0,16–0,49 (12 vozes pt-BR medidas; negativos 0,00–0,01) → ativação fraca ≥ 0,12 (espera 240 ms pra ver se vira forte) marcada `weak`; servidor só segue se a transcrição tiver o nome (`mentionsJarvis`), senão responde `ignored` em silêncio. Pré-gravação 1,2 s; fala antes da ativação ≥ 900 ms conta como pedido (português ativa no fim da frase). Piso de ruído desce rápido e sobe devagar (a própria voz inflava o piso)
 - **0.9.84**: modo rápido (flash-lite) respondeu "tocar vidigal" sem ação, copiando o erro antigo do histórico → comando (`looksLikeCommand`) sem ação no modo rápido refaz com o 3.5-flash; linhas de falha ("Não consegui…", "No PC: … não rodou") saem do histórico da decisão
 - **0.9.83**: voz mais rápida (medido): turno de PC/áudio em flash-lite sem pensamento com pedido reserva (`src/hedge.js`), ~0,7 s vs 3–10 s no 3.5-flash; STT com reserva escalonada (flash-lite, flash-lite, 3.5-flash) a cada 2 s, mediana 1,5 s vs 3,6–5 s; timeout do 1º continua indo direto pro Anthropic. Spotify: busca sem `market=from_token` (exige user-read-private)
@@ -39,7 +40,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 ## Próximo
 
 - **Fase 3 MCU**: parear a TV LG de verdade (TV ligada) e testar por voz; HA quando chegarem mais aparelhos
-- **Fase 4 MCU**: redes sociais pelo PC
+- **Fase 4.3 MCU**: escrever nas redes (postar/responder/DM) sempre critical com prévia exata + SIM
 
 ## Backlog (só sob pedido)
 
