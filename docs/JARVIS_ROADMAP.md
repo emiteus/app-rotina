@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.9.86  
+**Version:** 0.9.89  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,9 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.9.89**: redes com calma (Instagram deu 429 no 1º teste real com chamadas diretas à API): freio `desktop/src/social/limits.js` gravado em disco (30 páginas/dia por rede, 429 → pausa 6 h, verificação/challenge → 24 h, a maior vale), 45 s entre páginas, cache 15 min, bloqueio não entra no cache. Instagram agora abre o perfil/post como pessoa e lê o que a própria página carregou (captura via debugger, `igPostsFromCapture`/`igCommentsFromCapture`); nome da conta = 1 chamada guardada. Pegadinha: Network.enable trava em janela que nunca navegou → about:blank antes. Tempos: soc_* 130 s, resumo 280 s, Desktop espera 320 s
+- **0.9.88**: Desktop abre com o Windows (chave Run do usuário, nome "Jarvis", direto na bandeja com --hidden; em dev = electron.exe + pasta do app) e interruptor "Abrir com o Windows" na bandeja
+- **0.9.87**: Desktop comia ~48% da CPU do PC (Mateus notou com a Steam): onnxruntime do "Ei Jarvis" no padrão (1 thread por núcleo, girando entre execuções) = 312% de um núcleo e ainda atrasava → 1 thread, sem spinning = 3% (medido); Jarvis inteiro ~1% do PC. Janela por voz não aparece por cima de jogo/app em tela cheia (SHQueryUserNotificationState, `desktop/src/fullscreen.js`); ativação fraca só mostra a janela depois que o servidor confirma
 - **0.9.86**: **Fase 4.1–4.2 MCU (redes, só leitura)**: tools `soc_status/login/posts/comments/inbox/summary`. Navegador do Jarvis (Electron, partição `persist:jarvis-social`, UA de Chrome, só domínios das redes/SSO, sem downloads/permissões, cookies cifrados via fuse EnableCookieEncryption) com leitores fixos: Instagram pela API interna do site (posts/reels, comentários, DMs), X e TikTok pelo DOM/estado da página; YouTube pela Data API (OAuth app de computador, youtube.readonly, sem search.list). 1 leitura por vez por rede, 12 s de intervalo, cache 3 min. Resposta sintetizada com `pergunta` e conteúdo como CONTEÚDO EXTERNO (`handlers/data-answer.js`, compartilhado com arquivos)
 - **0.9.85**: "Jarvis" em português (J de "já"): modelo inglês pontua 0,16–0,49 (12 vozes pt-BR medidas; negativos 0,00–0,01) → ativação fraca ≥ 0,12 (espera 240 ms pra ver se vira forte) marcada `weak`; servidor só segue se a transcrição tiver o nome (`mentionsJarvis`), senão responde `ignored` em silêncio. Pré-gravação 1,2 s; fala antes da ativação ≥ 900 ms conta como pedido (português ativa no fim da frase). Piso de ruído desce rápido e sobe devagar (a própria voz inflava o piso)
 - **0.9.84**: modo rápido (flash-lite) respondeu "tocar vidigal" sem ação, copiando o erro antigo do histórico → comando (`looksLikeCommand`) sem ação no modo rápido refaz com o 3.5-flash; linhas de falha ("Não consegui…", "No PC: … não rodou") saem do histórico da decisão
