@@ -207,7 +207,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'recategorizar', 'criar_categoria', 'renomear_categoria', 'fundir_categorias',
     'confirmar_despesa', 'confirmar_receita', 'criar_receita', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
     'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
-    'criar_despesa', 'criar_tarefa', 'criar_meta', 'marcar_habito',
+    'criar_despesa', 'criar_tarefa', 'criar_recorrente', 'criar_meta', 'marcar_habito',
     'reconciliar_despesas', 'sincronizar_bancos',
     'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email', 'cinerush_criar',
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
@@ -288,6 +288,10 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(a.pago ? `DAS **${a.ym}** marcado como pago.` : `DAS **${a.ym}** desmarcado.`);
       } else if (a.tipo === 'criar_despesa') {
         partes.push(`Despesa **${a.titulo}** registrada.`);
+      } else if (a.tipo === 'criar_recorrente') {
+        const nomes = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+        const quando = !a.dias || a.dias === '0,1,2,3,4,5,6' ? 'todo dia' : String(a.dias).split(',').map((d) => nomes[Number(d)]).join(', ');
+        partes.push(a.ja ? `**${a.titulo}** já estava na rotina (${quando}).` : `Coloquei **${a.titulo}** na rotina: ${quando}.`);
       } else if (a.tipo === 'criar_tarefa') {
         partes.push(`Tarefa **${a.titulo}** criada.`);
       } else if (a.tipo === 'criar_meta') {
@@ -478,7 +482,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           `Enfileirei batch no Editor (**${a.batch_id || '?'}**, ${n} job${n === 1 ? '' : 's'}).`
         );
       } else if (a.tipo === 'cinerush_editor_job_status') {
-        if (a.batch_id) {
+        if (a.fila && a.texto) {
+          partes.push(String(a.texto));
+        } else if (a.batch_id) {
           partes.push(`Consultei batch do Editor **${a.batch_id}**.`);
         } else {
           partes.push(
@@ -2654,6 +2660,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - registrar receita variável → criar_receita
 - "guardei R$Y na meta Z" → depositar_meta
 - "concluí a tarefa X" → concluir_tarefa
+- "todo dia eu faço X" / "toda segunda X" / "X diariamente" → criar_recorrente (NÃO criar_evento, que é compromisso com data)
 - "fui na academia" → marcar_habito
 - criar evento/alarme → criar_evento / criar_alarme
 - lançar entrada/saída manual → criar_transacao
@@ -2707,6 +2714,8 @@ Regras:
 - "resposta" é o texto que o usuário lê — nunca JSON cru.
 - NUNCA emita XML, <function_calls>, <invoke>, tool_call ou "invoke X with" — só JSON {"resposta","acoes"}.
 - NUNCA diga que fez se não emitir a ação em "acoes".
+- NUNCA invente fato que não está no contexto nem veio de uma tool (ex.: "a música mais ouvida do artista X", números, status de sistema): diga que não tem esse dado ou use research_web_search. Na "resposta", não anuncie o resultado da ação ("Tocando…", "Pausei…"): o sistema acrescenta o que a tool realmente fez; escreva só a introdução curta ou nada.
+- "Abre X no meu PC / no computador" → pc_open_url (site) ou pc_open_app (programa), NUNCA browser_open (browser_open lê a página no servidor, não abre nada no PC).
 - Fale como uma pessoa, em português normal: NUNCA escreva na "resposta" nome de ferramenta/comando (ex.: pc_volume, cinerush_editor_job_status), nome de campo técnico (job_id, batch_id), JSON, código de erro ou variável de ambiente. Se faltar uma informação pra agir, pergunte de forma natural ("qual corte você quer que eu veja?").
 - Research: research_web_search → research_write_report. Resposta CURTA (bullets). Fontes/links só se pedirem.
 - ${EXTERNAL_CONTENT_HINT}
@@ -2717,7 +2726,7 @@ Regras:
 - Página/URL: browser_open (snapshot) ou browser_links. Allowlist RESEARCH_FETCH_*.
 - PC do usuário (Jarvis Desktop): volume/música/abrir ou fechar app/bloquear tela/print → pc_*. Só apps da lista da tool; fora dela, diga que não está liberado. Print da tela só se ele pedir.
 - Tela do PC: "o que tá errado aqui?", "que erro é esse?", "lê isso pra mim", "o que é isso na tela?", "me ajuda com isso aqui" → pc_screen_look com pergunta = o que ele quer saber (não é pc_screenshot: ele quer a resposta, não a imagem). Nunca invente o que está na tela.
-- "Toca X" / "coloca X no Spotify" → pc_spotify_play (busca = X; tipo_busca=artista se for só o nome do artista). "O que tá tocando?" → pc_spotify_now. "Toca X no YouTube" → pc_youtube_play. "Abre o YouTube/Gmail/site" → pc_open_url (site ou url). Pausar/próxima continua pc_media.
+- "Toca X" / "coloca X no Spotify" → pc_spotify_play (busca = X; tipo_busca=artista se for só o nome do artista). "Toca minhas curtidas / minhas favoritas / Liked Songs" → pc_spotify_play tipo_busca=curtidas (sem busca). "Toca minhas mais ouvidas / o que eu mais escuto" → tipo_busca=mais_ouvidas (sem busca). "O que tá tocando?" → pc_spotify_now. "Toca X no YouTube" → pc_youtube_play. "Abre o YouTube/Gmail/site" → pc_open_url (site ou url). Pausar/próxima continua pc_media.
 - Arquivos do PC (só leitura: Área de Trabalho, Documentos, Downloads, Imagens, Vídeos, Projetos): "o que tem na pasta X" → pc_files_list; "acha o arquivo Y" → pc_files_search; "lê/verifica o arquivo Z" → pc_files_read. SEMPRE passe pergunta = o que ele quer saber. "Abre a pasta/arquivo" → pc_open_path. Nunca invente conteúdo de arquivo.
 - Redes sociais (SÓ LEITURA, Instagram/TikTok/YouTube/X logados no PC): "como foi meu último post/reel", "quantas views no TikTok" → soc_posts; "o que comentaram" → soc_comments; "tenho DM?"/"alguém me marcou no X?" → soc_inbox; "resumo das redes" → soc_summary; "entra no Instagram"/"conecta o TikTok" → soc_login. SEMPRE passe pergunta = o que ele quer saber. Postar, curtir, seguir, responder ou mandar DM AINDA NÃO: diga que por enquanto é só leitura.
 - TV da casa (LG, via Jarvis Desktop): "liga/desliga a TV", "abre a Netflix na TV", "volume da TV", "pausa a TV", "HDMI 2", "volta"/"ok" no controle → tv_*. Se ele disser só "volume"/"pausa" sem citar TV, é o PC (pc_*). "Conecta na TV"/"pareia a TV" → tv_pair.
