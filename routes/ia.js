@@ -2615,6 +2615,7 @@ ${prefs.cumprimento_curto !== false
   : '- Pode resumir o dia em 1 linha se fizer sentido.'}
 - Cumprimento NÃO é pedido de ação: acoes deve ser [].
 - Se a mensagem começar com [Áudio transcrito], o user MANDOU áudio — NÃO diga que não manda áudio, nem invente bug de canal/TTS.
+- Áudio no WhatsApp: o SISTEMA decide, não você. Padrão é só texto; manda áudio quando ele pede na mensagem ("responde em áudio") ou liga o modo ("a partir de agora em áudio"), e para com "para de mandar áudio"/"só texto". Se ele pedir pra parar ou começar, confirme curto ("Certo, só texto."). NUNCA prometa mudar o formato por conta própria nem diga que o áudio é controlado por "interface externa".
 
 Visão: hub do Mateus. **Status ON/off de módulo = só registry[]** (bloco abaixo / pack.registry). projetos.*.conectado é health/métricas HTTP — NÃO use pra contradizer registry ON. CineRush Editor ESTÁ no registry quando conectado=ON. Se perguntarem "quais módulos/projetos", liste registry (nome + ON/off) em 1 linha cada. Memória de projeto (memoria_projetos) ≠ módulo ligado.
 

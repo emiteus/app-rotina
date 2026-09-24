@@ -236,13 +236,7 @@ async function processPhoneQueue(phone) {
       pendingHitl: !!pendingHitl,
       userId: uid
     });
-    if (wantVoice) {
-      try {
-        require('../lib/jarvis/multimodal/voice-session').touchVoiceSession(uid);
-      } catch {
-        /* ignore */
-      }
-    }
+    // Resposta em áudio não renova o modo áudio (antes renovava e ele nunca acabava)
 
     // Creative: imagem carrega a legenda — texto curto só se não for HITL
     if (imgOk && !pendingHitl) {
