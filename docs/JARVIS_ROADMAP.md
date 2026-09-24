@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.5  
+**Version:** 0.10.6  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.6**: voz Charon com pedido reserva (2ª chamada se a 1ª não chega em 2 s; `JARVIS_TTS_HEDGE_MS`). Medição 24/09 com chaves de produção: modelo rápido ~1,2 s (mediana) x forte ~7,6 s; voz Gemini 3,5–20 s sem reserva, 3,5–7,5 s com reserva
 - **0.10.5**: WhatsApp: mensagem curta (≤140) e direta usa o modelo rápido (antes sempre o forte, 8–13 s); análise/relatório/pedido longo segue no forte; comando sem ação no rápido refaz no forte (já existia)
 - **0.10.4**: WhatsApp só em texto; áudio só quando o Mateus pede ("responde em áudio" = essa resposta; "a partir de agora em áudio" = modo até "para de mandar áudio"/"não precisa de áudio"/"só texto"). Antes: áudio recebido ligava sessão de voz que cada resposta renovava (nunca acabava) e "não precisa enviar áudios" não desligava; o modelo prometia "só texto" sem controlar isso (regra nova no prompt)
 - **0.10.3**: quem vigia o vigia: o app do PC avisa (notificação + voz, fora do silêncio) se o servidor do Jarvis ficar fora 5 min com a internet daqui ok (`proactive.serverWatch`, teste em `proactive.test.js`), e avisa a volta. Vigia de "está no ar?" inclui o site do Attracione (aviso próprio, não entra no "VPS inteira")
