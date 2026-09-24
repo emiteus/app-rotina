@@ -2748,7 +2748,9 @@ Regras:
         historico: historicoSafe,
         maxTokens: 2200,
         jsonMode: true,
-        timeout: 28000
+        timeout: 28000,
+        // PC e áudio: resposta rápida pesa mais que "pensar" (medido: +1–2 s e picos)
+        fast: channelKey === 'desktop' || /^\[Áudio transcrito\]/.test(String(mensagem || ''))
       }));
     } catch (errGemini) {
       const fallback = inferirAcoesDaMensagem(mensagem, snap, []);
