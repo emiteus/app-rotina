@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.6  
+**Version:** 0.10.7  
 **Date:** 2026-09-22
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.7**: Google instável (24/09 ~19h: 3.5-flash-lite levava 18 s pra ouvir, flash-latest 503): reserva em modelos DIFERENTES na voz (3.5-flash-lite → flash-lite-latest → 3.5-flash → flash-latest, a cada 2 s, 15 s cada) e no modelo rápido de conversa (antes 2 cópias do mesmo modelo, que travavam juntas). Se os 4 falham, a voz desiste na hora ("não entendi") em vez de repetir um por um (travava ~60 s)
 - **0.10.6**: voz Charon com pedido reserva (2ª chamada se a 1ª não chega em 2 s; `JARVIS_TTS_HEDGE_MS`). Medição 24/09 com chaves de produção: modelo rápido ~1,2 s (mediana) x forte ~7,6 s; voz Gemini 3,5–20 s sem reserva, 3,5–7,5 s com reserva
 - **0.10.5**: WhatsApp: mensagem curta (≤140) e direta usa o modelo rápido (antes sempre o forte, 8–13 s); análise/relatório/pedido longo segue no forte; comando sem ação no rápido refaz no forte (já existia)
 - **0.10.4**: WhatsApp só em texto; áudio só quando o Mateus pede ("responde em áudio" = essa resposta; "a partir de agora em áudio" = modo até "para de mandar áudio"/"não precisa de áudio"/"só texto"). Antes: áudio recebido ligava sessão de voz que cada resposta renovava (nunca acabava) e "não precisa enviar áudios" não desligava; o modelo prometia "só texto" sem controlar isso (regra nova no prompt)
