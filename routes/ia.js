@@ -230,7 +230,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
     'attracione_coleta', 'attracione_backup', 'attracione_ranking',
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados', 'socialhub_post_acao', 'teushub_ney_filmes',
-    'minerador_em_alta', 'minerador_paginas', 'minerador_pagina', 'minerador_video',
+    'minerador_em_alta', 'minerador_paginas', 'minerador_pagina', 'minerador_video', 'minerador_varrer',
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status', 'cinerush_editor_jobs', 'cinerush_editor_agendados',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
@@ -400,6 +400,20 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(itens.length
           ? `${titulo}:\n${linhas.join('\n')}`
           : `Nenhum vídeo nas páginas vigiadas bate com isso (${titulo.replace(/^\S+ \S+ /, '').toLowerCase()}).`);
+      } else if (a.tipo === 'minerador_varrer') {
+        const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
+        const filtro = a.minViews ? ` com ${fmt(a.minViews)}+ views` : '';
+        if (a.pronta) {
+          const itens = a.itens || [];
+          partes.push(`Varri a **@${a.handle}** inteira: ${fmt(a.total)} vídeos${a.completo ? '' : ' (parcial)'}, ${fmt(a.acimaDoMinimo)}${filtro || ' no total'}.` +
+            (itens.length
+              ? `\nMais virais:\n${itens.slice(0, 10).map((v) => `${v.pos}. **${fmt(v.views)}** views · ${v.publicadoEm || '?'}\n   ${v.url}`).join('\n')}`
+              : '\nNenhum bate com o filtro.'));
+        } else {
+          const ps = (a.paginas || []).map((p) => `**${String(p).startsWith('http') ? p : `@${String(p).replace(/^@/, '')}`}**`);
+          partes.push(`Varrendo ${ps.join(', ')} inteira${ps.length > 1 ? 's, uma de cada vez' : ''} (todos os vídeos, não só os recentes)${filtro}. ` +
+            'Página grande leva uns minutos; te aviso com os mais virais quando terminar.');
+        }
       } else if (a.tipo === 'minerador_paginas') {
         const ps = a.paginas || [];
         partes.push(ps.length
@@ -1860,10 +1874,28 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
+  // "Os mais virais / todos os vídeos dessa página" + link do Kwai ou @ → varre a página INTEIRA
+  const kwaiLinks = (msg.match(/https?:\/\/(?:[\w-]+\.)?kwai\.com\/\S+/gi) || []).map((l) => l.replace(/[),.;!?]+$/, ''));
+  const querVarrer = /\b(todos os (v[ií]deos|posts)|p[aá]ginas? (tod[ao]s?|inteiras?)|varr\w*|analis\w*|mais (virais|vistos|visualizados)|viraliz\w*)\b/i.test(msg);
+  if (querVarrer && !acoes.some((a) => a.tipo === 'minerador_varrer')) {
+    const arrobas = kwaiLinks.length ? [] : (msg.match(/(?:^|\s)@[\w.-]{2,40}/g) || []).map((x) => x.trim());
+    const refs = [...kwaiLinks, ...arrobas];
+    if (refs.length) {
+      // Página específica: o "em alta" só olha os vídeos recentes das vigiadas → troca pela varredura
+      const emAlta = acoes.findIndex((a) => a.tipo === 'minerador_em_alta');
+      const minViewsModelo = emAlta >= 0 ? acoes[emAlta].min_views : undefined;
+      if (emAlta >= 0) acoes.splice(emAlta, 1);
+      const mv = msg.match(/(\d+(?:[.,]\d+)?)\s*(k|mil|mi|milh\w+)\b/i);
+      const minViews = mv ? `${mv[1]}${/^mi(?!l)/i.test(mv[2]) ? 'mi' : 'k'}` : minViewsModelo;
+      acoes.push({ tipo: 'minerador_varrer', paginas: refs, ...(minViews ? { min_views: minViews } : {}) });
+    }
+  }
+
   // Links do Kwai + "olha/vigia/adiciona essas páginas" → cadastra no Minerador
   // (25/09: o modelo respondeu "Adicionei essas 4 páginas" sem chamar nada)
-  if (!acoes.some((a) => a.tipo === 'minerador_pagina')) {
-    const links = msg.match(/https?:\/\/(?:[\w-]+\.)?kwai\.com\/\S+/gi) || [];
+  const soVarrer = acoes.some((a) => a.tipo === 'minerador_varrer') && !/\b(vigi\w*|adicion\w*|acompanh\w*|cadastr\w*)\b/i.test(msg);
+  if (!soVarrer && !acoes.some((a) => a.tipo === 'minerador_pagina')) {
+    const links = kwaiLinks;
     if (links.length && /\b(p[aá]ginas?|perfis?|vigi\w*|olhad\w*|adicion\w*|minerador|garimp\w*|acompanh\w*)\b/i.test(msg)) {
       acoes.push({ tipo: 'minerador_pagina', acao: 'adicionar', paginas: links.map((l) => l.replace(/[),.;]+$/, '')) });
     }
@@ -2791,7 +2823,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - SocialHub (TeusHub): posts de hoje em projetos.socialhub.hoje; fila em posts.proximos; falhas com motivo em posts.falhas_recentes; login de rede vencido em contas_com_problema. Tools socialhub_posts (status agendados|publicados|falhos) / socialhub_agendar (contas por nome: "instagram", "tiktok", "todas") / socialhub_post_acao (cancelar | reagendar | tentar_novamente; vários de uma vez com intervalo_min/variacao_min, ex. "um a cada 10 a 15 min a partir de agora" = intervalo_min 10, variacao_min 5) / socialhub_publicar_agendados. Os agendados publicam sozinhos (o Jarvis dispara a cada minuto e avisa) — não precisa socialhub_publicar_agendados depois de agendar. "Me avisa quando postar/quando for publicado" → confirme que o aviso chega sozinho, SEM emitir tool (nunca repita a ação anterior). "Por que falhou" → responda com o motivo de falhas_recentes/socialhub_posts, nunca invente.
 - Baixar no PC: "baixa esse vídeo/música/arquivo", "baixa os 3 primeiros do em alta" → pc_download {urls, formato mp4|mp3, nome?, pasta?} (padrão Downloads/Jarvis; Kwai/TikTok/Instagram/YouTube/Facebook e arquivo direto; executável não baixa). Use os links REAIS da mensagem ou da lista anterior do Minerador.
 - Ney Filmes (TeusHub): "posta os vídeos da pasta X no Ney Filmes" → teushub_ney_filmes {pasta}. Vale SÓ pra categoria Ney Filmes; cada arquivo = nome da obra; o Jarvis acha a sinopse, sobe e agenda sozinho (até 15/dia, horários variados) e avisa no fim. Não peça a sinopse nem o horário pro Mateus.
-- Minerador (braço; cortes de filme em alta no Kwai, R:/Projetos/Minerador): "o que tá bombando no Kwai / o que cortar" → minerador_em_alta; páginas vigiadas → minerador_paginas / minerador_pagina (adicionar|remover, @ ou link). "Corta o 1º/2º" → cinerush_editor_process com a url daquele item + minerador_video {videoId, status: cortado}. "Descarta o 3º" → minerador_video status descartado. Minerador ≠ Attracione (competição) ≠ CineRush TV.
+- Minerador (braço; cortes de filme em alta no Kwai, R:/Projetos/Minerador): "o que tá bombando no Kwai / o que cortar" → minerador_em_alta; páginas vigiadas → minerador_paginas / minerador_pagina (adicionar|remover, @ ou link). "Os mais virais / todos os vídeos DA página X" (uma página específica, link ou @) → minerador_varrer {paginas, min_views?} — varre a página INTEIRA (milhares de vídeos, leva minutos, avisa no fim); não confundir com em_alta (só os recentes das vigiadas). "Corta o 1º/2º" → cinerush_editor_process com a url daquele item + minerador_video {videoId, status: cortado}. "Descarta o 3º" → minerador_video status descartado. Minerador ≠ Attracione (competição) ≠ CineRush TV.
 - Pós-coleta / ranking stale → snapshot_refresh ("atualiza o cache")
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
@@ -3126,3 +3158,5 @@ module.exports.processarChat = processarChat;
 // Mantém o resumo do Jarvis aquecido (cron com o PC/celular online): a fala não espera os ~9 s de montagem
 module.exports.warmAssistSnap = (uid) =>
   getCachedAssistSnap(uid, () => snapshotAssistente({ lite: true, userId: uid }));
+// Só pros testes da regra de mensagem → ação
+module.exports._inferirAcoesDaMensagem = inferirAcoesDaMensagem;
