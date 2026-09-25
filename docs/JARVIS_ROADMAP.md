@@ -1,7 +1,7 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.11  
-**Date:** 2026-09-22
+**Version:** 0.10.12  
+**Date:** 2026-09-25
 
 ## Norte
 
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.12**: **6.4 TeusHub de verdade**: o Railway nunca rodou os crons do `vercel.json` do TeusHub, então post agendado ficava parado. Agora o Jarvis é o relógio: cron de 1 min publica os agendados e avisa o que saiu e o que falhou, com o motivo; cron das 8h renova os logins e avisa login vencido. Listar posts com status (`agendados`/`falhos`) dava HTTP 500: corrigido dos dois lados, e a lista traz o motivo da falha. Tool nova `socialhub_post_acao`: cancelar, reagendar (vários, um a cada X min) e tentar de novo. `socialhub_agendar` aceita a conta pelo nome. Leitura repete 1x em 502. TeusHub entrou no uptime. No TeusHub: brecha `x-vercel-cron` fechada, publicação com reserva atômica (sem post duplicado), validação ao agendar, `/api/ops/posts/:id`, saúde dos logins, resumo com próximos e falhas
 - **0.10.11**: **6.1 CineRush Editor de verdade**: CineRush ganhou `/api/ops/jobs` (trabalhos por usuário/erro), `/api/ops/scheduled` (posts agendados/falhos/postados por usuário) e `/api/ops/stats` restaurado (tinha se perdido num deploy; 404); Jarvis ganhou `cinerush_editor_jobs` e `cinerush_editor_agendados` (dono, só leitura, resposta isolada como conteúdo externo) e a resposta delas manda (antes o diagnóstico genérico engolia). WhatsApp não mostra mais as etiquetas `[CONTEÚDO EXTERNO]`
 - **0.10.10**: `pc_close_tab` ("fecha a aba do YouTube"): Ctrl+Tab lendo o título até achar, Ctrl+W; para se o navegador sair da frente (nunca fecha em outro app); DLL nativa v2. Spotify: desconectar guarda o Client ID (reconectar = 1 clique). Fase 6 no roadmap MCU (CineRush Editor, edição de imagem)
 - **0.10.9**: correções a partir do histórico real (203 conversas, 19–24/09): apps Cursor, Opera GX, Steam e CS2 no PC; Spotify toca suas curtidas e suas mais ouvidas (`tipo_busca` curtidas/mais_ouvidas, escopos novos → reconectar na bandeja); "abre X no meu PC" não vai mais pro navegador do servidor; texto longo que cita "página de vendas" não vira missão de landing; "status da fila" do Editor responde com a fila geral (antes pedia job_id); tool nova `criar_recorrente` ("todo dia faço prancha" virava evento e falhava); prompt: nunca inventar fato nem anunciar resultado de ação que a tool não confirmou
