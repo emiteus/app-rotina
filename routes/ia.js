@@ -173,7 +173,9 @@ function respostaClaimMutacao(texto) {
     'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|' +
     'paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|' +
     'corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi|enfileirei|' +
-    'rodando|rodei|disparando|paus(?:ei|ando|ado)|deslig(?:uei|ando)';
+    'rodando|rodei|disparando|paus(?:ei|ando|ado)|deslig(?:uei|ando)|' +
+    // 25/09: "Adicionei essas 4 páginas ao Minerador" sem ter chamado nada
+    'adicionei|adicionad[oa]s?|inclu[ií]|cadastrei|coloquei|removi|postei|publiquei|enviei|mandei';
   const limpo = String(texto || '').replace(
     new RegExp(`\\b(?:n[aã]o|nunca|ainda\\s+n[aã]o)\\s+(?:${verbs})\\b`, 'gi'),
     ' '
@@ -391,9 +393,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         const linhas = itens.slice(0, 8).map((v) =>
           `${v.pos}. @${v.pagina} — **${fmt(v.views)}** views, ${v.estimado ? '~' : '+'}${fmt(v.porHora)}/h` +
           (v.idadeH != null ? ` · ${v.idadeH}h` : '') + `\n   ${v.url}`);
+        const filtro = a.minViews ? `, com ${fmt(a.minViews)}+ views` : '';
+        const titulo = a.ordem === 'views'
+          ? `Mais vistos no Kwai (últimos ${a.dias || 30} dias${filtro})`
+          : `Em alta no Kwai (últimas ${a.janelaH || 6}h${filtro})`;
         partes.push(itens.length
-          ? `Em alta no Kwai (últimas ${a.janelaH || 6}h):\n${linhas.join('\n')}`
-          : 'Nada em alta no Kwai agora nas páginas vigiadas.');
+          ? `${titulo}:\n${linhas.join('\n')}`
+          : `Nenhum vídeo nas páginas vigiadas bate com isso (${titulo.replace(/^\S+ \S+ /, '').toLowerCase()}).`);
       } else if (a.tipo === 'minerador_paginas') {
         const ps = a.paginas || [];
         partes.push(ps.length
@@ -1851,6 +1857,15 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       if (Number.isFinite(valor) && valor > 0 && meta) {
         acoes.push({ tipo: 'depositar_meta', id: meta.id, nome: meta.nome, valor });
       }
+    }
+  }
+
+  // Links do Kwai + "olha/vigia/adiciona essas páginas" → cadastra no Minerador
+  // (25/09: o modelo respondeu "Adicionei essas 4 páginas" sem chamar nada)
+  if (!acoes.some((a) => a.tipo === 'minerador_pagina')) {
+    const links = msg.match(/https?:\/\/(?:[\w-]+\.)?kwai\.com\/\S+/gi) || [];
+    if (links.length && /\b(p[aá]ginas?|perfis?|vigi\w*|olhad\w*|adicion\w*|minerador|garimp\w*|acompanh\w*)\b/i.test(msg)) {
+      acoes.push({ tipo: 'minerador_pagina', acao: 'adicionar', paginas: links.map((l) => l.replace(/[),.;]+$/, '')) });
     }
   }
 
