@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.16  
+**Version:** 0.10.17  
 **Date:** 2026-09-25
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.17**: **voz local no PC (Piper)** — sempre a mesma voz e ~0,1 s por frase (Charon variava a cada resposta e levava 2,5 s, picos de 22 s). `desktop/src/local-tts.js` mantém o piper.exe aberto (`--json-input`); `npm run piper` baixa binário e voz com SHA-256 fixado. O PC manda `localVoice` e o servidor não gera a Charon (resposta, aviso e briefing). Config `localVoice`/`ttsVoice` (faber|cadu|jeff)/`ttsSpeed`. WhatsApp segue com a Charon
 - **0.10.16**: voz Charon com estilo fixo ("Say in Brazilian Portuguese, in a fast-paced, confident and steady tone: ") — parava de variar de tom a cada fala e ficou ~25% mais rápida (mesma frase 10 s → 7,4 s; gera em 4–5 s em vez de 6). Instrução em português era lida em voz alta; temperatura baixa quebra a resposta. `JARVIS_TTS_STYLE` ajusta/desliga. Voz de reserva do Windows a 1,15×
 - **0.10.15** (falhas reais de 24–25/09): tool `apagar_tarefa` (e `duplicadas: true`); "duplicou/apaga tarefa" nunca mais vira `concluir_tarefa` (ele tinha marcado 5 tarefas como feitas); `criar_tarefa` não duplica no mesmo dia; lista de tarefas citando CineRush não vira "preciso do email pro acesso"; "fecha essa aba" fecha a aba da frente (`CloseCurrent`, DLL v3); resposta de reserva não vaza junto da ação ("me conta mais um detalhe… Abri cs2"); "abre <url> no meu PC" abre no PC; briefing não repete se o app reinicia no meio; 8 `` que viraram caractere de controle no ia.js corrigidos (1 antigo quebrava a regra de análise)
 - **0.10.14**: **Braço Minerador** (projeto próprio em `R:/Projetos/Minerador`: cortes de filme em alta no Kwai). Conector `connectors/minerador.js`, tools `minerador_em_alta` / `minerador_paginas` / `minerador_pagina` / `minerador_video`, projeto no catálogo e no roteamento ("o que tá bombando no Kwai"), "corta o 1º" = `cinerush_editor_process` + marcar cortado. Desligado até `MINERADOR_URL`/`MINERADOR_OPS_KEY`. `scripts/smoke-minerador.js` testa contra a API real do Minerador
