@@ -583,6 +583,22 @@ sched('*/5 * * * *', runCron('jarvis-uptime-watch', async () => {
   await runUptimeWatchNotify(uid);
 }));
 
+// TeusHub: o Railway não roda os crons do vercel.json dele — o Jarvis publica os agendados (1 min)
+// e renova os logins das redes (8h). Avisa o que saiu/falhou. Flag "crons" do TeusHub pausa tudo.
+sched('* * * * *', runCron('jarvis-socialhub-publish', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
+  const { runSocialhubPublishNotify } = require('./lib/jarvis/events/bus');
+  await runSocialhubPublishNotify(uid);
+}));
+
+sched('0 8 * * *', runCron('jarvis-socialhub-tokens', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
+  const { runSocialhubDailyNotify } = require('./lib/jarvis/events/bus');
+  await runSocialhubDailyNotify(uid);
+}));
+
 // Sweep geral a cada 3h (aprovação + missão + ops + railway)
 sched('0 */3 * * *', runCron('jarvis-proactive', async () => {
   const uid = await jarvisOwnerUserId();

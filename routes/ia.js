@@ -212,7 +212,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'cinerush_buscar', 'cinerush_provisionar', 'cinerush_reenviar_email', 'cinerush_criar',
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
     'attracione_coleta', 'attracione_backup', 'attracione_ranking',
-    'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
+    'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados', 'socialhub_post_acao',
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status', 'cinerush_editor_jobs', 'cinerush_editor_agendados',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
@@ -344,9 +344,27 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           ? `Ranking **${a.competicao || 'Attracione'}**:\n${linhas}`
           : `Ranking **${a.competicao || 'Attracione'}** sem linhas.`);
       } else if (a.tipo === 'socialhub_posts') {
-        partes.push(`Listei **${(a.itens || []).length}** post(s) no SocialHub.`);
+        const STATUS_PT = { SCHEDULED: 'agendado', PUBLISHED: 'publicado', FAILED: 'falhou', DRAFT: 'rascunho', PUBLISHING: 'publicando', PENDING: 'pendente' };
+        const itens = a.itens || [];
+        const linhas = itens.slice(0, 6).map((p) => {
+          const redes = (p.redes || []).map((r) => r.rede.toLowerCase()).join('+') || '?';
+          const motivo = (p.redes || []).find((r) => r.motivo);
+          return `• ${p.quando} · ${redes} · ${STATUS_PT[p.status] || p.status}` +
+            (p.caption ? ` — _${String(p.caption).slice(0, 50)}_` : '') +
+            (motivo ? `\n   ↳ ${motivo.rede.toLowerCase()}: ${String(motivo.motivo).slice(0, 140)}` : '');
+        });
+        partes.push(itens.length
+          ? `TeusHub — **${itens.length}** post(s):\n${linhas.join('\n')}`
+          : 'Nenhum post nesse filtro no TeusHub.');
       } else if (a.tipo === 'socialhub_agendar') {
-        partes.push(`Agendei post no SocialHub (**${a.id || 'ok'}**).`);
+        partes.push(`Agendei no TeusHub pra **${a.quando || a.scheduledAt || 'já'}** (${a.contas || 1} conta(s)). Publico sozinho na hora e te aviso.`);
+      } else if (a.tipo === 'socialhub_post_acao') {
+        const VERBO = { cancel: 'Cancelei', reschedule: 'Reagendei', retry: 'Vou tentar de novo' };
+        const feitos = a.feitos || [];
+        const quandoTxt = feitos.filter((f) => f.quando).map((f) => f.quando);
+        partes.push(`${VERBO[a.acao] || 'Mexi em'} **${feitos.length}** post(s) no TeusHub` +
+          (quandoTxt.length ? `: ${quandoTxt.slice(0, 8).join(', ')}` : '') + '.' +
+          ((a.falhas || []).length ? ` ${(a.falhas || []).length} não deu (${a.falhas[0].erro}).` : ''));
       } else if (a.tipo === 'socialhub_publicar_agendados') {
         partes.push(`Disparei publicação dos agendados no SocialHub (${a.processed != null ? a.processed + ' processados' : 'ok'}).`);
       } else if (a.tipo === 'snapshot_refresh') {
@@ -2689,7 +2707,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
 - **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. "no TeuHub/SocialHub" → projetos.socialhub.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
 - CineRush Editor: fila em projetos.cinerush_editor.queue; posts IG de hoje em projetos.cinerush_editor.hoje; processa por URL (ops). Sem owner_* não debita créditos de user.
-- SocialHub: posts de hoje em projetos.socialhub.hoje; tools socialhub_posts / socialhub_agendar / socialhub_publicar_agendados
+- SocialHub (TeusHub): posts de hoje em projetos.socialhub.hoje; fila em posts.proximos; falhas com motivo em posts.falhas_recentes; login de rede vencido em contas_com_problema. Tools socialhub_posts (status agendados|publicados|falhos) / socialhub_agendar (contas por nome: "instagram", "tiktok", "todas") / socialhub_post_acao (cancelar | reagendar | tentar_novamente; vários de uma vez com intervalo_min/variacao_min, ex. "um a cada 10 a 15 min a partir de agora" = intervalo_min 10, variacao_min 5) / socialhub_publicar_agendados. Os agendados publicam sozinhos (o Jarvis dispara a cada minuto e avisa) — não precisa socialhub_publicar_agendados depois de agendar. "Por que falhou" → responda com o motivo de falhas_recentes/socialhub_posts, nunca invente.
 - Pós-coleta / ranking stale → snapshot_refresh ("atualiza o cache")
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
