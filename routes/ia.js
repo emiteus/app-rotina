@@ -214,7 +214,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'attracione_coleta', 'attracione_backup', 'attracione_ranking',
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados',
     'clipper_criar', 'clipper_retry',
-    'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status',
+    'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status', 'cinerush_editor_jobs', 'cinerush_editor_agendados',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
     'ops_flag_list', 'ops_flag_get', 'ops_flag_set',
@@ -481,6 +481,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         partes.push(
           `Enfileirei batch no Editor (**${a.batch_id || '?'}**, ${n} job${n === 1 ? '' : 's'}).`
         );
+      } else if ((a.tipo === 'cinerush_editor_jobs' || a.tipo === 'cinerush_editor_agendados') && a.texto) {
+        partes.push(String(a.texto));
       } else if (a.tipo === 'cinerush_editor_job_status') {
         if (a.fila && a.texto) {
           partes.push(String(a.texto));
@@ -559,6 +561,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     const readFileOk = finOk.find((a) => a.tipo === 'dev_read_file' && (a.texto || a.content));
     // Olhar a tela: a resposta é o que a visão viu (o texto do modelo não viu a tela)
     const screenOk = finOk.find((a) => a.tipo === 'pc_screen_look' && a.texto);
+    // Consultas do Editor mandam na resposta (antes o diagnóstico genérico engolia tudo)
+    const editorTextos = finOk.filter((a) => (a.tipo === 'cinerush_editor_jobs' || a.tipo === 'cinerush_editor_agendados') && a.texto).map((a) => String(a.texto).trim());
     const redeployOk = finOk.find((a) => a.tipo === 'dev_railway_redeploy' && a.texto);
     const restartOk = finOk.find((a) => a.tipo === 'dev_railway_restart' && a.texto);
     const searchHits = finOk
@@ -570,6 +574,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     let out;
     if (screenOk) {
       out = String(screenOk.texto).trim();
+    } else if (editorTextos.length) {
+      out = editorTextos.join('\n\n');
     } else if (reportOk) {
       out = wrapExternalContent(String(reportOk.texto).trim(), { source: 'research' });
     } else if (landingCopyOk) {
@@ -2687,6 +2693,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - Pós-coleta / ranking stale → snapshot_refresh ("atualiza o cache")
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
+- CineRush Editor perguntas (NÃO use diagnóstico/project_info pra isso): "tem erro processando vídeo?", "o que o Erik está processando/reprocessando?", "como tá a fila do editor" → cinerush_editor_jobs (usuario = nome citado; status=erro se perguntar de erro); "meus posts programados/agendados", "quais posts falharam", "o Erik tem posts agendados?" → cinerush_editor_agendados (status = agendados | falhos | postados). SEMPRE passe pergunta = o que ele quer saber.
 - CineRush TV dados: use projetos.cinerush. receita_mes = mês civil; receita_30d = rolling 30d (quando vier). "vendas esse mês" → receita_mes; "últimos 30 dias" → receita_30d (se null, diga que só tem o mês e o intervalo periodo.from–to). Faturamento = bruto Kirvano.
 - "Roda" / "sincroniza" sem contexto de banco: NÃO dispare sincronizar_bancos. Só se pedir banco/extrato/financeiro explicitamente.
 - Preferir ids do contexto. Se faltar dado, pergunte e NÃO emita ação.
