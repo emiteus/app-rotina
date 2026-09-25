@@ -150,6 +150,9 @@ function parseJSON(txt) {
   }
 }
 
+// Modelo mandou só ação, sem texto: sai isso — e some se a ação tiver narração (25/09: "Beleza — me conta mais um detalhe pra eu agir. Abri cs2 no PC.")
+const RESPOSTA_VAZIA = 'Beleza — me conta mais um detalhe pra eu agir.';
+
 function textoAssistenteSeguro(textoBruto, parsed) {
   if (parsed && parsed.resposta != null) {
     const r = stripToolLeakage(String(parsed.resposta).trim());
@@ -160,7 +163,7 @@ function textoAssistenteSeguro(textoBruto, parsed) {
   if (extraido) return stripToolLeakage(extraido);
   const limpo = stripToolLeakage(s);
   if (limpo && !/^\s*\{/.test(limpo)) return limpo;
-  return 'Beleza — me conta mais um detalhe pra eu agir.';
+  return RESPOSTA_VAZIA;
 }
 
 /** Detecta claim de mutação sem pegar negações ("não alterei"). */
@@ -200,6 +203,7 @@ function formatAcaoFalhas(fails) {
 
 /** Nunca deixa a IA afirmar que alterou o app se a ação não rodou de verdade. */
 function reconciliarRespostaComAcoes(resposta, acoesExec) {
+  if (resposta === RESPOSTA_VAZIA && (acoesExec || []).some((x) => x && (x.ok || x.pending_approval))) resposta = '';
   const oks = (acoesExec || []).filter(a => a && a.ok);
   // Repetição do que você aprovou há pouco: não é falha, é "já fiz" (dedupe em tools/index.js)
   const dups = (acoesExec || []).filter(a => a && a.already_done);
@@ -216,7 +220,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const pending = (acoesExec || []).filter(a => a && a.pending_approval);
   const acaoTipos = new Set([
     'recategorizar', 'criar_categoria', 'renomear_categoria', 'fundir_categorias',
-    'confirmar_despesa', 'confirmar_receita', 'criar_receita', 'depositar_meta', 'concluir_tarefa', 'criar_evento', 'criar_alarme',
+    'confirmar_despesa', 'confirmar_receita', 'criar_receita', 'depositar_meta', 'concluir_tarefa', 'apagar_tarefa', 'criar_evento', 'criar_alarme',
     'criar_transacao', 'deletar_transacao', 'corrigir_data_tx', 'marcar_das',
     'criar_despesa', 'criar_tarefa', 'criar_recorrente', 'criar_meta', 'marcar_habito',
     'reconciliar_despesas', 'sincronizar_bancos',
@@ -305,7 +309,13 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
         const quando = !a.dias || a.dias === '0,1,2,3,4,5,6' ? 'todo dia' : String(a.dias).split(',').map((d) => nomes[Number(d)]).join(', ');
         partes.push(a.ja ? `**${a.titulo}** já estava na rotina (${quando}).` : `Coloquei **${a.titulo}** na rotina: ${quando}.`);
       } else if (a.tipo === 'criar_tarefa') {
-        partes.push(`Tarefa **${a.titulo}** criada.`);
+        partes.push(a.ja ? `**${a.titulo}** já estava na lista.` : `Tarefa **${a.titulo}** criada.`);
+      } else if (a.tipo === 'apagar_tarefa') {
+        partes.push(a.duplicadas
+          ? ((a.apagadas || []).length
+            ? `Apaguei **${a.apagadas.length}** tarefa(s) repetida(s): ${a.apagadas.join(', ')}.`
+            : 'Não tem tarefa repetida hoje.')
+          : `Apaguei a tarefa **${a.titulo}**.`);
       } else if (a.tipo === 'criar_meta') {
         partes.push(`Meta **${a.nome}** criada.`);
       } else if (a.tipo === 'marcar_habito') {
@@ -1832,6 +1842,11 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
     }
   }
 
+  // "duplicou as tarefas" → apaga as repetidas (25/09: o modelo CONCLUIU 5 tarefas em vez de apagar)
+  if (podeMutar && /\bduplic\w*/i.test(msg) && /\btarefas?\b/i.test(msg) && !acoes.some((a) => a.tipo === 'apagar_tarefa')) {
+    acoes.push({ tipo: 'apagar_tarefa', duplicadas: true });
+  }
+
   // "concluí X" / "terminei a tarefa X" — NÃO usar "fiz" solto (pega "fiz o pagamento")
   if (podeMutar && !acoes.some(a => a.tipo === 'concluir_tarefa')) {
     const mConc = msg.match(/\b(?:conclu[ií]|terminei)\s+(?:a\s+)?(?:tarefa\s+)?(.+)$/i)
@@ -1917,7 +1932,11 @@ function inferirAcoesDaMensagem(mensagem, snap, acoesParsed) {
       (/\bacesso\b/i.test(msg) && /\b(tv|streaming|assinante)\b/i.test(msg));
     const isProvisionOnly =
       /\b(provision|liber[aeo])\b/i.test(msg) && !/\b(criar|gerar|cadast)/i.test(msg);
-    if (isCine && hasCreateIntent(msg) && !isProvisionOnly) {
+    // Só "criar ACESSO/assinante": "tarefas: … terminar lab do CineRush e criar dashboard…" virava
+    // "preciso do email pra gerar o acesso" (25/09/2026)
+    const isAcesso = /\b(acesso|assinante|cliente|login|usu[aá]rio|conta)\b/i.test(msg) || /[\w.+-]+@[\w.-]+\.\w+/.test(msg);
+    const isTarefa = /\b(tarefas?|lembrete|to-?do|pra\s+(hoje|amanh[aã]))\b/i.test(msg);
+    if (isCine && hasCreateIntent(msg) && !isProvisionOnly && isAcesso && !isTarefa) {
       const email = (msg.match(/[\w.+-]+@[\w.-]+\.\w+/i) || [])[0];
       acoes.push({ tipo: 'cinerush_criar', email: email || undefined });
     }
@@ -2718,7 +2737,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - "recebi Laranjeira" / confirmar renda fixa → confirmar_receita
 - registrar receita variável → criar_receita
 - "guardei R$Y na meta Z" → depositar_meta
-- "concluí a tarefa X" → concluir_tarefa
+- "concluí a tarefa X" → concluir_tarefa. "apaga/tira/remove a tarefa X" → apagar_tarefa; "duplicou/tem tarefa repetida" → apagar_tarefa {duplicadas: true}. NUNCA use concluir_tarefa pra apagar ou limpar duplicada (concluir = ele fez). Lista de tarefas com data ("pra amanhã") → criar_tarefa com data_reset.
 - "todo dia eu faço X" / "toda segunda X" / "X diariamente" → criar_recorrente (NÃO criar_evento, que é compromisso com data)
 - "fui na academia" → marcar_habito
 - criar evento/alarme → criar_evento / criar_alarme
@@ -2823,7 +2842,7 @@ Regras:
     const waCurta =
       channelKey === 'whatsapp' &&
       msgTxt.length <= 140 &&
-      !/(analis|compar|por\s*qu|explic|planej|estrat|relat[oó]rio|resum|diagnost|revis|pesquis|escrev|redij|crie\s+um|cria\s+um|projeto)/i.test(msgTxt);
+      !/\b(analis|compar|por\s*qu|explic|planej|estrat|relat[oó]rio|resum|diagnost|revis|pesquis|escrev|redij|crie\s+um|cria\s+um|projeto)/i.test(msgTxt);
     const fastTurn = channelKey === 'desktop' || channelKey === 'phone' || waCurta || /^\[Áudio transcrito\]/.test(msgTxt);
     const chamarDecisao = (fast) =>
       chamarIA({
@@ -3021,6 +3040,16 @@ Regras:
           })
         );
       }
+    }
+    // Pediu pra apagar/tirar/limpar e o modelo mandou "concluir" → apagar (concluir marca como feito o que não foi)
+    if (/\b(apag\w*|remov\w*|exclu\w*|delet\w*|tira\w*|duplic\w*)\b/i.test(mensagem) && !/\b(conclu\w*|terminei|fiz|feit[oa])\b/i.test(mensagem)) {
+      acoesMerged = acoesMerged.map((a) => (a && a.tipo === 'concluir_tarefa' ? { ...a, tipo: 'apagar_tarefa' } : a));
+    }
+    // "abre <url> no meu PC" → abre NO PC (pc_open_url), não no navegador do servidor (24/09: teushub.online/post)
+    if (/\b(no|na|pelo|pela)\s+(meu\s+|minha\s+)?(pc|computador|notebook|m[aá]quina)\b/i.test(mensagem)) {
+      acoesMerged = acoesMerged.map((a) =>
+        a && a.tipo === 'browser_open' && a.url ? { tipo: 'pc_open_url', url: a.url } : a
+      );
     }
     const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey, agentId: agent && agent.id, mensagem });
     const resposta = stripToolLeakage(

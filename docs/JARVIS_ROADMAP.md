@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.14  
+**Version:** 0.10.15  
 **Date:** 2026-09-25
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.15** (falhas reais de 24–25/09): tool `apagar_tarefa` (e `duplicadas: true`); "duplicou/apaga tarefa" nunca mais vira `concluir_tarefa` (ele tinha marcado 5 tarefas como feitas); `criar_tarefa` não duplica no mesmo dia; lista de tarefas citando CineRush não vira "preciso do email pro acesso"; "fecha essa aba" fecha a aba da frente (`CloseCurrent`, DLL v3); resposta de reserva não vaza junto da ação ("me conta mais um detalhe… Abri cs2"); "abre <url> no meu PC" abre no PC; briefing não repete se o app reinicia no meio; 8 `` que viraram caractere de controle no ia.js corrigidos (1 antigo quebrava a regra de análise)
 - **0.10.14**: **Braço Minerador** (projeto próprio em `R:/Projetos/Minerador`: cortes de filme em alta no Kwai). Conector `connectors/minerador.js`, tools `minerador_em_alta` / `minerador_paginas` / `minerador_pagina` / `minerador_video`, projeto no catálogo e no roteamento ("o que tá bombando no Kwai"), "corta o 1º" = `cinerush_editor_process` + marcar cortado. Desligado até `MINERADOR_URL`/`MINERADOR_OPS_KEY`. `scripts/smoke-minerador.js` testa contra a API real do Minerador
 - **0.10.13**: **Responder o Jarvis sem "Ei Jarvis"**: quando a resposta termina em pergunta ou pede aprovação, o PC escuta a resposta direto por 6 s (bipe avisa). "Ei, Jarvis. Sim." / "Pode." / "Não precisa" agora resolvem a aprovação pendente (antes o nome junto fazia virar pedido novo e ele perguntava de novo). Ação que você aprovou há menos de 5 min não é pedida de novo (só com "de novo/repete"). Fechar aba só roda se a mensagem falar de aba (o modelo mandou fechar "essa" aba num pedido do TeusHub). Fim de fala 800→1000 ms (frase com respiro no meio virava 2 pedidos). "Me avisa quando postar" não repete a ação
 - **0.10.12**: **6.4 TeusHub de verdade**: o Railway nunca rodou os crons do `vercel.json` do TeusHub, então post agendado ficava parado. Agora o Jarvis é o relógio: cron de 1 min publica os agendados e avisa o que saiu e o que falhou, com o motivo; cron das 8h renova os logins e avisa login vencido. Listar posts com status (`agendados`/`falhos`) dava HTTP 500: corrigido dos dois lados, e a lista traz o motivo da falha. Tool nova `socialhub_post_acao`: cancelar, reagendar (vários, um a cada X min) e tentar de novo. `socialhub_agendar` aceita a conta pelo nome. Leitura repete 1x em 502. TeusHub entrou no uptime. No TeusHub: brecha `x-vercel-cron` fechada, publicação com reserva atômica (sem post duplicado), validação ao agendar, `/api/ops/posts/:id`, saúde dos logins, resumo com próximos e falhas
