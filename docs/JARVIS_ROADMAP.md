@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.21  
+**Version:** 0.10.22  
 **Date:** 2026-09-25
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.22**: **baixar no PC** (`pc_download`): o Jarvis usa o Baixador de Vídeos (R:/Projetos/VideoDownloader/baixar_cli.py, mesmo motor yt-dlp/ffmpeg/cookies do app) — Kwai, TikTok, Instagram, YouTube, Facebook e arquivo direto (pdf/zip/imagem); mp4 ou mp3; nome do arquivo; destino só em pasta liberada (padrão Downloads/Jarvis); executável/script não baixa. Baixador consertado: link com &list= (Mix do YouTube) baixava a playlist inteira; atalho da área de trabalho apontava pra pasta antiga; motor reinstalado limpo
 - **0.10.21**: "olha essas páginas + links do Kwai" vira `minerador_pagina` direto (o modelo tinha dito "Adicionei as 4 páginas" sem chamar nada; "adicionei/cadastrei/postei…" entram na trava de afirmação falsa). Minerador entende link de perfil do app (`k.kwai.com/u/@pagina/…`). `minerador_em_alta` com `min_views` ("100k"), `ordem: views` ("mais virais") e `dias`
 - **0.10.20**: Minerador aceita link curto do app do Kwai (k.kwai.com/p/…), vários de uma vez (`/api/ops/sources/lote`) e recusa página parada há +14 dias (as achadas no Google eram de 2022–2023). `minerador_pagina` recebe lista/links colados
 - **0.10.19**: **Ney Filmes** — "posta os vídeos da pasta X no Ney Filmes" (`teushub_ney_filmes`): o PC lista a pasta (`pc_media_list`), o servidor acha a obra pelo nome do arquivo (Gemini + busca Google, 3 tentativas; não achou → sinopse de filme aleatório), o PC sobe o vídeo direto pro Cloudinary com assinatura de uso único do TeusHub (`pc_media_upload`, só api.cloudinary.com, só vídeo ≤250 MB) e agenda REEL SÓ na categoria Ney Filmes (@ney.filmes), até 15/dia em horários variados 08:00–23:30. Legenda "<sinopse>
