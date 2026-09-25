@@ -401,9 +401,16 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
             ps.slice(0, 15).map((p) => `• @${p.pagina}${p.ativa ? '' : ' (parada)'}${p.erro ? ` ⚠️ ${p.erro}` : ` · ${p.videos} vídeos`}`).join('\n')
           : 'Nenhuma página vigiada ainda. Manda o @ ou o link de um vídeo da página.');
       } else if (a.tipo === 'minerador_pagina') {
-        partes.push(a.acao === 'remover'
-          ? `Parei de vigiar **@${a.pagina}**.`
-          : `Vigiando **@${a.pagina}** no Kwai (${a.videos || 0} vídeos agora).`);
+        if (a.acao === 'remover') {
+          partes.push(`Parei de vigiar ${(a.paginas || []).map((p) => `**@${p}**`).join(', ')}.`);
+        } else {
+          const ad = a.adicionadas || [];
+          const linhas = [];
+          if (ad.length) linhas.push(`Vigiando no Kwai: ${ad.map((p) => `**@${p}**`).join(', ')}. Na próxima rodada (até 2 h) já aparecem no "em alta".`);
+          if ((a.paradas || []).length) linhas.push(`Não entraram por estarem paradas: ${a.paradas.map((p) => `@${p}`).join(', ')}.`);
+          if ((a.falhas || []).length) linhas.push(`Não reconheci: ${a.falhas.slice(0, 5).join('; ')}.`);
+          partes.push(linhas.join('\n') || 'Nenhuma página nova entrou.');
+        }
       } else if (a.tipo === 'minerador_video') {
         const T = { descartado: 'Descartei', cortado: 'Marquei como cortado', novo: 'Voltei pra lista' };
         partes.push(`${T[a.status] || 'Marquei'} o vídeo ${a.videoId}.`);

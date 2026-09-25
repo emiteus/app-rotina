@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.19  
+**Version:** 0.10.20  
 **Date:** 2026-09-25
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.20**: Minerador aceita link curto do app do Kwai (k.kwai.com/p/…), vários de uma vez (`/api/ops/sources/lote`) e recusa página parada há +14 dias (as achadas no Google eram de 2022–2023). `minerador_pagina` recebe lista/links colados
 - **0.10.19**: **Ney Filmes** — "posta os vídeos da pasta X no Ney Filmes" (`teushub_ney_filmes`): o PC lista a pasta (`pc_media_list`), o servidor acha a obra pelo nome do arquivo (Gemini + busca Google, 3 tentativas; não achou → sinopse de filme aleatório), o PC sobe o vídeo direto pro Cloudinary com assinatura de uso único do TeusHub (`pc_media_upload`, só api.cloudinary.com, só vídeo ≤250 MB) e agenda REEL SÓ na categoria Ney Filmes (@ney.filmes), até 15/dia em horários variados 08:00–23:30. Legenda "<sinopse>
 
 🎬 Tipo: Nome". Já postados ficam anotados (`jarvis_ney_postados`), PC segue só leitura. Aviso no fim. TeusHub ganhou `/api/ops/categories` e `/api/ops/media/sign`
