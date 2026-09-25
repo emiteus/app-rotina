@@ -201,7 +201,18 @@ function formatAcaoFalhas(fails) {
 /** Nunca deixa a IA afirmar que alterou o app se a ação não rodou de verdade. */
 function reconciliarRespostaComAcoes(resposta, acoesExec) {
   const oks = (acoesExec || []).filter(a => a && a.ok);
-  const fails = (acoesExec || []).filter(a => a && a.ok === false && !a.pending_approval);
+  // Repetição do que você aprovou há pouco: não é falha, é "já fiz" (dedupe em tools/index.js)
+  const dups = (acoesExec || []).filter(a => a && a.already_done);
+  if (dups.length && dups.length === (acoesExec || []).length) {
+    const { label } = require('../lib/jarvis/nl/humanize');
+    const oque = [...new Set(dups.map((d) => label(d.tipo)))].join(' e ');
+    const min = String(dups[0].erro || '').match(/há (\d+) min/);
+    const base = String(resposta || '').trim();
+    const nota = `Já fiz isso${min ? ` há ${min[1]} min` : ''} (${oque}), não repeti. Se quiser de novo, diz "repete".`;
+    // Resposta do modelo que só conversa (sem afirmar que fez de novo) fica; senão, só a nota
+    return base && !respostaClaimMutacao(base) && !/^posso\b/i.test(base) ? `${base}\n\n${nota}` : nota;
+  }
+  const fails = (acoesExec || []).filter(a => a && a.ok === false && !a.pending_approval && !a.already_done);
   const pending = (acoesExec || []).filter(a => a && a.pending_approval);
   const acaoTipos = new Set([
     'recategorizar', 'criar_categoria', 'renomear_categoria', 'fundir_categorias',
@@ -1494,7 +1505,8 @@ async function executarAcoes(acoes, userId, opts = {}) {
     executeAll: executarAcoesCorpo,
     skipHitl: !!opts.skipHitl,
     channel: opts.channel || null,
-    agentId: opts.agentId || null
+    agentId: opts.agentId || null,
+    mensagem: opts.mensagem || ''
   });
 }
 
@@ -2551,7 +2563,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
           agent: agent.id
         };
       }
-      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey, agentId: agent && agent.id });
+      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey, agentId: agent && agent.id, mensagem });
       const resposta = reconciliarRespostaComAcoes('', acoesExec);
       await salvarMensagem(conversaId, 'assistant', resposta, uid);
       return {
@@ -2572,7 +2584,7 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       'marcar_das', 'marcar_habito', 'depositar_meta'
     ]);
     if (acoesRapidas.length && acoesRapidas.every(a => TIPOS_FAST.has(a.tipo))) {
-      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey, agentId: agent && agent.id });
+      const acoesExec = await executarAcoes(acoesRapidas, uid, { channel: channelKey, agentId: agent && agent.id, mensagem });
       if (acoesExec.some(a => a && a.ok)) {
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
@@ -2707,7 +2719,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - **Attracione ≠ SocialHub:** "quantos reels/vídeos eu e o Erik postamos" / views da competição de cortes/filmes → Attracione (hoje/ranking). SocialHub/TeuHub = agendamento de posts das contas conectadas no teushub — só use se pedirem TeuHub/agendar/SocialHub.
 - **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. "no TeuHub/SocialHub" → projetos.socialhub.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
 - CineRush Editor: fila em projetos.cinerush_editor.queue; posts IG de hoje em projetos.cinerush_editor.hoje; processa por URL (ops). Sem owner_* não debita créditos de user.
-- SocialHub (TeusHub): posts de hoje em projetos.socialhub.hoje; fila em posts.proximos; falhas com motivo em posts.falhas_recentes; login de rede vencido em contas_com_problema. Tools socialhub_posts (status agendados|publicados|falhos) / socialhub_agendar (contas por nome: "instagram", "tiktok", "todas") / socialhub_post_acao (cancelar | reagendar | tentar_novamente; vários de uma vez com intervalo_min/variacao_min, ex. "um a cada 10 a 15 min a partir de agora" = intervalo_min 10, variacao_min 5) / socialhub_publicar_agendados. Os agendados publicam sozinhos (o Jarvis dispara a cada minuto e avisa) — não precisa socialhub_publicar_agendados depois de agendar. "Por que falhou" → responda com o motivo de falhas_recentes/socialhub_posts, nunca invente.
+- SocialHub (TeusHub): posts de hoje em projetos.socialhub.hoje; fila em posts.proximos; falhas com motivo em posts.falhas_recentes; login de rede vencido em contas_com_problema. Tools socialhub_posts (status agendados|publicados|falhos) / socialhub_agendar (contas por nome: "instagram", "tiktok", "todas") / socialhub_post_acao (cancelar | reagendar | tentar_novamente; vários de uma vez com intervalo_min/variacao_min, ex. "um a cada 10 a 15 min a partir de agora" = intervalo_min 10, variacao_min 5) / socialhub_publicar_agendados. Os agendados publicam sozinhos (o Jarvis dispara a cada minuto e avisa) — não precisa socialhub_publicar_agendados depois de agendar. "Me avisa quando postar/quando for publicado" → confirme que o aviso chega sozinho, SEM emitir tool (nunca repita a ação anterior). "Por que falhou" → responda com o motivo de falhas_recentes/socialhub_posts, nunca invente.
 - Pós-coleta / ranking stale → snapshot_refresh ("atualiza o cache")
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
@@ -2829,7 +2841,7 @@ Regras:
     } catch (errGemini) {
       const fallback = inferirAcoesDaMensagem(mensagem, snap, []);
       if (fallback.length) {
-        const acoesExec = await executarAcoes(fallback, uid, { channel: channelKey, agentId: agent && agent.id });
+        const acoesExec = await executarAcoes(fallback, uid, { channel: channelKey, agentId: agent && agent.id, mensagem });
         const resposta = reconciliarRespostaComAcoes('', acoesExec);
         await salvarMensagem(conversaId, 'assistant', resposta, uid);
         return {
@@ -2986,7 +2998,7 @@ Regras:
         );
       }
     }
-    const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey, agentId: agent && agent.id });
+    const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey, agentId: agent && agent.id, mensagem });
     const resposta = stripToolLeakage(
       reconciliarRespostaComAcoes(respostaBruta, acoesExec)
     );

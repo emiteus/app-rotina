@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.12  
+**Version:** 0.10.13  
 **Date:** 2026-09-25
 
 ## Norte
@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.13**: **Responder o Jarvis sem "Ei Jarvis"**: quando a resposta termina em pergunta ou pede aprovação, o PC escuta a resposta direto por 6 s (bipe avisa). "Ei, Jarvis. Sim." / "Pode." / "Não precisa" agora resolvem a aprovação pendente (antes o nome junto fazia virar pedido novo e ele perguntava de novo). Ação que você aprovou há menos de 5 min não é pedida de novo (só com "de novo/repete"). Fechar aba só roda se a mensagem falar de aba (o modelo mandou fechar "essa" aba num pedido do TeusHub). Fim de fala 800→1000 ms (frase com respiro no meio virava 2 pedidos). "Me avisa quando postar" não repete a ação
 - **0.10.12**: **6.4 TeusHub de verdade**: o Railway nunca rodou os crons do `vercel.json` do TeusHub, então post agendado ficava parado. Agora o Jarvis é o relógio: cron de 1 min publica os agendados e avisa o que saiu e o que falhou, com o motivo; cron das 8h renova os logins e avisa login vencido. Listar posts com status (`agendados`/`falhos`) dava HTTP 500: corrigido dos dois lados, e a lista traz o motivo da falha. Tool nova `socialhub_post_acao`: cancelar, reagendar (vários, um a cada X min) e tentar de novo. `socialhub_agendar` aceita a conta pelo nome. Leitura repete 1x em 502. TeusHub entrou no uptime. No TeusHub: brecha `x-vercel-cron` fechada, publicação com reserva atômica (sem post duplicado), validação ao agendar, `/api/ops/posts/:id`, saúde dos logins, resumo com próximos e falhas
 - **0.10.11**: **6.1 CineRush Editor de verdade**: CineRush ganhou `/api/ops/jobs` (trabalhos por usuário/erro), `/api/ops/scheduled` (posts agendados/falhos/postados por usuário) e `/api/ops/stats` restaurado (tinha se perdido num deploy; 404); Jarvis ganhou `cinerush_editor_jobs` e `cinerush_editor_agendados` (dono, só leitura, resposta isolada como conteúdo externo) e a resposta delas manda (antes o diagnóstico genérico engolia). WhatsApp não mostra mais as etiquetas `[CONTEÚDO EXTERNO]`
 - **0.10.10**: `pc_close_tab` ("fecha a aba do YouTube"): Ctrl+Tab lendo o título até achar, Ctrl+W; para se o navegador sair da frente (nunca fecha em outro app); DLL nativa v2. Spotify: desconectar guarda o Client ID (reconectar = 1 clique). Fase 6 no roadmap MCU (CineRush Editor, edição de imagem)
