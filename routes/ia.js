@@ -89,7 +89,7 @@ function extrairAcoesDeFunctionCalls(texto) {
   ];
   for (const m of lineInvokes) {
     const tipo = String(m[1] || '').trim();
-    if (!tipo || !/^(research_|dev_|project_|attracione_|cinerush_|socialhub_|clipper_|cutflix_|snapshot_)/.test(tipo)) {
+    if (!tipo || !/^(research_|dev_|project_|attracione_|cinerush_|socialhub_|minerador_|clipper_|cutflix_|snapshot_)/.test(tipo)) {
       continue;
     }
     const acao = { tipo };
@@ -224,6 +224,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'chatwoot_listar', 'chatwoot_resolver', 'chatwoot_atribuir',
     'attracione_coleta', 'attracione_backup', 'attracione_ranking',
     'socialhub_posts', 'socialhub_agendar', 'socialhub_publicar_agendados', 'socialhub_post_acao',
+    'minerador_em_alta', 'minerador_paginas', 'minerador_pagina', 'minerador_video',
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status', 'cinerush_editor_jobs', 'cinerush_editor_agendados',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
@@ -369,6 +370,28 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
           : 'Nenhum post nesse filtro no TeusHub.');
       } else if (a.tipo === 'socialhub_agendar') {
         partes.push(`Agendei no TeusHub pra **${a.quando || a.scheduledAt || 'já'}** (${a.contas || 1} conta(s)). Publico sozinho na hora e te aviso.`);
+      } else if (a.tipo === 'minerador_em_alta') {
+        const fmt = (n) => Number(n || 0).toLocaleString('pt-BR');
+        const itens = a.itens || [];
+        const linhas = itens.slice(0, 8).map((v) =>
+          `${v.pos}. @${v.pagina} — **${fmt(v.views)}** views, ${v.estimado ? '~' : '+'}${fmt(v.porHora)}/h` +
+          (v.idadeH != null ? ` · ${v.idadeH}h` : '') + `\n   ${v.url}`);
+        partes.push(itens.length
+          ? `Em alta no Kwai (últimas ${a.janelaH || 6}h):\n${linhas.join('\n')}`
+          : 'Nada em alta no Kwai agora nas páginas vigiadas.');
+      } else if (a.tipo === 'minerador_paginas') {
+        const ps = a.paginas || [];
+        partes.push(ps.length
+          ? `Vigiando **${ps.filter((p) => p.ativa).length}** página(s) no Kwai:\n` +
+            ps.slice(0, 15).map((p) => `• @${p.pagina}${p.ativa ? '' : ' (parada)'}${p.erro ? ` ⚠️ ${p.erro}` : ` · ${p.videos} vídeos`}`).join('\n')
+          : 'Nenhuma página vigiada ainda. Manda o @ ou o link de um vídeo da página.');
+      } else if (a.tipo === 'minerador_pagina') {
+        partes.push(a.acao === 'remover'
+          ? `Parei de vigiar **@${a.pagina}**.`
+          : `Vigiando **@${a.pagina}** no Kwai (${a.videos || 0} vídeos agora).`);
+      } else if (a.tipo === 'minerador_video') {
+        const T = { descartado: 'Descartei', cortado: 'Marquei como cortado', novo: 'Voltei pra lista' };
+        partes.push(`${T[a.status] || 'Marquei'} o vídeo ${a.videoId}.`);
       } else if (a.tipo === 'socialhub_post_acao') {
         const VERBO = { cancel: 'Cancelei', reschedule: 'Reagendei', retry: 'Vou tentar de novo' };
         const feitos = a.feitos || [];
@@ -2720,6 +2743,7 @@ Ações (quando o usuário pedir pra fazer algo no app — VOCÊ executa; NÃO m
 - **Contagem ≠ coleta:** em "quantos reels/vídeos postamos hoje" responda com o projeto certo. Ambíguo → diga CineRush Editor (IG) e Attracione (comp). "no CineRush" → projetos.cinerush_editor.hoje (NUNCA Attracione). "eu e o Erik / competição" → Attracione.hoje. "no TeuHub/SocialHub" → projetos.socialhub.hoje. NÃO emita attracione_coleta a menos que peçam coletar/atualizar/raspar.
 - CineRush Editor: fila em projetos.cinerush_editor.queue; posts IG de hoje em projetos.cinerush_editor.hoje; processa por URL (ops). Sem owner_* não debita créditos de user.
 - SocialHub (TeusHub): posts de hoje em projetos.socialhub.hoje; fila em posts.proximos; falhas com motivo em posts.falhas_recentes; login de rede vencido em contas_com_problema. Tools socialhub_posts (status agendados|publicados|falhos) / socialhub_agendar (contas por nome: "instagram", "tiktok", "todas") / socialhub_post_acao (cancelar | reagendar | tentar_novamente; vários de uma vez com intervalo_min/variacao_min, ex. "um a cada 10 a 15 min a partir de agora" = intervalo_min 10, variacao_min 5) / socialhub_publicar_agendados. Os agendados publicam sozinhos (o Jarvis dispara a cada minuto e avisa) — não precisa socialhub_publicar_agendados depois de agendar. "Me avisa quando postar/quando for publicado" → confirme que o aviso chega sozinho, SEM emitir tool (nunca repita a ação anterior). "Por que falhou" → responda com o motivo de falhas_recentes/socialhub_posts, nunca invente.
+- Minerador (braço; cortes de filme em alta no Kwai, R:/Projetos/Minerador): "o que tá bombando no Kwai / o que cortar" → minerador_em_alta; páginas vigiadas → minerador_paginas / minerador_pagina (adicionar|remover, @ ou link). "Corta o 1º/2º" → cinerush_editor_process com a url daquele item + minerador_video {videoId, status: cortado}. "Descarta o 3º" → minerador_video status descartado. Minerador ≠ Attracione (competição) ≠ CineRush TV.
 - Pós-coleta / ranking stale → snapshot_refresh ("atualiza o cache")
 - Clipper: clipper_criar / clipper_retry
 - CineRush Editor tools: cinerush_editor_process / cinerush_editor_batch / cinerush_editor_job_status
