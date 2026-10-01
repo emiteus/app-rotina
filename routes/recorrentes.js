@@ -1,8 +1,8 @@
 const express = require('express');
 const { v4: uuid } = require('uuid');
 const { run, get, all } = require('../lib/db');
-const { hojeStr, diaSemana, ymdDe, dataResetSql } = require('../lib/datas');
 const { requireUserId } = require('../lib/tenant');
+const { gerarTarefaDoDia, gerarRecorrentesDoDia } = require('../lib/recorrentes');
 
 let wsServer;
 const router = express.Router();
@@ -10,6 +10,19 @@ const router = express.Router();
 // Só pro dono da recorrente (antes ia pra todos os conectados)
 function emit(userId, tipo, dados) {
   if (wsServer) wsServer.broadcastToUser(userId, { tipo: 'recorrente-' + tipo, dados });
+}
+
+// Recorrente nova/editada que vale hoje já cria a tarefa de hoje (antes esperava o cron das 00:05).
+// Falha aqui não derruba o cadastro: o cron do dia seguinte gera normalmente.
+async function tarefaDeHoje(item, uid) {
+  try {
+    const task = await gerarTarefaDoDia(item);
+    if (task && wsServer) wsServer.broadcastToUser(uid, { tipo: 'tarefa-criada', dados: task });
+    return task;
+  } catch (err) {
+    console.error('[Recorrentes] tarefa de hoje:', err.message);
+    return null;
+  }
 }
 
 // GET todas recorrentes
@@ -43,6 +56,7 @@ router.post('/', async (req, res) => {
     );
     const item = await get(`SELECT * FROM tarefas_recorrentes WHERE id = $1 AND user_id = $2`, [id, uid]);
     emit(uid, 'criada', item);
+    await tarefaDeHoje(item, uid);
     res.status(201).json(item);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -66,6 +80,8 @@ router.patch('/:id', async (req, res) => {
     if (ativa !== undefined) await run(`UPDATE tarefas_recorrentes SET ativa = $1 WHERE id = $2 AND user_id = $3`, [!!ativa, req.params.id, uid]);
     const item = await get(`SELECT * FROM tarefas_recorrentes WHERE id = $1 AND user_id = $2`, [req.params.id, uid]);
     emit(uid, 'atualizada', item);
+    // Reativou ou passou a valer hoje: cria a de hoje (se já criou hoje, a reserva do dia impede repetir)
+    await tarefaDeHoje(item, uid);
     res.json(item);
   } catch (err) {
     res.status(500).json({ erro: err.message });
@@ -91,39 +107,9 @@ router.post('/gerar-hoje', async (req, res) => {
   const uid = requireUserId(req, res);
   if (!uid) return;
   try {
-    const dow = String(diaSemana());
-    const hoje = hojeStr();
-    const recorrentes = await all(`SELECT * FROM tarefas_recorrentes WHERE ativa = true AND user_id = $1`, [uid]);
-
-    let criadas = 0;
-    for (const r of recorrentes) {
-      // Verifica se deve criar hoje
-      let deveCriar = false;
-      if (r.frequencia === 'diario') {
-        const dias = (r.dias_semana || '0,1,2,3,4,5,6').split(',');
-        deveCriar = dias.includes(dow);
-      } else if (r.frequencia === 'semanal') {
-        const dias = (r.dias_semana || '1').split(',');
-        deveCriar = dias.includes(dow);
-      }
-
-      // Já criou hoje?
-      if (r.ultima_criacao) {
-        if (ymdDe(r.ultima_criacao) === hoje) deveCriar = false;
-      }
-
-      if (deveCriar) {
-        const taskId = uuid();
-        await run(
-          `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, user_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-          [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, dataResetSql(hoje), uid]
-        );
-        await run(`UPDATE tarefas_recorrentes SET ultima_criacao = $1 WHERE id = $2 AND user_id = $3`, [hoje, r.id, uid]);
-        criadas++;
-      }
-    }
-    res.json({ msg: 'Geradas', criadas });
+    const criadas = await gerarRecorrentesDoDia({ userId: uid });
+    for (const task of criadas) if (wsServer) wsServer.broadcastToUser(uid, { tipo: 'tarefa-criada', dados: task });
+    res.json({ msg: 'Geradas', criadas: criadas.length });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }

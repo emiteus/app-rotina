@@ -294,29 +294,9 @@ sched('*/1 * * * *', runCron('alarmes', async () => {
 // Gerar tarefas recorrentes do dia (00:05 e na inicializacao)
 async function gerarRecorrentesHoje() {
   try {
-    const { run, all } = require('./lib/db');
-    const { v4: uuid } = require('uuid');
+    const { gerarRecorrentesDoDia } = require('./lib/recorrentes');
     await garantirRecorrentesHabitosTodos();
-    const hoje = hojeStr();
-    const dow = String(diaSemana());
-    const recorrentes = await all(`SELECT * FROM tarefas_recorrentes WHERE ativa = true`);
-    let criadas = 0;
-    for (const r of recorrentes) {
-      if (!r.user_id) continue;
-      const dias = (r.dias_semana || '0,1,2,3,4,5,6').split(',');
-      if (!dias.includes(dow)) continue;
-      if (r.ultima_criacao) {
-        if (ymdDe(r.ultima_criacao) === hoje) continue;
-      }
-      const taskId = uuid();
-      await run(
-        `INSERT INTO tasks (id, titulo, descricao, prioridade, categoria, data_reset, user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [taskId, r.titulo, r.descricao || '', r.prioridade, r.categoria, dataResetSql(hoje), r.user_id]
-      );
-      await run(`UPDATE tarefas_recorrentes SET ultima_criacao = $1 WHERE id = $2`, [hoje, r.id]);
-      criadas++;
-    }
+    const criadas = (await gerarRecorrentesDoDia()).length;
     if (criadas > 0) console.log(`[Recorrentes] ${criadas} tarefa(s) gerada(s) hoje`);
   } catch (err) {
     console.error('[Recorrentes] Erro:', err.message);
