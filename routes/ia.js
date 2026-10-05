@@ -243,14 +243,12 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'browser_open', 'browser_links',
     'browser_click', 'browser_type', 'browser_snapshot',
     'creative_generate_image', 'creative_landing_copy',
-    'research_web_search', 'research_fetch_url', 'research_write_report',
-    'pc_status', 'pc_volume', 'pc_media', 'pc_open_app', 'pc_close_app', 'pc_lock', 'pc_screenshot', 'pc_screen_look', 'pc_close_tab',
-    'pc_spotify_play', 'pc_spotify_now', 'pc_youtube_play', 'pc_open_url',
-    'pc_files_list', 'pc_files_search', 'pc_files_read', 'pc_open_path', 'pc_download',
-    'tv_status', 'tv_power', 'tv_volume', 'tv_media', 'tv_key', 'tv_open_app', 'tv_input', 'tv_notify', 'tv_pair',
-    'soc_status', 'soc_login', 'soc_posts', 'soc_comments', 'soc_inbox', 'soc_summary'
+    'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
-  const finOk = oks.filter(a => acaoTipos.has(a.tipo));
+  // PC/TV/redes voltam com a frase pronta (a.texto) e o narrarOks trata a família inteira pelo prefixo.
+  // Antes cada tool nova tinha que entrar na lista acima; pc_notes_* ficou de fora e a resposta sumia (30/09/2026).
+  const DEVICE_TOOL = /^(pc|tv|soc)_/;
+  const finOk = oks.filter(a => acaoTipos.has(a.tipo) || DEVICE_TOOL.test(String(a.tipo)));
   const claim = respostaClaimMutacao(resposta);
   const failText = fails.length ? formatAcaoFalhas(fails) : '';
 
@@ -603,7 +601,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
             ? `Cutflix API **ON**${a.status ? ` (${a.status})` : ''}.`
             : `Cutflix **off**${a.erro || a.motivo ? `: ${a.erro || a.motivo}` : ''}.`
         );
-      } else if (/^(pc|tv|soc)_/.test(String(a.tipo))) {
+      } else if (DEVICE_TOOL.test(String(a.tipo))) {
         // Tools do PC/TV já voltam com a frase pronta ("Aumentei o volume do PC.")
         if (a.texto) partes.push(String(a.texto));
       } else if (a.tipo === 'projeto_milhao_fechamento') {
@@ -3160,3 +3158,5 @@ module.exports.warmAssistSnap = (uid) =>
   getCachedAssistSnap(uid, () => snapshotAssistente({ lite: true, userId: uid }));
 // Só pros testes da regra de mensagem → ação
 module.exports._inferirAcoesDaMensagem = inferirAcoesDaMensagem;
+// Só pros testes da resposta final montada a partir das ações
+module.exports._reconciliarRespostaComAcoes = reconciliarRespostaComAcoes;
