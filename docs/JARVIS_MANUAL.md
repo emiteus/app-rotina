@@ -165,3 +165,5 @@ API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`
 - `docs/JARVIS_SYSTEM_AUDIT.md` — plano original  
 - `docs/JARVIS_PHASE1_CHECKPOINT.md` … `PHASES_7_11` / `DEBT_REDUCTION.md`  
 - Este arquivo = **só o manual**
+
+**Memória automática de fatos (0.10.30)**: depois de cada conversa (web, WhatsApp, PC, celular), `src/memory/facts.js` pede a um modelo rápido os fatos duráveis sobre o usuário (JSON `{novos, obsoletos}`) e guarda em `jarvis_facts` (único por usuário + texto normalizado; repetido conta `vezes`; corrigido desativa o antigo; no máximo 200 ativos). Roda em segundo plano, um por vez por usuário, no máximo 1 a cada 15 s, e nunca lança. Só aprende com as palavras do usuário: CONTEÚDO EXTERNO é cortado e mensagem com cara de manipulação é ignorada. Cumprimento, mensagem curta e pedido curto com verbo de ação não gastam chamada. Os 30 mais recentes entram no system prompt. Tools `user_facts_list` / `user_facts_forget` (low). Turno que usou essas tools não ensina nada. Teste: `TEST_DATABASE_URL=… node scripts/smoke-facts.js` (Postgres descartável).

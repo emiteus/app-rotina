@@ -234,6 +234,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'clipper_criar', 'clipper_retry',
     'cinerush_editor_process', 'cinerush_editor_batch', 'cinerush_editor_job_status', 'cinerush_editor_jobs', 'cinerush_editor_agendados',
     'project_memory_get', 'project_memory_set', 'project_memory_list', 'project_info',
+    'user_facts_list', 'user_facts_forget',
     'cutflix_status', 'projeto_milhao_fechamento', 'snapshot_refresh',
     'ops_flag_list', 'ops_flag_get', 'ops_flag_set',
     'dev_diagnose', 'dev_git_status', 'dev_git_diff', 'dev_read_file',
@@ -586,6 +587,8 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
               (a.result?.play_url ? ` → ${a.result.play_url}` : '')
           );
         }
+      } else if (a.tipo === 'user_facts_list' || a.tipo === 'user_facts_forget') {
+        if (a.texto) partes.push(String(a.texto));
       } else if (a.tipo === 'project_memory_set') {
         partes.push(`Salvei memória do projeto **${a.name || a.project_id}**.`);
       } else if (a.tipo === 'project_memory_get') {
@@ -2734,9 +2737,11 @@ async function processarChat({ userId, mensagem, conversaId = null, historico = 
       })
     );
 
-    const memoriaHint = (prefs.extras?.notas || []).length
+    // Fatos aprendidos sozinhos nas conversas (lib/jarvis/memory/facts.js); falha aqui não derruba o turno
+    const fatosAprendidos = await require('../lib/jarvis/memory/facts').listarFatos(uid).catch(() => []);
+    const memoriaHint = ((prefs.extras?.notas || []).length
       ? `\nMemória (fatos que o usuário pediu pra lembrar — use se relevante): ${JSON.stringify(prefs.extras.notas.slice(0, 8))}`
-      : '';
+      : '') + require('../lib/jarvis/memory/facts').blocoParaPrompt(fatosAprendidos);
     const tomHint = prefs.extras?.tom === 'detalhado'
       ? '\nTom: um pouco mais detalhado quando fizer sentido.'
       : prefs.extras?.tom === 'direto'
