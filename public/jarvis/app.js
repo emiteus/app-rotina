@@ -143,13 +143,25 @@
     const nao = document.createElement('button');
     nao.type = 'button';
     nao.textContent = 'Não';
-    const answer = (yes) => {
+    // "Sempre"/"Nunca" = aprovação permanente (o servidor diz se a ação pode virar "sempre sim")
+    const sempre = document.createElement('button');
+    sempre.type = 'button';
+    sempre.className = 'sim';
+    sempre.textContent = 'Sempre';
+    const nunca = document.createElement('button');
+    nunca.type = 'button';
+    nunca.textContent = 'Nunca';
+    const answer = (yes, sempreSim = false) => {
       li.dataset.done = '1';
-      sendText(`${yes ? 'SIM' : 'NÃO'} ${approval.id}`, { echo: yes ? 'Pode fazer' : 'Não' });
+      const cmd = `${sempreSim ? 'SEMPRE ' : ''}${yes ? 'SIM' : 'NÃO'} ${approval.id}`;
+      const echo = sempreSim ? (yes ? 'Sempre pode' : 'Nunca') : yes ? 'Pode fazer' : 'Não';
+      sendText(cmd, { echo });
     };
     sim.addEventListener('click', () => answer(true));
     nao.addEventListener('click', () => answer(false));
-    acoes.append(sim, nao);
+    sempre.addEventListener('click', () => answer(true, true));
+    nunca.addEventListener('click', () => answer(false, true));
+    acoes.append(sim, nao, sempre, nunca);
     li.append(rot, acoes);
     els.log.appendChild(li);
     scrollDown();
