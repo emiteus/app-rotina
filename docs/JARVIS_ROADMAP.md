@@ -15,7 +15,8 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
-- **0.10.33**: **código-only MCU/backlog** — Fase **4.5** (sessão/2FA caiu → aviso proativo, você loga); **6.2** `creative_remove_background` (tira fundo da última imagem); trava de loop de tool (`loop-guard`); "sempre sim qualquer" (regra por tipo); orbe com legenda do que ouviu/respondeu. Fish TTS: docs pra `FISH_API_KEY` (código já existia)
+- **0.10.34**: **Fase 4.4 + 4.3 resto** — receitas por rede (`recipes/x|instagram|tiktok|youtube.js`), helpers na página (bug de closures), post IG/TikTok com mídia (CDP + pastas liberadas), reply TikTok, aviso `soc_layout` quando o site muda. YouTube escrita ainda não (readonly)
+- **0.10.33**: **código-only MCU/backlog** — Fase **4.5** (sessão/2FA caiu → aviso proativo, você loga); **6.2** `creative_remove_background` (tira fundo da última imagem); trava de loop de tool (`loop-guard`); "sempre sim qualquer" (regra por tipo). Fish TTS: docs pra `FISH_API_KEY` (código já existia)
 - **0.10.22**: **baixar no PC** (`pc_download`): o Jarvis usa o Baixador de Vídeos (R:/Projetos/VideoDownloader/baixar_cli.py, mesmo motor yt-dlp/ffmpeg/cookies do app) — Kwai, TikTok, Instagram, YouTube, Facebook e arquivo direto (pdf/zip/imagem); mp4 ou mp3; nome do arquivo; destino só em pasta liberada (padrão Downloads/Jarvis); executável/script não baixa. Baixador consertado: link com &list= (Mix do YouTube) baixava a playlist inteira; atalho da área de trabalho apontava pra pasta antiga; motor reinstalado limpo
 - **0.10.21**: "olha essas páginas + links do Kwai" vira `minerador_pagina` direto (o modelo tinha dito "Adicionei as 4 páginas" sem chamar nada; "adicionei/cadastrei/postei…" entram na trava de afirmação falsa). Minerador entende link de perfil do app (`k.kwai.com/u/@pagina/…`). `minerador_em_alta` com `min_views` ("100k"), `ordem: views` ("mais virais") e `dias`
 - **0.10.20**: Minerador aceita link curto do app do Kwai (k.kwai.com/p/…), vários de uma vez (`/api/ops/sources/lote`) e recusa página parada há +14 dias (as achadas no Google eram de 2022–2023). `minerador_pagina` recebe lista/links colados
@@ -81,8 +82,8 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 - **Fase 3 MCU**: parear a TV LG de verdade (TV ligada) e testar por voz; HA quando chegarem mais aparelhos
 - **Fase 5.3 MCU**: setar `FISH_API_KEY` (ou crédito OpenAI) — código pronto
-- **Fase 4.3 (resto)**: logar nas redes + testar escrita; depois mídia / TikTok / YouTube
-- **Fase 4.4**: receitas por rede (seletores isolados) — ainda aberto
+- **Fase 4**: logar nas redes + testar escrita/mídia; YouTube write = novo consentimento OAuth
+- **6.5 Minerador**: deploy + `MINERADOR_*` + lista de páginas (código pronto)
 
 ## Backlog (só sob pedido)
 

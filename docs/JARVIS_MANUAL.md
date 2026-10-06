@@ -68,7 +68,7 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a
 | **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
-**Redes sociais (Fase 4)**: leitura `soc_status`/`soc_login`/`soc_posts`/`soc_comments`/`soc_inbox`/`soc_summary` = low, ownerOnly. Escrita **0.10.31** `soc_post`/`soc_reply`/`soc_dm` = **critical** (preview exato + SIM): só texto; X (post/reply/DM) e Instagram (reply/DM); sem mídia e sem lote. Instagram/TikTok/X pelo Navegador do Jarvis logado no PC; YouTube Data API readonly. Comentários/DMs lidos = CONTEÚDO EXTERNO. **4.5 (0.10.33)**: se a sessão caiu ou a rede pediu verificação/2FA, o Jarvis avisa (voz no PC / push no celular / WA) e **você** loga — nunca tenta contornar captcha.
+**Redes sociais (Fase 4)**: leitura `soc_status`/`soc_login`/`soc_posts`/`soc_comments`/`soc_inbox`/`soc_summary` = low, ownerOnly. Escrita **critical** (preview exato + SIM): X texto; Instagram/TikTok post com `midia`/`path` (pastas liberadas) + legenda; reply X/IG/TikTok; DM X/IG; sem lote. Receitas por rede em `desktop/src/social/recipes/` (**4.4**): se a página mudar, aviso e nada enviado. YouTube = só leitura (API). **4.5**: sessão/2FA caiu → avisa e **você** loga.
 
 **PC 2.7 (0.9.81)**: `pc_spotify_play`, `pc_spotify_now`, `pc_youtube_play`, `pc_open_url`, `pc_files_list`, `pc_files_search`, `pc_files_read` = low; `pc_open_path` = medium. Arquivos só leitura nas pastas pessoais + R:\Projetos (bloqueio de .env/.ssh/chaves/AppData; nunca abre executável). Conteúdo de arquivo volta como CONTEÚDO EXTERNO; resposta sintetizada com `pergunta`. Spotify via Web API + PKCE (Premium), refresh token cifrado no PC.
 
@@ -177,5 +177,5 @@ API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`
 - **Tirar fundo** (`creative_remove_background`): "tira o fundo" / "fundo transparente" → Gemini edita a última imagem (ou `image_base64`); PNG. Medium, ownerOnly.
 - **Trava de loop** (`loop-guard.js`): mesma tool+args ok há pouco → não repete (exceto "repete"/"de novo").
 - **"sempre sim qualquer"**: vale pra qualquer alvo daquele tipo (não só o Discord dessa vez); chave `tipo|*`.
-- **Orbe com legenda**: ao lado da esfera aparece o que ele ouviu e o que respondeu; clique na legenda/esfera abre a janela; clique passa pelo resto transparente.
+- **Orbe**: só a esfera (sem chat ao lado). **Sempre visível**: bandeja → "Orbe sempre visível"; pra soltar, balança o mouse esquerda↔direita ~3× por cima dele.
 - **Fish**: só falta setar `FISH_API_KEY` no Railway (código já pronto desde 0.10.18).

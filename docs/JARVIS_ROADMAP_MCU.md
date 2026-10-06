@@ -104,7 +104,7 @@ Fechadura, alarme, portão e câmera = critical (SIM sempre). Luz, tomada, TV = 
 ## Fase 4 · Redes sociais pelo PC
 
 **4.1–4.2 ✅ 0.9.86 (código; falta o Mateus logar):** Instagram, TikTok, X e YouTube só leitura.  
-**4.3 ✅ 0.10.31 (código):** `soc_post` / `soc_reply` / `soc_dm` critical com preview exato + SIM. Só texto; X (post/reply/DM) e Instagram (reply/DM). Sem mídia, sem lote, freio de escrita no PC + log local.
+**4.3 ✅ 0.10.31 + 0.10.34:** `soc_post` / `soc_reply` / `soc_dm` critical com preview exato + SIM. X texto; Instagram/TikTok post com mídia; reply X/IG/TikTok; DM X/IG. Sem lote, freio de escrita no PC + log local. YouTube escrita ainda não (API readonly).
 
 Em vez de API oficial (Meta travou `content_publish`), o Jarvis usa **o navegador do próprio PC com as contas já logadas**, só quando você pedir.
 
@@ -112,8 +112,8 @@ Em vez de API oficial (Meta travou `content_publish`), o Jarvis usa **o navegado
 |---|---------|--------|
 | 4.1 | Perfil de navegador **dedicado** (Playwright com contexto persistente), separado do Chrome pessoal. Você loga uma vez; o Jarvis nunca vê nem digita senha | sessão sobrevive a reinício do PC |
 | 4.2 | Leitura (`soc_read_*`): métricas, comentários, DMs não lidas, resumo do dia | "Jarvis, como foi o post de ontem?" |
-| 4.3 | Escrita (`soc_post`, `soc_reply`, `soc_dm`): **sempre critical** com preview (conta, texto, destino) antes do SIM | ✅ 0.10.31 texto no X/IG; mídia depois |
-| 4.4 | Receitas por rede (Instagram, TikTok, YouTube, X) com seletores isolados, fácil de consertar quando o site mudar | quebra de layout vira lição + aviso, não ação errada |
+| 4.3 | Escrita (`soc_post`, `soc_reply`, `soc_dm`): **sempre critical** com preview (conta, texto, destino) antes do SIM | ✅ 0.10.34 · X texto; IG/TT mídia+post; reply X/IG/TT; DM X/IG; YouTube write pendente (OAuth) |
+| 4.4 | ✅ 0.10.34 · Receitas por rede (`desktop/src/social/recipes/*`) com seletores isolados; helpers injetados na página | quebra de layout → aviso `soc_layout` (não envia errado) |
 | 4.5 | ✅ 0.10.33 · Sessão caiu / pediu 2FA → Jarvis avisa e **você** loga | nunca tenta contornar login ou captcha |
 
 Cuidados que valem pra fase inteira:
