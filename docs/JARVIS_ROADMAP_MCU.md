@@ -103,7 +103,8 @@ Fechadura, alarme, portão e câmera = critical (SIM sempre). Luz, tomada, TV = 
 
 ## Fase 4 · Redes sociais pelo PC
 
-**4.1–4.2 ✅ 0.9.86 (código; falta o Mateus logar):** Instagram, TikTok, X e YouTube só leitura. 4.3 (escrever) é a próxima.
+**4.1–4.2 ✅ 0.9.86 (código; falta o Mateus logar):** Instagram, TikTok, X e YouTube só leitura.  
+**4.3 ✅ 0.10.31 (código):** `soc_post` / `soc_reply` / `soc_dm` critical com preview exato + SIM. Só texto; X (post/reply/DM) e Instagram (reply/DM). Sem mídia, sem lote, freio de escrita no PC + log local.
 
 Em vez de API oficial (Meta travou `content_publish`), o Jarvis usa **o navegador do próprio PC com as contas já logadas**, só quando você pedir.
 
@@ -111,7 +112,7 @@ Em vez de API oficial (Meta travou `content_publish`), o Jarvis usa **o navegado
 |---|---------|--------|
 | 4.1 | Perfil de navegador **dedicado** (Playwright com contexto persistente), separado do Chrome pessoal. Você loga uma vez; o Jarvis nunca vê nem digita senha | sessão sobrevive a reinício do PC |
 | 4.2 | Leitura (`soc_read_*`): métricas, comentários, DMs não lidas, resumo do dia | "Jarvis, como foi o post de ontem?" |
-| 4.3 | Escrita (`soc_post`, `soc_reply`, `soc_dm`): **sempre critical** com preview (conta, texto, mídia, destino) antes do SIM | nada sai sem você ver exatamente o que vai sair |
+| 4.3 | Escrita (`soc_post`, `soc_reply`, `soc_dm`): **sempre critical** com preview (conta, texto, destino) antes do SIM | ✅ 0.10.31 texto no X/IG; mídia depois |
 | 4.4 | Receitas por rede (Instagram, TikTok, YouTube, X) com seletores isolados, fácil de consertar quando o site mudar | quebra de layout vira lição + aviso, não ação errada |
 | 4.5 | Sessão caiu / pediu 2FA → Jarvis avisa e **você** loga | nunca tenta contornar login ou captcha |
 

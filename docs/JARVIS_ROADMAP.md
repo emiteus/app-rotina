@@ -21,6 +21,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 - **0.10.19**: **Ney Filmes** — "posta os vídeos da pasta X no Ney Filmes" (`teushub_ney_filmes`): o PC lista a pasta (`pc_media_list`), o servidor acha a obra pelo nome do arquivo (Gemini + busca Google, 3 tentativas; não achou → sinopse de filme aleatório), o PC sobe o vídeo direto pro Cloudinary com assinatura de uso único do TeusHub (`pc_media_upload`, só api.cloudinary.com, só vídeo ≤250 MB) e agenda REEL SÓ na categoria Ney Filmes (@ney.filmes), até 15/dia em horários variados 08:00–23:30. Legenda "<sinopse>
 
 🎬 Tipo: Nome". Já postados ficam anotados (`jarvis_ney_postados`), PC segue só leitura. Aviso no fim. TeusHub ganhou `/api/ops/categories` e `/api/ops/media/sign`
+- **0.10.31**: **Fase 4.3 MCU — escrever nas redes**: `soc_post` / `soc_reply` / `soc_dm` (critical, preview exato no pedido de SIM). Só texto; X (postar/responder/DM) e Instagram (comentar/DM). Freio de escrita no PC (poucas/dia, 90 s entre envios), log local `social-writes.jsonl`, nunca contorna login/captcha. Sem mídia e sem lote de propósito
 - **0.10.18**: **uma voz só**. A "troca de voz" era o PC misturando 3 vozes (Charon do servidor, Piper e "Microsoft Daniel" do Windows quando a Charon atrasava). Agora: sem voz do Windows de reserva (texto aparece e ele fica quieto), Piper desligado por padrão. Voz do **Fish Audio** pronta (`fish-tts.js`, modelo "Jarvis (UCM) PT-BR", s2.1-pro, velocidade 1,1, temperatura 0,5): com `FISH_API_KEY` ela é a ÚNICA voz (sem reserva de outra; 1 retry em 5xx). **Cache** de falas no Postgres (`jarvis_tts_cache`): frase repetida sai na hora e de graça. Custo medido: ~3.200 caracteres/dia ≈ US$ 1,50/mês
 - **0.10.17**: **voz local no PC (Piper)** — sempre a mesma voz e ~0,1 s por frase (Charon variava a cada resposta e levava 2,5 s, picos de 22 s). `desktop/src/local-tts.js` mantém o piper.exe aberto (`--json-input`); `npm run piper` baixa binário e voz com SHA-256 fixado. O PC manda `localVoice` e o servidor não gera a Charon (resposta, aviso e briefing). Config `localVoice`/`ttsVoice` (faber|cadu|jeff)/`ttsSpeed`. WhatsApp segue com a Charon
 - **0.10.16**: voz Charon com estilo fixo ("Say in Brazilian Portuguese, in a fast-paced, confident and steady tone: ") — parava de variar de tom a cada fala e ficou ~25% mais rápida (mesma frase 10 s → 7,4 s; gera em 4–5 s em vez de 6). Instrução em português era lida em voz alta; temperatura baixa quebra a resposta. `JARVIS_TTS_STYLE` ajusta/desliga. Voz de reserva do Windows a 1,15×
@@ -78,7 +79,8 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 ## Próximo
 
 - **Fase 3 MCU**: parear a TV LG de verdade (TV ligada) e testar por voz; HA quando chegarem mais aparelhos
-- **Fase 4.3 MCU**: escrever nas redes (postar/responder/DM) sempre critical com prévia exata + SIM
+- **Fase 5.3 MCU**: voz final rápida (Fish Audio / OpenAI com crédito)
+- **Fase 4.3 (resto)**: mídia no post; TikTok/YouTube escrita; testar com contas logadas (com calma)
 
 ## Backlog (só sob pedido)
 

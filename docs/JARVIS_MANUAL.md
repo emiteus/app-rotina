@@ -64,10 +64,10 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a
 | Classe | Regra | WA (default) | Assist web | Tools |
 |--------|-------|--------------|------------|-------|
 | **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/medium executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `dev_railway_logs`, `dev_deploy_checklist`, `research_web_search`, `research_fetch_url`, `browser_*`, `cinerush_buscar`, `cutflix_status`, rotina/finance **low** |
-| **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr` |
+| **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
-**Redes sociais (0.9.86, Fase 4, SÓ LEITURA)**: `soc_status`, `soc_login`, `soc_posts`, `soc_comments`, `soc_inbox`, `soc_summary` = low, ownerOnly. Instagram/TikTok/X pelo Navegador do Jarvis logado no PC (partição própria, cookies cifrados, só domínios das redes); YouTube pela Data API (OAuth youtube.readonly no PC). Comentários/DMs voltam como CONTEÚDO EXTERNO. Escrever (postar/responder/DM) não existe ainda.
+**Redes sociais (Fase 4)**: leitura `soc_status`/`soc_login`/`soc_posts`/`soc_comments`/`soc_inbox`/`soc_summary` = low, ownerOnly. Escrita **0.10.31** `soc_post`/`soc_reply`/`soc_dm` = **critical** (preview exato + SIM): só texto; X (post/reply/DM) e Instagram (reply/DM); sem mídia e sem lote. Instagram/TikTok/X pelo Navegador do Jarvis logado no PC; YouTube Data API readonly. Comentários/DMs lidos = CONTEÚDO EXTERNO.
 
 **PC 2.7 (0.9.81)**: `pc_spotify_play`, `pc_spotify_now`, `pc_youtube_play`, `pc_open_url`, `pc_files_list`, `pc_files_search`, `pc_files_read` = low; `pc_open_path` = medium. Arquivos só leitura nas pastas pessoais + R:\Projetos (bloqueio de .env/.ssh/chaves/AppData; nunca abre executável). Conteúdo de arquivo volta como CONTEÚDO EXTERNO; resposta sintetizada com `pergunta`. Spotify via Web API + PKCE (Premium), refresh token cifrado no PC.
 
