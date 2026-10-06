@@ -114,7 +114,7 @@ Em vez de API oficial (Meta travou `content_publish`), o Jarvis usa **o navegado
 | 4.2 | Leitura (`soc_read_*`): métricas, comentários, DMs não lidas, resumo do dia | "Jarvis, como foi o post de ontem?" |
 | 4.3 | Escrita (`soc_post`, `soc_reply`, `soc_dm`): **sempre critical** com preview (conta, texto, destino) antes do SIM | ✅ 0.10.31 texto no X/IG; mídia depois |
 | 4.4 | Receitas por rede (Instagram, TikTok, YouTube, X) com seletores isolados, fácil de consertar quando o site mudar | quebra de layout vira lição + aviso, não ação errada |
-| 4.5 | Sessão caiu / pediu 2FA → Jarvis avisa e **você** loga | nunca tenta contornar login ou captcha |
+| 4.5 | ✅ 0.10.33 · Sessão caiu / pediu 2FA → Jarvis avisa e **você** loga | nunca tenta contornar login ou captcha |
 
 Cuidados que valem pra fase inteira:
 
@@ -143,7 +143,7 @@ Cuidados que valem pra fase inteira:
 | # | Entrega | Estado |
 |---|---------|--------|
 | 6.1 | CineRush Editor de verdade: jobs com erro, fila por usuário (ex.: reprocessamento do Erik), posts agendados, estatística do dia | ✅ 0.10.11 |
-| 6.2 | Editar imagem: remover fundo e devolver PNG; ajustar a última imagem gerada ("tira o contorno dos escudos") sem pedir o print de novo | planejado (futuro) |
+| 6.2 | ✅ 0.10.33 · Editar imagem: remover fundo (`creative_remove_background`) e devolver PNG; usa a última imagem gerada/print se não mandarem outra | "tira o fundo" / "fundo transparente" |
 | 6.3 | Fechar uma aba do navegador pelo nome | ✅ 0.10.10 |
 | 6.4 | TeusHub de verdade: agendados publicam sozinhos (o Jarvis é o relógio), aviso de publicado/falhou com motivo, cancelar/reagendar/tentar de novo, saúde dos logins | ✅ 0.10.12 |
 | 6.5 | Minerador (braço novo): cortes de filme em alta no Kwai, lista pro admin escolher o que cortar; Jarvis consulta, vigia páginas, corta e descarta | 🟡 núcleo + Jarvis prontos (0.10.14); falta subir e a lista de páginas |
