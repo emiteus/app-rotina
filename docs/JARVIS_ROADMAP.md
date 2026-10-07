@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.37**: **Autonomia WhatsApp** — HITL high no WA off por padrão (só critical pede SIM); `wa_send` / `wa_send_file` (dono + `WHATSAPP_CONTACTS`/`GROUPS`); PC → Evolution media; NL não vira `soc_dm`
 - **0.10.36**: **SIM por voz no orbe** — ativação fraca com “sim/não/aprovar” + HITL pendente no canal não é mais ignorada (antes só o botão da aba aprovava); mais frases de ok; “é do que?” relembra o pedido em vez de gerar outra aprovação
 - **0.10.35**: **Entrega no WhatsApp sob pedido** — tool `wa_send_owner` (só dono, Evolution, sem `proactive_wa`); NL “manda no zap/WA” injeta a tool com o texto da resposta/histórico; afirmação falsa (“já mandei / tá no seu WhatsApp”) sem tool ok é reconciliada. DM em rede continua `soc_dm`
 - **0.10.34**: **Fase 4.4 + 4.3 resto** — receitas por rede (`recipes/x|instagram|tiktok|youtube.js`), helpers na página (bug de closures), post IG/TikTok com mídia (CDP + pastas liberadas), reply TikTok, aviso `soc_layout` quando o site muda. YouTube escrita ainda não (readonly)

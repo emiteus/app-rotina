@@ -31,7 +31,9 @@ Confira / preencha no serviço **app-rotina**:
 | `OPENAI_API_KEY` | **TTS** outbound + fallback de STT (o STT primário é Gemini) |
 | `FISH_API_KEY` | **Voz final (Fish Audio)** — com ela setada, PC/celular usam só a voz "Jarvis (UCM) PT-BR" (`fish-tts.js`); sem key continua Charon/OpenAI. Opcional: `FISH_VOICE_ID`, `FISH_TTS_MODEL`, `FISH_SPEED`, `FISH_TEMPERATURE` |
 | `JARVIS_HITL=1` | Confirmação high-risk no **Assist web** (default on). **Não** afeta `critical`: redeploy/patch/PR pedem SIM sempre |
-| `JARVIS_HITL_WHATSAPP=0` | Opt-out: WA volta a executar high sem SIM (default **on** desde 0.9.73) |
+| `JARVIS_HITL_WHATSAPP=1` | Opt-in: no WhatsApp, high também pede SIM (default **off** desde 0.10.37 — só critical pede) |
+| `WHATSAPP_CONTACTS` | Aliases pra `wa_send` / `wa_send_file`: `joao:5584…,mae:5584…` |
+| `WHATSAPP_GROUPS` | Grupos: `familia:1203…@g.us` |
 | `JARVIS_HITL_BUTTONS=1` | Opt-in: botões SIM/NÃO (default off — WA Web quebra) |
 | `JARVIS_PROACTIVE_WA=0` | Desliga pings proativos no WhatsApp |
 | `JARVIS_RAILWAY_WATCH=0` | Desliga watch de deploy FAIL/CRASH (default **on** se tem `RAILWAY_TOKEN`) |
@@ -68,7 +70,7 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a
 | **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
-**WhatsApp do dono (0.10.35)**: “manda no WhatsApp/zap” (do PC/Assist) → `wa_send_owner` com o texto (lista da resposta ou corpo pedido). Destino = só `WHATSAPP_ALLOWED_PHONES` via Evolution; **não** depende de `JARVIS_PROACTIVE_WA` / flag `proactive_wa` (pedido explícito ≠ ping). Medium, ownerOnly. DM em rede social = `soc_dm`, não esta tool.
+**WhatsApp (0.10.37)**: autonomia no canal WA — high/medium rodam sem SIM; **só critical** pede (redeploy, `soc_*`, patch/PR…). Opt-in HITL high: `JARVIS_HITL_WHATSAPP=1`. Entrega: `wa_send` (texto; `para` = eu \| contato \| grupo), `wa_send_file` (arquivo do PC via Desktop online), `wa_send_owner` (atalho só pro dono). Contatos/grupos em `WHATSAPP_CONTACTS` / `WHATSAPP_GROUPS`. Número solto fora da lista = recusa. Pedido explícito ≠ ping (`proactive_wa`). DM em rede = `soc_dm`.
 
 **Redes sociais (Fase 4)**: leitura `soc_status`/`soc_login`/`soc_posts`/`soc_comments`/`soc_inbox`/`soc_summary` = low, ownerOnly. Escrita **critical** (preview exato + SIM): X texto; Instagram/TikTok post com `midia`/`path` (pastas liberadas) + legenda; reply X/IG/TikTok; DM X/IG; sem lote. Receitas por rede em `desktop/src/social/recipes/` (**4.4**): se a página mudar, aviso e nada enviado. YouTube = só leitura (API). **4.5**: sessão/2FA caiu → avisa e **você** loga.
 

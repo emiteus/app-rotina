@@ -3152,9 +3152,14 @@ Regras:
         a && a.tipo === 'browser_open' && a.url ? { tipo: 'pc_open_url', url: a.url } : a
       );
     }
-    // Pediu entregar no WhatsApp/zap → wa_send_owner (dono). Não vira soc_dm / X.
+    // Pediu entregar no WhatsApp/zap → wa_send / wa_send_file. Nunca soc_dm / X.
     {
-      const { looksLikeWhatsAppDeliver } = require('../lib/jarvis/context/intent');
+      const {
+        looksLikeWhatsAppDeliver,
+        looksLikeWhatsAppFileDeliver,
+        extractWhatsAppPara,
+        extractWhatsAppFilePath
+      } = require('../lib/jarvis/context/intent');
       if (looksLikeWhatsAppDeliver(mensagem)) {
         const nSoc = acoesMerged.length;
         acoesMerged = acoesMerged.filter((a) => a && a.tipo !== 'soc_dm');
@@ -3167,23 +3172,56 @@ Regras:
             })
           );
         }
-        const body = pickWhatsAppDeliverBody(mensagem, { respostaBruta, historico });
-        const existing = acoesMerged.find((a) => a && a.tipo === 'wa_send_owner');
-        if (body) {
-          if (existing) {
-            if (!String(existing.texto || existing.mensagem || '').trim()) existing.texto = body;
-          } else {
-            acoesMerged.push({ tipo: 'wa_send_owner', texto: body });
-          }
+        const para = extractWhatsAppPara(mensagem) || undefined;
+        const filePath = extractWhatsAppFilePath(mensagem);
+        const wantsFile = looksLikeWhatsAppFileDeliver(mensagem) || !!filePath;
+        const hasWa = acoesMerged.some(
+          (a) => a && (a.tipo === 'wa_send' || a.tipo === 'wa_send_owner' || a.tipo === 'wa_send_file')
+        );
+        if (wantsFile && filePath && !acoesMerged.some((a) => a && a.tipo === 'wa_send_file')) {
+          acoesMerged.push({
+            tipo: 'wa_send_file',
+            arquivo: filePath,
+            ...(para ? { para } : {})
+          });
           console.log(
             JSON.stringify({
               tag: 'jarvis.nl',
-              event: 'infer_wa_send_owner',
+              event: 'infer_wa_send_file',
               userId: uid,
-              chars: body.length,
-              filled: !!existing
+              arquivo: filePath,
+              para: para || 'eu'
             })
           );
+        } else if (!wantsFile) {
+          const body = pickWhatsAppDeliverBody(mensagem, { respostaBruta, historico });
+          const existing = acoesMerged.find(
+            (a) => a && (a.tipo === 'wa_send' || a.tipo === 'wa_send_owner')
+          );
+          if (body) {
+            if (existing) {
+              if (!String(existing.texto || existing.mensagem || '').trim()) existing.texto = body;
+              if (para && !existing.para) existing.para = para;
+            } else {
+              acoesMerged.push({
+                tipo: 'wa_send',
+                texto: body,
+                ...(para ? { para } : {})
+              });
+            }
+            console.log(
+              JSON.stringify({
+                tag: 'jarvis.nl',
+                event: 'infer_wa_send',
+                userId: uid,
+                chars: body.length,
+                para: para || 'eu',
+                filled: !!existing
+              })
+            );
+          } else if (!hasWa && para) {
+            // Pediu destino mas o corpo ainda não veio — deixa o modelo; só não vira soc_dm
+          }
         }
       }
     }
