@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.36**: **SIM por voz no orbe** — ativação fraca com “sim/não/aprovar” + HITL pendente no canal não é mais ignorada (antes só o botão da aba aprovava); mais frases de ok; “é do que?” relembra o pedido em vez de gerar outra aprovação
 - **0.10.35**: **Entrega no WhatsApp sob pedido** — tool `wa_send_owner` (só dono, Evolution, sem `proactive_wa`); NL “manda no zap/WA” injeta a tool com o texto da resposta/histórico; afirmação falsa (“já mandei / tá no seu WhatsApp”) sem tool ok é reconciliada. DM em rede continua `soc_dm`
 - **0.10.34**: **Fase 4.4 + 4.3 resto** — receitas por rede (`recipes/x|instagram|tiktok|youtube.js`), helpers na página (bug de closures), post IG/TikTok com mídia (CDP + pastas liberadas), reply TikTok, aviso `soc_layout` quando o site muda. YouTube escrita ainda não (readonly)
 - **0.10.33**: **código-only MCU/backlog** — Fase **4.5** (sessão/2FA caiu → aviso proativo, você loga); **6.2** `creative_remove_background` (tira fundo da última imagem); trava de loop de tool (`loop-guard`); "sempre sim qualquer" (regra por tipo). Fish TTS: docs pra `FISH_API_KEY` (código já existia)
