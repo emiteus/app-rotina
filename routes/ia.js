@@ -3158,8 +3158,32 @@ Regras:
         looksLikeWhatsAppDeliver,
         looksLikeWhatsAppFileDeliver,
         extractWhatsAppPara,
-        extractWhatsAppFilePath
+        extractWhatsAppFilePath,
+        extractWhatsAppPhoneHint,
+        extractWhatsAppContactLearn
       } = require('../lib/jarvis/context/intent');
+      // Aprende contato: "o zap do joão é 55…"
+      {
+        const learn = extractWhatsAppContactLearn(mensagem);
+        if (
+          learn &&
+          !acoesMerged.some((a) => a && a.tipo === 'wa_contact_set')
+        ) {
+          acoesMerged.push({
+            tipo: 'wa_contact_set',
+            alias: learn.alias,
+            numero: learn.phone
+          });
+          console.log(
+            JSON.stringify({
+              tag: 'jarvis.nl',
+              event: 'infer_wa_contact_set',
+              userId: uid,
+              alias: learn.alias
+            })
+          );
+        }
+      }
       if (looksLikeWhatsAppDeliver(mensagem)) {
         const nSoc = acoesMerged.length;
         acoesMerged = acoesMerged.filter((a) => a && a.tipo !== 'soc_dm');
@@ -3173,6 +3197,7 @@ Regras:
           );
         }
         const para = extractWhatsAppPara(mensagem) || undefined;
+        const phoneHint = extractWhatsAppPhoneHint(mensagem) || undefined;
         const filePath = extractWhatsAppFilePath(mensagem);
         const wantsFile = looksLikeWhatsAppFileDeliver(mensagem) || !!filePath;
         const hasWa = acoesMerged.some(
@@ -3182,7 +3207,8 @@ Regras:
           acoesMerged.push({
             tipo: 'wa_send_file',
             arquivo: filePath,
-            ...(para ? { para } : {})
+            ...(para ? { para } : {}),
+            ...(phoneHint ? { numero: phoneHint } : {})
           });
           console.log(
             JSON.stringify({
@@ -3202,11 +3228,13 @@ Regras:
             if (existing) {
               if (!String(existing.texto || existing.mensagem || '').trim()) existing.texto = body;
               if (para && !existing.para) existing.para = para;
+              if (phoneHint && !existing.numero) existing.numero = phoneHint;
             } else {
               acoesMerged.push({
                 tipo: 'wa_send',
                 texto: body,
-                ...(para ? { para } : {})
+                ...(para ? { para } : {}),
+                ...(phoneHint ? { numero: phoneHint } : {})
               });
             }
             console.log(
