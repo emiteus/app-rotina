@@ -64,9 +64,11 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a
 
 | Classe | Regra | WA (default) | Assist web | Tools |
 |--------|-------|--------------|------------|-------|
-| **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/medium executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `dev_railway_logs`, `dev_deploy_checklist`, `research_web_search`, `research_fetch_url`, `browser_*`, `cinerush_buscar`, `cutflix_status`, rotina/finance **low** |
+| **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/medium executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `dev_railway_logs`, `dev_deploy_checklist`, `research_web_search`, `research_fetch_url`, `browser_*`, `cinerush_buscar`, `cutflix_status`, `wa_send_owner` (medium, só dono), rotina/finance **low** |
 | **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
+
+**WhatsApp do dono (0.10.35)**: “manda no WhatsApp/zap” (do PC/Assist) → `wa_send_owner` com o texto (lista da resposta ou corpo pedido). Destino = só `WHATSAPP_ALLOWED_PHONES` via Evolution; **não** depende de `JARVIS_PROACTIVE_WA` / flag `proactive_wa` (pedido explícito ≠ ping). Medium, ownerOnly. DM em rede social = `soc_dm`, não esta tool.
 
 **Redes sociais (Fase 4)**: leitura `soc_status`/`soc_login`/`soc_posts`/`soc_comments`/`soc_inbox`/`soc_summary` = low, ownerOnly. Escrita **critical** (preview exato + SIM): X texto; Instagram/TikTok post com `midia`/`path` (pastas liberadas) + legenda; reply X/IG/TikTok; DM X/IG; sem lote. Receitas por rede em `desktop/src/social/recipes/` (**4.4**): se a página mudar, aviso e nada enviado. YouTube = só leitura (API). **4.5**: sessão/2FA caiu → avisa e **você** loga.
 

@@ -180,7 +180,42 @@ function respostaClaimMutacao(texto) {
     new RegExp(`\\b(?:n[aã]o|nunca|ainda\\s+n[aã]o)\\s+(?:${verbs})\\b`, 'gi'),
     ' '
   );
-  return new RegExp(`\\b(?:${verbs})\\b`, 'i').test(limpo);
+  if (new RegExp(`\\b(?:${verbs})\\b`, 'i').test(limpo)) return true;
+  // Afirmação de entrega no WA sem verbo clássico ("tá no seu WhatsApp", "chegou no zap")
+  const limpoWa = limpo.replace(
+    /\b(?:n[aã]o|nunca|ainda\s+n[aã]o)\s+(?:j[aá]\s+)?(?:mandei|enviei|est[aá]|t[aá]|chegou)\b/gi,
+    ' '
+  );
+  return (
+    /\b(j[aá]\s+mandei|j[aá]\s+enviei)\b/i.test(limpoWa) ||
+    /\b(mandei|enviei)\s+no\s+(seu\s+)?(whats?app|zap)\b/i.test(limpoWa) ||
+    /\b(t[aá]|est[aá]|chegou)\s+no\s+(seu\s+)?(whats?app|zap)\b/i.test(limpoWa)
+  );
+}
+
+/** Corpo útil pra wa_send_owner: explícito no pedido, resposta do turno, ou última do histórico. */
+function pickWhatsAppDeliverBody(mensagem, { respostaBruta, historico } = {}) {
+  const { extractWhatsAppDeliverText } = require('../lib/jarvis/context/intent');
+  const explicit = extractWhatsAppDeliverText(mensagem);
+  if (explicit) return explicit;
+  const fromReply = String(respostaBruta || '')
+    .replace(/\r\n/g, '\n')
+    .trim()
+    .slice(0, 1500);
+  if (fromReply.length >= 40 && !/^posso\b/i.test(fromReply)) return fromReply;
+  const soft = String(mensagem || '').replace(/\s+/g, ' ').trim();
+  if (soft.length <= 100) {
+    const hist = Array.isArray(historico) ? historico : [];
+    for (let i = hist.length - 1; i >= 0; i--) {
+      const m = hist[i];
+      if (!m || m.role !== 'assistant') continue;
+      const c = String(m.content || '')
+        .replace(/\r\n/g, '\n')
+        .trim();
+      if (c.length >= 40) return c.slice(0, 1500);
+    }
+  }
+  return null;
 }
 
 /** Pergunta analítica / contagem — não deve virar "não alterei nada". */
@@ -246,9 +281,9 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
     'creative_generate_image', 'creative_landing_copy',
     'research_web_search', 'research_fetch_url', 'research_write_report'
   ]);
-  // PC/TV/redes voltam com a frase pronta (a.texto) e o narrarOks trata a família inteira pelo prefixo.
+  // PC/TV/redes/WA voltam com a frase pronta (a.texto) e o narrarOks trata a família inteira pelo prefixo.
   // Antes cada tool nova tinha que entrar na lista acima; pc_notes_* ficou de fora e a resposta sumia (30/09/2026).
-  const DEVICE_TOOL = /^(pc|tv|soc)_/;
+  const DEVICE_TOOL = /^(pc|tv|soc|wa)_/;
   const finOk = oks.filter(a => acaoTipos.has(a.tipo) || DEVICE_TOOL.test(String(a.tipo)));
   const claim = respostaClaimMutacao(resposta);
   const failText = fails.length ? formatAcaoFalhas(fails) : '';
@@ -3117,6 +3152,41 @@ Regras:
         a && a.tipo === 'browser_open' && a.url ? { tipo: 'pc_open_url', url: a.url } : a
       );
     }
+    // Pediu entregar no WhatsApp/zap → wa_send_owner (dono). Não vira soc_dm / X.
+    {
+      const { looksLikeWhatsAppDeliver } = require('../lib/jarvis/context/intent');
+      if (looksLikeWhatsAppDeliver(mensagem)) {
+        const nSoc = acoesMerged.length;
+        acoesMerged = acoesMerged.filter((a) => a && a.tipo !== 'soc_dm');
+        if (acoesMerged.length !== nSoc) {
+          console.log(
+            JSON.stringify({
+              tag: 'jarvis.nl',
+              event: 'wa_deliver_strip_soc_dm',
+              userId: uid
+            })
+          );
+        }
+        const body = pickWhatsAppDeliverBody(mensagem, { respostaBruta, historico });
+        const existing = acoesMerged.find((a) => a && a.tipo === 'wa_send_owner');
+        if (body) {
+          if (existing) {
+            if (!String(existing.texto || existing.mensagem || '').trim()) existing.texto = body;
+          } else {
+            acoesMerged.push({ tipo: 'wa_send_owner', texto: body });
+          }
+          console.log(
+            JSON.stringify({
+              tag: 'jarvis.nl',
+              event: 'infer_wa_send_owner',
+              userId: uid,
+              chars: body.length,
+              filled: !!existing
+            })
+          );
+        }
+      }
+    }
     const acoesExec = await executarAcoes(acoesMerged, uid, { channel: channelKey, agentId: agent && agent.id, mensagem });
     const resposta = stripToolLeakage(
       reconciliarRespostaComAcoes(respostaBruta, acoesExec)
@@ -3167,3 +3237,5 @@ module.exports.warmAssistSnap = (uid) =>
 module.exports._inferirAcoesDaMensagem = inferirAcoesDaMensagem;
 // Só pros testes da resposta final montada a partir das ações
 module.exports._reconciliarRespostaComAcoes = reconciliarRespostaComAcoes;
+module.exports._respostaClaimMutacao = respostaClaimMutacao;
+module.exports._pickWhatsAppDeliverBody = pickWhatsAppDeliverBody;
