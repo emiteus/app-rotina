@@ -1,7 +1,7 @@
 # JARVIS Roadmap MCU
 
-**Date:** 2026-09-22 · **Baseline:** v0.9.72
-**Substitui como norte:** [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md) (plano 30/60/90 concluído)
+**Date:** 2026-09-22 · **Baseline:** v0.9.72 · **Status vivo:** ver [JARVIS_ROADMAP.md](./JARVIS_ROADMAP.md)  
+**Substitui como norte:** [archive/JARVIS_GAP_MAP_3.0.md](./archive/JARVIS_GAP_MAP_3.0.md) (plano 30/60/90 concluído)
 
 ## Norte
 

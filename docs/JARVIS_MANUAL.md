@@ -2,7 +2,8 @@
 
 **OS home:** `R:\Projetos\Jarvis` (fonte de verdade).  
 **Host:** App Rotina (`Approtina/app-rotina`) — sync com `npm run sync:host`.  
-Código no deploy: **v0.9.6+**. Abaixo só o que depende de você / ambiente / produto externo.
+**Versão:** a mesma de `package.json` / header do [JARVIS_ROADMAP.md](./JARVIS_ROADMAP.md).  
+Abaixo só o que depende de você / ambiente / produto externo.
 
 **Norte:** conexão real (snapshot + tools + LLM). Sem atalhos de resposta por projeto.
 
@@ -62,15 +63,15 @@ Redeploy após mudar env.
 
 ### Matriz de permissão (AUTO / APPROVAL / BLOCKED)
 
-Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a mesma regra do Assist: high e critical pedem SIM (`JARVIS_HITL_WHATSAPP=0` desliga).
+Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`.
 
-| Classe | Regra | WA (default) | Assist web | Tools |
-|--------|-------|--------------|------------|-------|
-| **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/medium executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `dev_railway_logs`, `dev_deploy_checklist`, `research_web_search`, `research_fetch_url`, `browser_*`, `cinerush_buscar`, `cutflix_status`, `wa_send_owner` (medium, só dono), rotina/finance **low** |
-| **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL_WHATSAPP=0`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm` |
+| Classe | Regra | WA (default desde 0.10.37) | Assist web | Tools |
+|--------|-------|----------------------------|------------|-------|
+| **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/**medium/high** executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `wa_send` / `wa_send_file` (medium), rotina/finance **low**, … |
+| **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL=0` e `JARVIS_HITL_WHATSAPP`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** + high | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
-**WhatsApp (0.10.37–0.10.38)**: autonomia no canal WA — high/medium sem SIM; **só critical** pede. Opt-in HITL high: `JARVIS_HITL_WHATSAPP=1`. Entrega: `wa_send` / `wa_send_file` / `wa_send_owner`. Contatos: **aprende sozinho** (“o zap do João é 55…” ou “manda pro João 11999…”) em `jarvis_wa_contacts`; env `WHATSAPP_CONTACTS` é só seed. Tools `wa_contact_list` / `forget`. Pedido explícito ≠ ping. DM em rede = `soc_dm`.
+**WhatsApp**: autonomia no canal — **só critical** pede SIM. Opt-in HITL high: `JARVIS_HITL_WHATSAPP=1`. Entrega: `wa_send` / `wa_send_file` / `wa_send_owner` (pasta = `desktop/1` etc.). Contatos: **aprende sozinho** (“o zap do João é 55…” ou “manda pro João 11999…”) em `jarvis_wa_contacts`; env `WHATSAPP_CONTACTS` é só seed. Tools `wa_contact_list` / `forget`. Pedido explícito ≠ ping. DM em rede = `soc_dm`.
 
 **Redes sociais (Fase 4)**: leitura `soc_status`/`soc_login`/`soc_posts`/`soc_comments`/`soc_inbox`/`soc_summary` = low, ownerOnly. Escrita **critical** (preview exato + SIM): X texto; Instagram/TikTok post com `midia`/`path` (pastas liberadas) + legenda; reply X/IG/TikTok; DM X/IG; sem lote. Receitas por rede em `desktop/src/social/recipes/` (**4.4**): se a página mudar, aviso e nada enviado. YouTube = só leitura (API). **4.5**: sessão/2FA caiu → avisa e **você** loga.
 
@@ -82,9 +83,9 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`. Desde 0.9.73 o WA segue a
 
 **PC (0.9.79, Jarvis Desktop)**: `pc_status`, `pc_volume`, `pc_media`, `pc_open_app` = low; `pc_lock`, `pc_screenshot` = medium; `pc_close_app` = **high** (SIM). Todas ownerOnly e executadas só no PC do próprio usuário, que revalida tool e argumentos (lista própria) e tem interruptor local na bandeja.
 
-**High** (não critical): pedem SIM no Assist **e no WA** (threshold default high). Exemplos: `dev_run_tests`, `cinerush_criar`, `attracione_coleta`, `recategorizar`, `socialhub_publicar_agendados`.
+**High** (não critical): pedem SIM no **Assist** (threshold default high). No **WhatsApp** rodam sem SIM, salvo `JARVIS_HITL_WHATSAPP=1`. Exemplos: `dev_run_tests`, `cinerush_criar`, `attracione_coleta`, `recategorizar`, `socialhub_publicar_agendados`.
 
-**Medium**: executa direto nos dois canais, salvo `JARVIS_APPROVAL_THRESHOLD=medium`. Exemplos: `sincronizar_bancos`, `creative_generate_image`, `dev_propose_patch`, `research_write_report`.
+**Medium**: executa direto nos dois canais (salvo threshold `medium` no Assist). Exemplos: `sincronizar_bancos`, `wa_send`, `creative_generate_image`, `dev_propose_patch`.
 
 Validação: `npm run check:tools` — falha se def sem handler, handler órfão, ou Manual sem listar os **critical**.  
 `GET /api/ia/os` → `permissionMatrix.documented=true` + lista `tools.critical`.
@@ -165,11 +166,12 @@ API: `GET /api/ia/os` · `GET /api/ia/missions` · `GET /api/ia/status`
 
 ---
 
-## 5. Docs de fase
+## 5. Onde está o status
 
-- `docs/JARVIS_SYSTEM_AUDIT.md` — plano original  
-- `docs/JARVIS_PHASE1_CHECKPOINT.md` … `PHASES_7_11` / `DEBT_REDUCTION.md`  
-- Este arquivo = **só o manual**
+- Changelog / próximo → `docs/JARVIS_ROADMAP.md`
+- Norte MCU → `docs/JARVIS_ROADMAP_MCU.md`
+- Este arquivo = **só o manual** (env, HITL, o que depende de você)
+- Histórico → `docs/archive/`
 
 **Memória automática de fatos (0.10.30)**: depois de cada conversa (web, WhatsApp, PC, celular), `src/memory/facts.js` pede a um modelo rápido os fatos duráveis sobre o usuário (JSON `{novos, obsoletos}`) e guarda em `jarvis_facts` (único por usuário + texto normalizado; repetido conta `vezes`; corrigido desativa o antigo; no máximo 200 ativos). Roda em segundo plano, um por vez por usuário, no máximo 1 a cada 15 s, e nunca lança. Só aprende com as palavras do usuário: CONTEÚDO EXTERNO é cortado e mensagem com cara de manipulação é ignorada. Cumprimento, mensagem curta e pedido curto com verbo de ação não gastam chamada. Os 30 mais recentes entram no system prompt. Tools `user_facts_list` / `user_facts_forget` (low). Turno que usou essas tools não ensina nada. Teste: `TEST_DATABASE_URL=… node scripts/smoke-facts.js` (Postgres descartável).
 

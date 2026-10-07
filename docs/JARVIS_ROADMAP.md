@@ -1,12 +1,16 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.22  
-**Date:** 2026-09-25
+**Version:** 0.10.41  
+**Date:** 2026-10-07  
+**Fonte de verdade da versão:** `package.json` (este header deve coincidir).
+
+Docs vivos: este arquivo · [JARVIS_ROADMAP_MCU.md](./JARVIS_ROADMAP_MCU.md) · [JARVIS_MANUAL.md](./JARVIS_MANUAL.md).  
+Histórico: [archive/](./archive/).
 
 ## Norte
 
 Ver **[JARVIS_ROADMAP_MCU.md](./JARVIS_ROADMAP_MCU.md)** (JARVIS do filme: PC, voz, casa, redes).
-Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_3.0.md).
+Plano 30/60/90 (concluído, arquivado): [archive/JARVIS_GAP_MAP_3.0.md](./archive/JARVIS_GAP_MAP_3.0.md).
 
 ### Princípio
 
@@ -15,6 +19,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.41**: **Organização** — docs mortos em `docs/archive/`; README com desktop/phone; versões alinhadas; MANUAL HITL WA numa regra só; smokes órfãos no `smoke-all`; `scan-projects.js` removido
 - **0.10.40**: **WA pasta + “para o Magal”** — `desktop/1` a partir de “pasta 1 do desktop”; `wa_send_file` lista e manda os arquivos; destino com artigo (“para o X”)
 - **0.10.39**: **Auditoria WA** — `extractWhatsAppPara` não engole “manda a mensagem…” / “grupo da família”; fallback texto se pediu arquivo sem path
 - **0.10.38**: **Contatos WA aprendidos** — “o zap do João é…” / “manda pro João 11999…” guarda em Postgres (`jarvis_wa_contacts`); sem cadastrar env no Railway
@@ -84,7 +89,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 - **0.9.67**: NL infer pause/retoma ops flags
 - **0.9.66–0.9.60**: ops flags, NL, layout
 
-## Próximo
+## Próximo (código já existe — falta você / ambiente)
 
 - **Fase 3 MCU**: parear a TV LG de verdade (TV ligada) e testar por voz; HA quando chegarem mais aparelhos
 - **Fase 5.3 MCU**: setar `FISH_API_KEY` (ou crédito OpenAI) — código pronto
@@ -93,7 +98,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Backlog (só sob pedido)
 
+- Particionar `src/multimodal/` (voice / vision / creative)  
 - Compose sharp estável  
 - Sandbox Dev / pgvector  
-- Mais adapters ops (Editor, Cutflix)  
-- Playwright em prod (`JARVIS_BROWSER_HEADLESS=1`) — **feito em Railway**
+- Mais adapters ops (Editor, Cutflix)

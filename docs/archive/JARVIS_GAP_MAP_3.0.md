@@ -1,3 +1,4 @@
+﻿> **HISTÓRICO (arquivado 2026-10-07).** Não usar como status. Status vivo: [JARVIS_ROADMAP.md](../JARVIS_ROADMAP.md) · [JARVIS_ROADMAP_MCU.md](../JARVIS_ROADMAP_MCU.md) · [JARVIS_MANUAL.md](../JARVIS_MANUAL.md).
 # JARVIS Gap Map — Hub operacional → OS 3.0
 
 **Date:** 2026-09-17 · **Revisado:** 2026-09-20 (auditoria)  

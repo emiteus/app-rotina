@@ -1,3 +1,4 @@
+﻿> **HISTÓRICO (arquivado 2026-10-07).** Não usar como status. Status vivo: [JARVIS_ROADMAP.md](../JARVIS_ROADMAP.md) · [JARVIS_ROADMAP_MCU.md](../JARVIS_ROADMAP_MCU.md) · [JARVIS_MANUAL.md](../JARVIS_MANUAL.md).
 # JARVIS Phase 3 Checkpoint — Tool Registry
 
 **Date:** 2026-09-17  
