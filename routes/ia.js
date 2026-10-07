@@ -3159,6 +3159,7 @@ Regras:
         looksLikeWhatsAppFileDeliver,
         extractWhatsAppPara,
         extractWhatsAppFilePath,
+        extractWhatsAppFolderPath,
         extractWhatsAppPhoneHint,
         extractWhatsAppContactLearn
       } = require('../lib/jarvis/context/intent');
@@ -3198,25 +3199,47 @@ Regras:
         }
         const para = extractWhatsAppPara(mensagem) || undefined;
         const phoneHint = extractWhatsAppPhoneHint(mensagem) || undefined;
-        const filePath = extractWhatsAppFilePath(mensagem);
-        const wantsFile = looksLikeWhatsAppFileDeliver(mensagem) || !!filePath;
+        const folderPath = extractWhatsAppFolderPath(mensagem);
+        const filePath = folderPath || extractWhatsAppFilePath(mensagem);
+        const wantsFile =
+          looksLikeWhatsAppFileDeliver(mensagem) || !!filePath || !!folderPath;
+        const hasWaFile = acoesMerged.some((a) => a && a.tipo === 'wa_send_file');
         const hasWa = acoesMerged.some(
           (a) => a && (a.tipo === 'wa_send' || a.tipo === 'wa_send_owner' || a.tipo === 'wa_send_file')
         );
-        if (wantsFile && filePath && !acoesMerged.some((a) => a && a.tipo === 'wa_send_file')) {
-          acoesMerged.push({
-            tipo: 'wa_send_file',
-            arquivo: filePath,
-            ...(para ? { para } : {}),
-            ...(phoneHint ? { numero: phoneHint } : {})
-          });
+        if (wantsFile && filePath) {
+          // Pediu arquivo/pasta: não manda texto solto no zap do dono por cima
+          acoesMerged = acoesMerged.filter(
+            (a) => a && a.tipo !== 'wa_send' && a.tipo !== 'wa_send_owner'
+          );
+          let existingFile = acoesMerged.find((a) => a && a.tipo === 'wa_send_file');
+          if (!existingFile) {
+            existingFile = {
+              tipo: 'wa_send_file',
+              ...(folderPath ? { pasta: folderPath } : { arquivo: filePath }),
+              ...(para ? { para } : {}),
+              ...(phoneHint ? { numero: phoneHint } : {})
+            };
+            acoesMerged.push(existingFile);
+          } else {
+            if (folderPath) {
+              existingFile.pasta = folderPath;
+              delete existingFile.arquivo;
+            } else if (filePath && !existingFile.arquivo && !existingFile.pasta) {
+              existingFile.arquivo = filePath;
+            }
+            if (para) existingFile.para = para;
+            if (phoneHint && !existingFile.numero) existingFile.numero = phoneHint;
+          }
           console.log(
             JSON.stringify({
               tag: 'jarvis.nl',
               event: 'infer_wa_send_file',
               userId: uid,
-              arquivo: filePath,
-              para: para || 'eu'
+              arquivo: folderPath || filePath,
+              pasta: !!folderPath,
+              para: para || 'eu',
+              patched: hasWaFile
             })
           );
         } else if (wantsFile && !filePath && !hasWa) {
@@ -3266,6 +3289,18 @@ Regras:
                 filled: !!existing
               })
             );
+          }
+        } else if (para) {
+          // Já tem wa_send_file do modelo — só completa o destino
+          for (const a of acoesMerged) {
+            if (!a || (a.tipo !== 'wa_send' && a.tipo !== 'wa_send_file' && a.tipo !== 'wa_send_owner')) {
+              continue;
+            }
+            if (!a.para) a.para = para;
+            if (phoneHint && !a.numero) a.numero = phoneHint;
+            if (folderPath && a.tipo === 'wa_send_file' && !a.pasta && !a.arquivo) {
+              a.pasta = folderPath;
+            }
           }
         }
       }

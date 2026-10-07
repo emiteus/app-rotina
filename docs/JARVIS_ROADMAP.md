@@ -15,6 +15,7 @@ Plano anterior (30/60/90, concluído): [JARVIS_GAP_MAP_3.0.md](./JARVIS_GAP_MAP_
 
 ## Done
 
+- **0.10.40**: **WA pasta + “para o Magal”** — `desktop/1` a partir de “pasta 1 do desktop”; `wa_send_file` lista e manda os arquivos; destino com artigo (“para o X”)
 - **0.10.39**: **Auditoria WA** — `extractWhatsAppPara` não engole “manda a mensagem…” / “grupo da família”; fallback texto se pediu arquivo sem path
 - **0.10.38**: **Contatos WA aprendidos** — “o zap do João é…” / “manda pro João 11999…” guarda em Postgres (`jarvis_wa_contacts`); sem cadastrar env no Railway
 - **0.10.37**: **Autonomia WhatsApp** — HITL high no WA off por padrão (só critical pede SIM); `wa_send` / `wa_send_file`; PC → Evolution media; NL não vira `soc_dm`
