@@ -48,26 +48,43 @@ router.post('/pair', express.json({ limit: '2kb' }), async (req, res) => {
   }
 });
 
-/** Arquivo grande do PC (WhatsApp etc.) — limite próprio, fora do json global 2mb. */
-router.post('/blob', express.json({ limit: '20mb' }), async (req, res) => {
-  try {
-    const device = await authenticateToken(bearer(req));
-    if (!device) return res.status(401).json({ erro: 'token inválido' });
-    if (device.kind === 'phone') return res.status(403).json({ erro: 'só o PC sobe arquivo' });
-    const out = blobs.put({
-      deviceId: device.id,
-      userId: device.userId,
-      base64: req.body?.base64,
-      mime: req.body?.mime,
-      fileName: req.body?.fileName || req.body?.name
-    });
-    if (out.erro) return res.status(400).json({ erro: out.erro });
-    res.set('Cache-Control', 'no-store');
-    res.json({ blobId: out.blobId });
-  } catch (e) {
-    console.error('[jarvis.device] blob:', e.message);
-    res.status(500).json({ erro: 'falha ao guardar o arquivo' });
+/**
+ * Arquivo grande do PC (WhatsApp etc.).
+ * Body = bytes crus (application/octet-stream) — o express.json global (2mb) NÃO engole isso
+ * (antes: JSON+base64 → 413 Payload Too Large).
+ * Headers: Authorization, x-jarvis-mime, x-jarvis-filename (URI-encoded).
+ */
+router.post(
+  '/blob',
+  express.raw({ type: 'application/octet-stream', limit: '20mb' }),
+  async (req, res) => {
+    try {
+      const device = await authenticateToken(bearer(req));
+      if (!device) return res.status(401).json({ erro: 'token inválido' });
+      if (device.kind === 'phone') return res.status(403).json({ erro: 'só o PC sobe arquivo' });
+      const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || []);
+      if (!buf.length) return res.status(400).json({ erro: 'arquivo vazio' });
+      let fileName = 'arquivo';
+      try {
+        fileName = decodeURIComponent(String(req.get('x-jarvis-filename') || 'arquivo'));
+      } catch (_) {
+        fileName = String(req.get('x-jarvis-filename') || 'arquivo').slice(0, 180);
+      }
+      const out = blobs.put({
+        deviceId: device.id,
+        userId: device.userId,
+        base64: buf.toString('base64'),
+        mime: req.get('x-jarvis-mime') || 'application/octet-stream',
+        fileName
+      });
+      if (out.erro) return res.status(400).json({ erro: out.erro });
+      res.set('Cache-Control', 'no-store');
+      res.json({ blobId: out.blobId });
+    } catch (e) {
+      console.error('[jarvis.device] blob:', e.message);
+      res.status(500).json({ erro: 'falha ao guardar o arquivo' });
+    }
   }
-});
+);
 
 module.exports = router;

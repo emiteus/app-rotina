@@ -1,6 +1,6 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.42  
+**Version:** 0.10.43  
 **Date:** 2026-10-07  
 **Fonte de verdade da versão:** `package.json` (este header deve coincidir).
 
@@ -19,6 +19,7 @@ Plano 30/60/90 (concluído, arquivado): [archive/JARVIS_GAP_MAP_3.0.md](./archiv
 
 ## Done
 
+- **0.10.43**: **Blob em bytes crus** — upload `/blob` como `application/octet-stream` (não JSON+base64); o `express.json` global 2mb dava **413** no mp3 da pasta 1
 - **0.10.42**: **Arquivo grande PC→nuvem por HTTP** — `pc_files_fetch` / WA não manda megabytes no WebSocket (Railway cortava → “conexão caiu”); sobe `/api/jarvis-device/blob` e o WS só leva `blobId`
 - **0.10.41**: **Organização** — docs mortos em `docs/archive/`; README com desktop/phone; versões alinhadas; MANUAL HITL WA numa regra só; smokes órfãos no `smoke-all`; `scan-projects.js` removido
 - **0.10.40**: **WA pasta + “para o Magal”** — `desktop/1` a partir de “pasta 1 do desktop”; `wa_send_file` lista e manda os arquivos; destino com artigo (“para o X”)
