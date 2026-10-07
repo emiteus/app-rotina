@@ -3219,6 +3219,25 @@ Regras:
               para: para || 'eu'
             })
           );
+        } else if (wantsFile && !filePath && !hasWa) {
+          // "manda o pdf no zap" sem caminho → não inventa path; manda texto útil se houver
+          const body = pickWhatsAppDeliverBody(mensagem, { respostaBruta, historico });
+          if (body) {
+            acoesMerged.push({
+              tipo: 'wa_send',
+              texto: body,
+              ...(para ? { para } : {}),
+              ...(phoneHint ? { numero: phoneHint } : {})
+            });
+            console.log(
+              JSON.stringify({
+                tag: 'jarvis.nl',
+                event: 'infer_wa_send_file_fallback_text',
+                userId: uid,
+                chars: body.length
+              })
+            );
+          }
         } else if (!wantsFile) {
           const body = pickWhatsAppDeliverBody(mensagem, { respostaBruta, historico });
           const existing = acoesMerged.find(
@@ -3247,8 +3266,6 @@ Regras:
                 filled: !!existing
               })
             );
-          } else if (!hasWa && para) {
-            // Pediu destino mas o corpo ainda não veio — deixa o modelo; só não vira soc_dm
           }
         }
       }
