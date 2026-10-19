@@ -572,6 +572,13 @@ sched('* * * * *', runCron('jarvis-socialhub-publish', async () => {
   await runSocialhubPublishNotify(uid);
 }));
 
+// Agenda das redes pelo site (Jarvis ops/agenda-redes.js): sobe no PC o que entrou no prazo do agendador da rede
+sched('*/5 * * * *', runCron('jarvis-agenda-redes', async () => {
+  const uid = await jarvisOwnerUserId();
+  if (!uid) return;
+  await require('./lib/jarvis/ops/agenda-redes').tick(uid);
+}));
+
 sched('0 8 * * *', runCron('jarvis-socialhub-tokens', async () => {
   const uid = await jarvisOwnerUserId();
   if (!uid) return;
