@@ -1,7 +1,7 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.43  
-**Date:** 2026-10-07  
+**Version:** 0.10.46  
+**Date:** 2026-10-19  
 **Fonte de verdade da versão:** `package.json` (este header deve coincidir).
 
 Docs vivos: este arquivo · [JARVIS_ROADMAP_MCU.md](./JARVIS_ROADMAP_MCU.md) · [JARVIS_MANUAL.md](./JARVIS_MANUAL.md).  
@@ -19,6 +19,9 @@ Plano 30/60/90 (concluído, arquivado): [archive/JARVIS_GAP_MAP_3.0.md](./archiv
 
 ## Done
 
+- **0.10.46**: **Agenda das redes pelo site** — `soc_agendar` sobe vídeos de uma pasta do PC no agendador do TikTok Studio e do Meta Business Suite (Reels do IG), sem API. Plano (vídeo → rede → horário → legenda) montado antes do SIM; modelos de legenda por nicho; fila com prazo de cada rede; motorista com clique/tecla reais (`desktop/src/social/driver.js`). Fuse RunAsNode volta a ficar ligado (o vigia roda como Node)
+- **0.10.45**: **Log de auditoria e integridade do servidor** — ações em `audit_log` (cadeia assinada). Na subida o processo assina os arquivos de segurança e repete a comparação a cada 15 min. Leitura só do dono em `/audit.html`
+- **0.10.44**: **Trava de sessão e de arquivo** — login usa `req.ip` (sem isento padrão); `SESSION_SECRET` obrigatório em production; `wa_send_file` é critical (pede SIM); blob com teto de 40 MB
 - **0.10.43**: **Blob em bytes crus** — upload `/blob` como `application/octet-stream` (não JSON+base64); o `express.json` global 2mb dava **413** no mp3 da pasta 1
 - **0.10.42**: **Arquivo grande PC→nuvem por HTTP** — `pc_files_fetch` / WA não manda megabytes no WebSocket (Railway cortava → “conexão caiu”); sobe `/api/jarvis-device/blob` e o WS só leva `blobId`
 - **0.10.41**: **Organização** — docs mortos em `docs/archive/`; README com desktop/phone; versões alinhadas; MANUAL HITL WA numa regra só; smokes órfãos no `smoke-all`; `scan-projects.js` removido

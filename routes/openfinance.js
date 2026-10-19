@@ -986,9 +986,12 @@ router.temCredenciais = temCredenciais;
 async function handlePluggyWebhook(req, res) {
   try {
     const secret = process.env.PLUGGY_WEBHOOK_SECRET;
-    if (secret) {
-      const got = req.get('X-Pluggy-Secret') || req.get('x-webhook-secret') || req.query.secret;
-      if (got !== secret) return res.status(401).json({ erro: 'secret inválido' });
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') return res.status(401).json({ erro: 'webhook desligado' });
+    } else {
+      const { secretEquals } = require('../lib/secret-eq');
+      const got = req.get('X-Pluggy-Secret') || req.get('x-webhook-secret') || req.query.secret || '';
+      if (!secretEquals(got, secret)) return res.status(401).json({ erro: 'secret inválido' });
     }
     const event = req.body || {};
     const tipo = event.event || event.type || '';
@@ -1010,7 +1013,8 @@ async function handlePluggyWebhook(req, res) {
     }
     res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error('[pluggy-webhook]', err.message);
+    res.status(500).json({ erro: 'falha no webhook' });
   }
 }
 router.handlePluggyWebhook = handlePluggyWebhook;

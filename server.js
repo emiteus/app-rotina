@@ -36,14 +36,30 @@ const wsServer = new WebSocketServer(httpServer);
 
 // Middleware
 app.use(express.json({ limit: '2mb' }));
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  next();
+});
 
 // Health check (Railway usa pra saber se o container tá vivo)
 app.get('/health', (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 
+function sessionSecret() {
+  const s = String(process.env.SESSION_SECRET || '');
+  if (s.length >= 32) return s;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET ausente ou curto (mínimo 32 caracteres)');
+  }
+  console.warn('[auth] SESSION_SECRET fraco; só vale fora de production');
+  return s || 'dev-only-session-secret-not-for-production';
+}
+
 const sessionMiddleware = session({
   name: 'rotina.sid',
-  secret: process.env.SESSION_SECRET || 'seu-secret-aqui-mudar-em-producao',
+  secret: sessionSecret(),
   store: process.env.DATABASE_URL
     ? new pgSession({
         conString: process.env.DATABASE_URL,
@@ -84,6 +100,20 @@ app.use(async (req, res, next) => {
       });
     }
   } catch (e) { /* ok */ }
+  next();
+});
+
+// Log de ações (login, dinheiro, WhatsApp, tentativa falha). GET que deu certo não entra.
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    try {
+      const audit = require('./lib/audit-log');
+      if (!audit.shouldLogHttp(req, res.statusCode)) return;
+      audit.recordHttp(req, res.statusCode).catch((e) => console.error('[audit]', e.message));
+    } catch (e) {
+      console.error('[audit]', e.message);
+    }
+  });
   next();
 });
 
@@ -179,6 +209,7 @@ app.use('/api/pj', requireAuth, pjRouter);
 app.use('/api/relatorios', requireAuth, relatoriosRouter);
 app.use('/api/push', requireAuth, pushRouter);
 app.use('/api/ia', requireAuth, iaRouter);
+app.use('/api/audit', requireAuth, require('./routes/audit'));
 
 // Jarvis no celular (Fase 5.5 MCU): página pública; o acesso é o token do aparelho, guardado nela.
 // Tranca a página: só script/estilo daqui, conexão só com este servidor, sem iframe.
@@ -617,12 +648,24 @@ function enviarTelegram(mensagem) {
 }
 
 // Inicia servidor HTTP + WebSocket
+function shutdown(signal) {
+  console.log(`[server] ${signal}, fechando`);
+  try { require('./lib/server-integrity').stop(); } catch (_) { /* ignore */ }
+  try { wsServer.close(); } catch (e) { console.error('[server] ws:', e.message); }
+  httpServer.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 8000).unref();
+}
+
 if (process.env.NODE_ENV !== 'test') {
+  require('./lib/audit-log').arm();
+  require('./lib/server-integrity').start();
   httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor rodando em http://0.0.0.0:${PORT}`);
     console.log(`WebSocket disponível em ws://0.0.0.0:${PORT}`);
     console.log(`Timezone ${TZ} · hoje ${hojeStr()} · ${horaAtual()}`);
   });
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 module.exports = { app, httpServer, wsServer, enviarTelegram };

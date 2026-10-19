@@ -67,11 +67,13 @@ Fonte de verdade: `TOOL_DEFS` + `npm run check:tools`.
 
 | Classe | Regra | WA (default desde 0.10.37) | Assist web | Tools |
 |--------|-------|----------------------------|------------|-------|
-| **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/**medium/high** executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `wa_send` / `wa_send_file` (medium), rotina/finance **low**, … |
-| **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL=0` e `JARVIS_HITL_WHATSAPP`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** + high | `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm` |
+| **AUTO** | abaixo de `JARVIS_APPROVAL_THRESHOLD` (default **high**) | low/**medium/high** executam | low/medium executam | leitura, `dev_diagnose`, `dev_git_*`, `wa_send` (medium), rotina/finance **low**, … |
+| **APPROVAL** | `risk=critical` **sempre** HITL (ignora `JARVIS_HITL=0` e `JARVIS_HITL_WHATSAPP`) | **SIM &lt;id&gt;** | **SIM &lt;id&gt;** + high | `wa_send_file`, `dev_railway_redeploy`, `dev_railway_restart`, `dev_apply_patch_local`, `dev_github_pr`, `soc_post`, `soc_reply`, `soc_dm`, `soc_agendar` |
 | **BLOCKED** | `ownerOnly` + user ≠ owner | erro `só owner` | idem | quase todo `dev_*`, `research_*`, `browser_*`, ops CineRush/Attracione/SocialHub/Clipper/Cutflix |
 
-**WhatsApp**: autonomia no canal — **só critical** pede SIM. Opt-in HITL high: `JARVIS_HITL_WHATSAPP=1`. Entrega: `wa_send` / `wa_send_file` / `wa_send_owner` (pasta = `desktop/1` etc.). Contatos: **aprende sozinho** (“o zap do João é 55…” ou “manda pro João 11999…”) em `jarvis_wa_contacts`; env `WHATSAPP_CONTACTS` é só seed. Tools `wa_contact_list` / `forget`. Pedido explícito ≠ ping. DM em rede = `soc_dm`.
+**Log:** `/audit.html` (só o dono). Registra login, alteração, webhook e tool do Jarvis, e o estado do servidor (commit, segredos presentes ou não, arquivo mudado depois da subida). Não guarda senha, token nem conteúdo de arquivo. Não dá para apagar pela aplicação. "Verificar cadeia" confere o log. O painel do topo confere o processo.
+
+**WhatsApp**: autonomia no canal — **só critical** pede SIM. Opt-in HITL high: `JARVIS_HITL_WHATSAPP=1`. Texto: `wa_send` / `wa_send_owner` (medium, sem SIM). Arquivo do PC: `wa_send_file` é **critical** e pede SIM em qualquer canal (pasta = `desktop/1` etc.). Contatos: **aprende sozinho** (“o zap do João é 55…” ou “manda pro João 11999…”) em `jarvis_wa_contacts`; env `WHATSAPP_CONTACTS` é só seed. Tools `wa_contact_list` / `forget`. Pedido explícito ≠ ping. DM em rede = `soc_dm`.
 
 **Redes sociais (Fase 4)**: leitura `soc_status`/`soc_login`/`soc_posts`/`soc_comments`/`soc_inbox`/`soc_summary` = low, ownerOnly. Escrita **critical** (preview exato + SIM): X texto; Instagram/TikTok post com `midia`/`path` (pastas liberadas) + legenda; reply X/IG/TikTok; DM X/IG; sem lote. Receitas por rede em `desktop/src/social/recipes/` (**4.4**): se a página mudar, aviso e nada enviado. YouTube = só leitura (API). **4.5**: sessão/2FA caiu → avisa e **você** loga.
 

@@ -56,7 +56,7 @@ router.post('/pair', express.json({ limit: '2kb' }), async (req, res) => {
  */
 router.post(
   '/blob',
-  express.raw({ type: 'application/octet-stream', limit: '20mb' }),
+  express.raw({ type: 'application/octet-stream', limit: '15mb' }),
   async (req, res) => {
     try {
       const device = await authenticateToken(bearer(req));

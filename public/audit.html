@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Log do app</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif; background: #0b1016; color: #e7ecf2; }
+    header { display: flex; gap: 12px; align-items: center; padding: 16px 20px; border-bottom: 1px solid #243140; }
+    h1 { font-size: 16px; font-weight: 600; margin: 0; }
+    button { background: #1c2836; color: inherit; border: 1px solid #34506c; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+    main { padding: 16px 20px 40px; }
+    .aviso { color: #f0c674; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #1c2836; vertical-align: top; }
+    th { color: #8ea0b5; font-weight: 500; }
+    .nao { color: #f0a0a0; }
+    .ok { color: #9dcc9d; }
+    #servidor { margin-bottom: 20px; padding: 12px 14px; border: 1px solid #243140; border-radius: 10px; }
+    #servidor h2 { margin: 0 0 8px; font-size: 14px; }
+    #servidor ul { margin: 8px 0 0; padding-left: 18px; }
+    code { font-size: 12px; color: #b7c7d6; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Log do app</h1>
+    <button type="button" id="atualizar">Atualizar</button>
+    <button type="button" id="verificar">Verificar cadeia</button>
+    <span id="estado"></span>
+  </header>
+  <main>
+    <section id="servidor">
+      <h2>Servidor</h2>
+      <p id="servidor-resumo">Lendo…</p>
+      <ul id="servidor-riscos"></ul>
+    </section>
+    <p id="msg"></p>
+    <table>
+      <thead>
+        <tr><th>Quando</th><th>Quem</th><th>IP</th><th>O quê</th><th>Resultado</th></tr>
+      </thead>
+      <tbody id="linhas"></tbody>
+    </table>
+  </main>
+  <script>
+    const msg = document.getElementById('msg');
+    const estado = document.getElementById('estado');
+    const tbody = document.getElementById('linhas');
+
+    function quando(ts) {
+      try { return new Date(ts).toLocaleString('pt-BR'); } catch (_) { return ts; }
+    }
+
+    async function carregar() {
+      msg.textContent = '';
+      const res = await fetch('/api/audit?limit=150', { credentials: 'same-origin' });
+      if (res.status === 401) {
+        msg.textContent = 'Entra no app primeiro. Esta página usa a mesma sessão.';
+        return;
+      }
+      if (res.status === 403) {
+        msg.textContent = 'Só o dono vê este log.';
+        return;
+      }
+      if (!res.ok) {
+        msg.textContent = 'Não consegui ler o log.';
+        return;
+      }
+      const data = await res.json();
+      tbody.replaceChildren();
+      for (const l of data.linhas || []) {
+        const tr = document.createElement('tr');
+        const quem = l.actorLogin || l.actorId || 'anônimo';
+        const oque = l.method + ' ' + l.path;
+        const resultado = (l.ok ? 'ok' : 'falhou') + (l.status ? ' ' + l.status : '');
+        for (const texto of [quando(l.ts), quem, l.ip || '—', oque, resultado]) {
+          const td = document.createElement('td');
+          td.textContent = texto;
+          if (!l.ok && texto === resultado) td.className = 'nao';
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      if (!(data.linhas || []).length) msg.textContent = 'Nenhuma ação registrada ainda.';
+    }
+
+    function textoServidor(s) {
+      const commit = s.commit ? s.commit.slice(0, 7) : 'local';
+      const cadeia = s.cadeia && s.cadeia.ok === false
+        ? 'cadeia do log quebrada'
+        : 'cadeia do log ok';
+      return (s.ok ? 'íntegro' : 'atenção')
+        + ' · v' + (s.versao || '?')
+        + ' · ' + commit
+        + ' · no ar há ' + Math.round((s.uptimeSeg || 0) / 60) + ' min'
+        + ' · ' + cadeia;
+    }
+
+    async function carregarServidor() {
+      const resumo = document.getElementById('servidor-resumo');
+      const lista = document.getElementById('servidor-riscos');
+      const res = await fetch('/api/audit/servidor', { credentials: 'same-origin' });
+      lista.replaceChildren();
+      if (res.status === 401 || res.status === 403) {
+        resumo.textContent = 'Entra como dono para ver a integridade.';
+        return;
+      }
+      if (!res.ok) {
+        resumo.textContent = 'Não consegui ler a integridade.';
+        return;
+      }
+      const s = await res.json();
+      resumo.textContent = textoServidor(s);
+      resumo.className = s.ok ? 'ok' : 'nao';
+      for (const item of s.riscos || []) {
+        const li = document.createElement('li');
+        li.textContent = item;
+        lista.appendChild(li);
+      }
+      for (const arq of s.alterados || []) {
+        const li = document.createElement('li');
+        li.textContent = 'mudou depois da subida: ' + arq;
+        lista.appendChild(li);
+      }
+    }
+
+    document.getElementById('atualizar').onclick = () => {
+      carregar().catch(() => { msg.textContent = 'Falhou ao atualizar.'; });
+      carregarServidor().catch(() => {});
+    };
+    document.getElementById('verificar').onclick = async () => {
+      estado.textContent = 'verificando…';
+      const res = await fetch('/api/audit/verificar', { credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { estado.textContent = data.erro || 'falhou'; return; }
+      estado.textContent = data.ok
+        ? 'cadeia íntegra (' + data.checadas + ' linhas)'
+        : 'problema: ' + data.motivo + ' na linha ' + data.id;
+    };
+    carregar().catch(() => { msg.textContent = 'Falhou ao carregar.'; });
+    carregarServidor().catch(() => {});
+  </script>
+</body>
+</html>

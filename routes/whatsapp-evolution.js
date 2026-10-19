@@ -162,13 +162,11 @@ function parseEvolutionPayload(body) {
 
 function checkSecret(req) {
   const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
-  if (!secret) {
-    if (process.env.NODE_ENV === 'production') return false;
-    return true;
-  }
-  const q = req.query?.secret;
-  const h = req.get('x-webhook-secret') || req.get('apikey');
-  return q === secret || h === secret;
+  if (!secret) return process.env.NODE_ENV !== 'production';
+  const { secretEquals } = require('../lib/secret-eq');
+  // Query continua aceita: a Evolution deste app foi configurada com ?secret= na URL.
+  const got = req.get('x-webhook-secret') || req.get('apikey') || req.query?.secret || '';
+  return secretEquals(got, secret);
 }
 
 async function processPhoneQueue(phone) {

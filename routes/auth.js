@@ -4,12 +4,6 @@ const { get, run } = require('../lib/db');
 const { hashSenha, verificarSenha } = require('../lib/password');
 const { getUserId, SKIP_USER_ID } = require('../lib/tenant');
 
-function dbHostMask() {
-  const cs = process.env.DATABASE_URL || '';
-  const m = cs.match(/@([^/]+)/);
-  return m ? m[1] : 'local';
-}
-
 const router = express.Router();
 
 const LOGIN_MAX = 8;
@@ -19,22 +13,19 @@ const CODIGO_CADASTRO = String(process.env.REGISTRATION_CODE || process.env.CODI
 const CORES_NOVOS = ['#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#14b8a6'];
 const LOGIN_RE = /^[a-z0-9_]{3,20}$/;
 
-/** Logins sem limite de tentativas (ex.: parceiro digitando senha). */
+/** Logins sem limite só se LOGIN_ISENTOS estiver definido de propósito. Lista vazia por padrão. */
 const LOGIN_ISENTOS = new Set(
-  [
-    ...(process.env.LOGIN_ISENTOS || '').split(','),
-    process.env.COLEGA_LOGIN || 'eriktizon'
-  ]
+  (process.env.LOGIN_ISENTOS || '')
+    .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
 );
 
 const tentativasLogin = new Map();
 
+/** req.ip já respeita `trust proxy`. O primeiro X-Forwarded-For é escolhido pelo cliente. */
 function ipLogin(req) {
-  const xf = req.headers['x-forwarded-for'];
-  if (xf) return String(xf).split(',')[0].trim();
-  return req.ip || req.connection?.remoteAddress || 'unknown';
+  return req.ip || 'unknown';
 }
 
 function checarLimiteLogin(ip) {
@@ -75,7 +66,7 @@ function validarSenha(senha) {
   return null;
 }
 
-function abrirSessao(req, res, user) {
+function gravarSessao(req, res, user) {
   req.session.userId = user.id;
   req.session.userName = user.nome;
   req.session.userLogin = user.login;
@@ -86,6 +77,17 @@ function abrirSessao(req, res, user) {
       return res.status(500).json({ erro: 'Não consegui abrir a sessão. Tenta de novo.' });
     }
     res.json({ ok: true, user: { id: user.id, nome: user.nome, login: user.login, cor: user.cor } });
+  });
+}
+
+function abrirSessao(req, res, user) {
+  if (typeof req.session?.regenerate !== 'function') return gravarSessao(req, res, user);
+  req.session.regenerate((err) => {
+    if (err) {
+      console.error('[auth] falha ao regenerar sessão:', err.message);
+      return res.status(500).json({ erro: 'Não consegui abrir a sessão. Tenta de novo.' });
+    }
+    gravarSessao(req, res, user);
   });
 }
 
@@ -146,7 +148,8 @@ router.post('/login', async (req, res) => {
     limparLogin(ip);
     abrirSessao(req, res, user);
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error('[auth] login:', err.message);
+    res.status(500).json({ erro: 'Falha ao entrar. Tenta de novo.' });
   }
 });
 
@@ -154,13 +157,17 @@ router.get('/cadastro', async (_req, res) => {
   try {
     res.json(await statusCadastro());
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error('[auth] cadastro status:', err.message);
+    res.status(500).json({ erro: 'Falha ao consultar o cadastro.' });
   }
 });
 
 router.post('/register', async (req, res) => {
   if (SKIP_USER_ID) {
     return res.status(403).json({ erro: 'Cadastro desativado em modo dev (SKIP_AUTH)' });
+  }
+  if (process.env.NODE_ENV === 'production' && !CODIGO_CADASTRO) {
+    return res.status(403).json({ erro: 'Cadastro desligado' });
   }
 
   const ip = ipLogin(req);
@@ -214,7 +221,8 @@ router.post('/register', async (req, res) => {
     limparLogin(ip);
     abrirSessao(req, res, { id, login, nome, cor });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error('[auth] register:', err.message);
+    res.status(500).json({ erro: 'Falha ao cadastrar. Tenta de novo.' });
   }
 });
 
@@ -258,10 +266,10 @@ router.get('/me', async (req, res) => {
           financeiro: Number(stats?.financeiro || 0)
         }
       },
-      db: dbHostMask()
     });
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    console.error('[auth] me:', err.message);
+    res.status(500).json({ erro: 'Falha ao ler a sessão.' });
   }
 });
 
