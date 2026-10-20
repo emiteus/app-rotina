@@ -162,7 +162,11 @@
     sempre.addEventListener('click', () => answer(true, true));
     nunca.addEventListener('click', () => answer(false, true));
     acoes.append(sim, nao, sempre, nunca);
-    li.append(rot, acoes);
+    // O que vai acontecer, por extenso (texto puro)
+    const resumo = document.createElement('div');
+    resumo.className = 'resumo';
+    resumo.textContent = approval.resumo || (approval.tipos || []).join(', ');
+    li.append(rot, resumo, acoes);
     els.log.appendChild(li);
     scrollDown();
   }

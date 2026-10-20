@@ -502,6 +502,16 @@ strong {
   margin-bottom: 10px;
 }
 
+.approval .resumo {
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0 0 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
 .approval .acoes {
   display: flex;
   gap: 10px;
