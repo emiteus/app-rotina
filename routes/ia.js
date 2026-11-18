@@ -173,7 +173,7 @@ function respostaClaimMutacao(texto) {
     'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|' +
     'paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|' +
     'corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi|enfileirei|' +
-    'rodando|rodei|disparando|paus(?:ei|ando|ado)|deslig(?:uei|ando)|' +
+    'rodando|rodei|disparando|paus(?:ei|ando|ado)|deslig(?:uei|ando)|liguei|acendi|ligad[oa]|acesa|' +
     // 25/09: "Adicionei essas 4 páginas ao Minerador" sem ter chamado nada
     'adicionei|adicionad[oa]s?|inclu[ií]|cadastrei|coloquei|removi|postei|publiquei|enviei|mandei';
   const limpo = String(texto || '').replace(
