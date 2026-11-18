@@ -86,7 +86,9 @@ Riscos por tool no PC:
 
 ## Fase 3 · Casa via Home Assistant
 
-**0.9.80 — TV LG direto pelo PC ✅ (código).** Com um aparelho só, HA em VM seria peso sem ganho: o Jarvis Desktop fala com a TV LG na rede local (tools `tv_*`, chave só no PC, Wake-on-LAN pra ligar). Falta parear com a TV ligada. O HA entra quando chegarem luz/tomada/etc.; aí `tv_*` pode passar a ir pelo HA sem mudar as frases.
+**0.9.80 — TV LG direto pelo PC ✅ (código).** Com um aparelho só, HA em VM seria peso sem ganho: o Jarvis Desktop fala com a TV LG na rede local (tools `tv_*`, chave só no PC, Wake-on-LAN pra ligar). Falta parear com a TV ligada.
+
+**0.10.48 — Luz Neo Avant / Tuya direto pelo PC ✅ (código).** Mesmo padrão da TV: tools `home_status` / `home_sync` / `home_light`; Access ID/Secret do `platform.tuya.com` ficam **só no PC** (cifrados); o Desktop fala com a nuvem Tuya via `tinytuya`. Serve Neo Avant, Smart Life e qualquer Tuya. Home Assistant continua o caminho quando a casa crescer (tomada, sensor, várias marcas); aí `home_*` pode passar a ir pelo HA sem mudar as frases.
 
 Home Assistant faz a ponte com quase todo aparelho (Tuya, Sonoff, Philips Hue, TVs, Alexa/Google via integração). O Jarvis não fala com cada marca; fala com o HA.
 
@@ -94,7 +96,7 @@ Home Assistant faz a ponte com quase todo aparelho (Tuya, Sonoff, Philips Hue, T
 |---|---------|--------|
 | 3.1 | HA rodando (PC ou Raspberry) com os aparelhos da casa | aparelhos visíveis no painel do HA |
 | 3.2 | Ponte no Jarvis Desktop (token do HA fica **só no PC**, nunca na nuvem) | nuvem pede, PC chama o HA |
-| 3.3 | Tools `home_*`: listar, estado, ligar/desligar, cenas, com **allowlist de entidades** | "Jarvis, apaga a luz do quarto" funciona por voz |
+| 3.3 | Tools `home_*`: listar, estado, ligar/desligar, cenas, com **allowlist de entidades** — ✅ atalho Tuya (Neo Avant) sem HA | "Jarvis, apaga a luz do quarto" funciona por voz |
 | 3.4 | Cenas nomeadas ("modo cinema", "saindo de casa") como receitas | uma frase aciona várias ações |
 
 Fechadura, alarme, portão e câmera = critical (SIM sempre). Luz, tomada, TV = low.

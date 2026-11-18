@@ -1,7 +1,7 @@
 # JARVIS Roadmap — status
 
-**Version:** 0.10.46  
-**Date:** 2026-10-19  
+**Version:** 0.10.48  
+**Date:** 2026-11-18  
 **Fonte de verdade da versão:** `package.json` (este header deve coincidir).
 
 Docs vivos: este arquivo · [JARVIS_ROADMAP_MCU.md](./JARVIS_ROADMAP_MCU.md) · [JARVIS_MANUAL.md](./JARVIS_MANUAL.md).  
@@ -19,6 +19,8 @@ Plano 30/60/90 (concluído, arquivado): [archive/JARVIS_GAP_MAP_3.0.md](./archiv
 
 ## Done
 
+- **0.10.48**: **Luz Neo Avant / Tuya na casa** — tools `home_status` / `home_sync` / `home_light`; Desktop fala com a nuvem Tuya (`tinytuya`); Access Secret só no PC (DPAPI). Ajustes → Casa. HA fica pra quando a casa crescer
+- **0.10.47**: **Luzes do setup num lugar só** — tela "Luzes" no app do PC e a tool `pc_rgb` (voz/WhatsApp: "deixa tudo vermelho", "arco-íris no cooler", perfis). Teclado Attack Shark X68HE direto no USB (WebHID numa janela escondida, protocolo do driver da Attack Shark); placa-mãe, fans do water cooler, placa de vídeo e memória pelo OpenRGB 1.1 rodando escondido (SDK local, porta 6742). Estado e perfis em `userData/rgb.json`; reaplica ao abrir e quando o PC acorda
 - **0.10.46**: **Agenda das redes pelo site** — `soc_agendar` sobe vídeos de uma pasta do PC no agendador do TikTok Studio e do Meta Business Suite (Reels do IG), sem API. Plano (vídeo → rede → horário → legenda) montado antes do SIM; modelos de legenda por nicho; fila com prazo de cada rede; motorista com clique/tecla reais (`desktop/src/social/driver.js`). Fuse RunAsNode volta a ficar ligado (o vigia roda como Node)
 - **0.10.45**: **Log de auditoria e integridade do servidor** — ações em `audit_log` (cadeia assinada). Na subida o processo assina os arquivos de segurança e repete a comparação a cada 15 min. Leitura só do dono em `/audit.html`
 - **0.10.44**: **Trava de sessão e de arquivo** — login usa `req.ip` (sem isento padrão); `SESSION_SECRET` obrigatório em production; `wa_send_file` é critical (pede SIM); blob com teto de 40 MB
