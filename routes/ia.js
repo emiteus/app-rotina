@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const axios = require('axios');
 const { v4: uuid } = require('uuid');
 const { all, run, get } = require('../lib/db');
@@ -283,7 +283,7 @@ function reconciliarRespostaComAcoes(resposta, acoesExec) {
   ]);
   // PC/TV/redes/WA voltam com a frase pronta (a.texto) e o narrarOks trata a família inteira pelo prefixo.
   // Antes cada tool nova tinha que entrar na lista acima; pc_notes_* ficou de fora e a resposta sumia (30/09/2026).
-  const DEVICE_TOOL = /^(pc|tv|soc|wa)_/;
+  const DEVICE_TOOL = /^(pc|tv|home|soc|wa)_/;
   const finOk = oks.filter(a => acaoTipos.has(a.tipo) || DEVICE_TOOL.test(String(a.tipo)));
   const claim = respostaClaimMutacao(resposta);
   const failText = fails.length ? formatAcaoFalhas(fails) : '';
@@ -2912,6 +2912,7 @@ Regras:
 - Arquivos do PC (só leitura: Área de Trabalho, Documentos, Downloads, Imagens, Vídeos, Projetos): "o que tem na pasta X" → pc_files_list; "acha o arquivo Y" → pc_files_search; "lê/verifica o arquivo Z" → pc_files_read. SEMPRE passe pergunta = o que ele quer saber. "Abre a pasta/arquivo" → pc_open_path. Nunca invente conteúdo de arquivo.
 - Redes sociais (Instagram/TikTok/YouTube/X logados no PC): LEITURA → "como foi meu último post/reel", "quantas views no TikTok" → soc_posts; "o que comentaram" → soc_comments; "tenho DM?"/"alguém me marcou no X?" → soc_inbox; "resumo das redes" → soc_summary; "entra no Instagram"/"conecta o TikTok" → soc_login (passe pergunta = o que ele quer saber). ESCRITA (critical, pede SIM com o texto exato): "posta no X: …" → soc_post (só X, só texto); "responde/comenta nesse post …" → soc_reply (X ou Instagram; post = link ou 1 = mais recente seu); "manda DM pro @fulano …" → soc_dm (X ou Instagram). AGENDA PELO SITE (sem API, um SIM pro lote; a prévia mostra cada vídeo/horário/legenda): "agenda os vídeos da pasta X no TikTok e no Instagram, 3 por dia / às 12h e 19h / a partir de amanhã, modelo filmes" → soc_agendar {redes, pasta, contas: {instagram: ["@a","@b"], tiktok: "@c"}, modelo?, por_dia?, horarios?, inicio?} (várias contas na mesma frase = todas no "contas"; pergunte o @ do Instagram se ele não disser); "o que tá agendado nas redes" → soc_agenda_listar; "cancela a agenda" → soc_agenda_cancelar; "cria o modelo de legenda filmes: 🎬 {titulo} {parte} … hashtags …" / "meus modelos" → soc_modelo_legenda. Agenda ≠ TeusHub (socialhub_agendar é pela API) ≠ Ney Filmes. Pedido de agendar SEMPRE emite soc_agendar, mesmo que tentativas anteriores no histórico tenham falhado (cada tentativa nova usa o que foi corrigido; quem confere conta, página e horário é o PC). NUNCA responda só explicando falha antiga de agenda nem pedindo pra ele selecionar conta/página: emita a ação; se der errado de novo, o aviso traz o motivo. NUNCA curtir/seguir em lote. Sem mídia ainda (se pedirem foto/vídeo no post, diga que ainda é só texto).
 - TV da casa (LG, via Jarvis Desktop): "liga/desliga a TV", "abre a Netflix na TV", "volume da TV", "pausa a TV", "HDMI 2", "volta"/"ok" no controle → tv_*. Se ele disser só "volume"/"pausa" sem citar TV, é o PC (pc_*). "Conecta na TV"/"pareia a TV" → tv_pair.
+- Luz da casa (lâmpada Neo Avant/Tuya, via Jarvis Desktop; ele É o dono e já autorizou): "liga/apaga a luz", "luz vermelha", "brilho 40", "luz quente/fria" → home_light (acao on|off|set, cor, brilho, temp). "Quais luzes tenho" → home_status; "sincroniza a casa" → home_sync. É diferente das luzes RGB do setup do PC (pc_rgb).
 - Patch/código: read_file → propose_patch (path+content ou files[]) → apply_local OU github_pr (HITL).
 - Testes: dev_run_tests (script allowlist test/smoke/check/lint) se tiver disco.
 - Análise sem alterar: responda com acoes:[].

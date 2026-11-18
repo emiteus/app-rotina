@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Resposta final do Jarvis montada a partir das ações: o resultado de uma tool do PC/TV/redes que deu certo
  * não pode sumir só porque outra ação do mesmo turno falhou, nem por a tool ser nova (30/09/2026:
  * pc_notes_search não estava na lista fixa e a busca nas notas desaparecia da resposta).
@@ -18,7 +18,7 @@ test('busca nas notas aparece mesmo com outra ação falhando no mesmo turno', (
 });
 
 test('qualquer tool nova do PC, da TV ou das redes entra sem precisar de lista', () => {
-  for (const tipo of ['pc_notes_read', 'pc_qualquer_coisa_nova', 'tv_nova', 'soc_nova']) {
+  for (const tipo of ['pc_notes_read', 'pc_qualquer_coisa_nova', 'tv_nova', 'home_light', 'soc_nova']) {
     const r = reconciliar('', [{ tipo, ok: true, texto: `feito: ${tipo}` }]);
     assert.match(r, new RegExp(`feito: ${tipo}`), tipo);
   }
