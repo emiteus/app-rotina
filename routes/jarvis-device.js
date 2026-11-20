@@ -87,4 +87,40 @@ router.post(
   }
 );
 
+/**
+ * Aviso do PC para o dono no WhatsApp. Pedido do Mateus (20/11/2026): "sempre que vc terminar de ajustar tudo vc me
+ * avisar pelo whats". Quem chama é o Claude Code no PC, com o token de um aparelho pareado ("parear pc").
+ * POST /api/jarvis-device/avisar { texto } · Authorization: Bearer <token>
+ * É pedido explícito do dono: não depende de JARVIS_PROACTIVE_WA nem da flag proactive_wa (essas valem para os pings
+ * que o próprio Jarvis decide mandar). No máximo 20 avisos por hora por aparelho.
+ */
+const AVISOS_POR_HORA = 20;
+const avisos = new Map(); // deviceId -> timestamps
+
+router.post('/avisar', express.json({ limit: '8kb' }), async (req, res) => {
+  try {
+    const device = await authenticateToken(bearer(req));
+    if (!device) return res.status(401).json({ erro: 'token inválido' });
+    if (device.kind === 'phone') return res.status(403).json({ erro: 'só o PC avisa' });
+    const texto = String(req.body?.texto || '').trim().slice(0, 1500);
+    if (!texto) return res.status(400).json({ erro: 'texto vazio' });
+    const agora = Date.now();
+    const lista = (avisos.get(device.id) || []).filter((t) => agora - t < 60 * 60 * 1000);
+    if (lista.length >= AVISOS_POR_HORA) return res.status(429).json({ erro: 'muitos avisos nesta hora' });
+    const { evolutionReady, sendText, phonesAllowed } = require('../lib/jarvis/host').requireLib('evolution');
+    if (!evolutionReady()) return res.status(503).json({ erro: 'WhatsApp fora do ar' });
+    const phones = phonesAllowed();
+    if (!phones.length) return res.status(503).json({ erro: 'nenhum número liberado' });
+    lista.push(agora);
+    avisos.set(device.id, lista);
+    await sendText(phones[0], `🤖 ${device.name || 'PC'}: ${texto}`);
+    console.log(JSON.stringify({ tag: 'jarvis.device', event: 'avisar', deviceId: device.id, chars: texto.length }));
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[jarvis.device] avisar:', e.message);
+    res.status(500).json({ erro: 'falha ao avisar' });
+  }
+});
+
 module.exports = router;
