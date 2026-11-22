@@ -173,7 +173,7 @@ function respostaClaimMutacao(texto) {
     'criei|movi|categorizei|recategorizei|organizei|prontinho|renomeei|unifiquei|fundi|' +
     'paguei|depositei|conclu[ií]|agendei|ajustei|alterei|atualizei|deletei|apaguei|' +
     'corrigi|marquei|sincronizei|reconciliei|disparei|reenviei|atribui|resolvi|enfileirei|' +
-    'rodando|rodei|disparando|paus(?:ei|ando|ado)|deslig(?:uei|ando)|liguei|acendi|ligad[oa]|acesa|' +
+    'rodando|rodei|disparando|paus(?:ei|ando|ado)|deslig(?:uei|ando)|liguei|ligando|acendi|acendendo|apagando|ligad[oa]|acesa|' +
     // 25/09: "Adicionei essas 4 páginas ao Minerador" sem ter chamado nada
     'adicionei|adicionad[oa]s?|inclu[ií]|cadastrei|coloquei|removi|postei|publiquei|enviei|mandei';
   const limpo = String(texto || '').replace(
@@ -190,6 +190,23 @@ function respostaClaimMutacao(texto) {
     /\b(j[aá]\s+mandei|j[aá]\s+enviei)\b/i.test(limpoWa) ||
     /\b(mandei|enviei)\s+no\s+(seu\s+)?(whats?app|zap)\b/i.test(limpoWa) ||
     /\b(t[aá]|est[aá]|chegou)\s+no\s+(seu\s+)?(whats?app|zap)\b/i.test(limpoWa)
+  );
+}
+
+/**
+ * Aviso da 2ª tentativa de um comando que voltou sem ação (22/11/2026).
+ * Sem crédito no Gemini, o "rápido" e o "forte" viram o mesmo Haiku: repetir a pergunta igual dava a resposta igual.
+ * Medido com o prompt e o histórico reais: com "Apaguei a Lâmpada NEO 10W." no histórico, "acenda a luz" voltou
+ * "Acendi a Lâmpada NEO 10W." SEM ação em 5 de 5 (ele copia o texto que o sistema escreveu depois da ação).
+ * Regra no system prompt não adiantou (0 de 3); este aviso na mensagem, sim (3 de 3).
+ * Só avisa quando a resposta FINGIU que fez algo; sem isso, a 2ª tentativa segue como antes.
+ */
+function avisoAcaoFingida(resposta) {
+  const r = String(resposta || '').replace(/\s+/g, ' ').trim();
+  if (!r || !respostaClaimMutacao(r)) return '';
+  return (
+    `\n\n[Aviso do sistema: você respondeu "${r.slice(0, 200)}" mas não emitiu nenhuma ação em "acoes", ` +
+    'então NADA foi feito. Emita agora a ação certa em "acoes" (o sistema escreve o resultado pra ele).]'
   );
 }
 
@@ -2946,10 +2963,11 @@ Regras:
       msgTxt.length <= 140 &&
       !/\b(analis|compar|por\s*qu|explic|planej|estrat|relat[oó]rio|resum|diagnost|revis|pesquis|escrev|redij|crie\s+um|cria\s+um|projeto)/i.test(msgTxt);
     const fastTurn = channelKey === 'desktop' || channelKey === 'phone' || waCurta || /^\[Áudio transcrito\]/.test(msgTxt);
-    const chamarDecisao = (fast) =>
+    // aviso: só na 2ª tentativa (vai pra IA, não pro histórico salvo)
+    const chamarDecisao = (fast, aviso = '') =>
       chamarIA({
         system: systemPrompt,
-        user: mensagem,
+        user: mensagem + aviso,
         historico: historicoSafe,
         maxTokens: 2200,
         jsonMode: true,
@@ -2975,9 +2993,11 @@ Regras:
         // Briefing é só leitura ("ao ligar o PC" casava com "liga" e refazia com o modelo forte: +10 s)
         const isBriefing = /^\[Briefing pedido/.test(String(mensagem || ''));
         if (semAcao && !isBriefing && looksLikeCommand(mensagem)) {
-          console.log(JSON.stringify({ tag: 'jarvis.turn', event: 'fast_retry', reason: 'command_without_action', userId: uid }));
+          // Disse que fez sem emitir ação ("Acendi a Lâmpada…"): a 2ª tentativa vai com aviso, senão sai igual
+          const aviso = avisoAcaoFingida(textoAssistenteSeguro(texto, p0));
+          console.log(JSON.stringify({ tag: 'jarvis.turn', event: 'fast_retry', reason: 'command_without_action', aviso: !!aviso, userId: uid }));
           try {
-            ({ texto, usage, provider } = await chamarDecisao(false));
+            ({ texto, usage, provider } = await chamarDecisao(false, aviso));
           } catch (e) {
             console.error('[jarvis.turn] fast_retry falhou:', e.message);
           }
@@ -3357,4 +3377,5 @@ module.exports._inferirAcoesDaMensagem = inferirAcoesDaMensagem;
 // Só pros testes da resposta final montada a partir das ações
 module.exports._reconciliarRespostaComAcoes = reconciliarRespostaComAcoes;
 module.exports._respostaClaimMutacao = respostaClaimMutacao;
+module.exports._avisoAcaoFingida = avisoAcaoFingida;
 module.exports._pickWhatsAppDeliverBody = pickWhatsAppDeliverBody;

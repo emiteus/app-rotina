@@ -23,3 +23,27 @@ test('qualquer tool nova do PC, da TV ou das redes entra sem precisar de lista',
     assert.match(r, new RegExp(`feito: ${tipo}`), tipo);
   }
 });
+
+// 22/11/2026: "Jarvis, acenda a luz" voltava "Acendi a Lâmpada NEO 10W." sem ação (copiando o histórico) e a
+// 2ª tentativa, no mesmo Haiku, repetia igual. Agora a 2ª tentativa leva um aviso — só quando ele fingiu que fez.
+const { _avisoAcaoFingida: aviso, _respostaClaimMutacao: claim } = require('../routes/ia');
+
+test('resposta que finge ter feito ganha aviso na 2ª tentativa, citando o que ele disse', () => {
+  for (const r of ['Acendi a Lâmpada NEO 10W.', 'Acendendo a luz.', 'Apaguei a luz do quarto.', 'Pronto, lâmpada acesa.', 'Ligando a TV.']) {
+    const a = aviso(r);
+    assert.match(a, /NADA foi feito/, r);
+    assert.ok(a.includes(r), `cita a resposta: ${r}`);
+  }
+});
+
+test('pergunta, negação ou conversa não ganham aviso (a 2ª tentativa segue como antes)', () => {
+  for (const r of ['Quer que eu acenda a luz?', 'Ainda não acendi nada.', 'Qual luz, senhor? A do quarto ou a RGB do PC?', '', null]) {
+    assert.strictEqual(aviso(r), '', String(r));
+  }
+});
+
+test('"acendendo"/"apagando" sem ação contam como fingir que fez', () => {
+  assert.strictEqual(claim('Acendendo a luz.'), true);
+  assert.strictEqual(claim('Apagando a luz da sala.'), true);
+  assert.strictEqual(claim('Ainda não apaguei.'), false);
+});
